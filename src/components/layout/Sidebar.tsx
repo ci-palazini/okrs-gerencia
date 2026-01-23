@@ -10,7 +10,7 @@ import {
     History,
     HelpCircle,
     TrendingUp,
-
+    Building2,
     DollarSign,
     Truck,
     Shield,
@@ -21,9 +21,10 @@ import { useSettings } from '../../contexts/SettingsContext'
 
 const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Objetivos Corp.', href: '/objectives-corporate', icon: Building2 },
     { name: "OKR's", href: '/okrs', icon: Target },
     { name: 'Rentabilidade', href: '/rentabilidade', icon: DollarSign },
-    { name: 'Serviços', href: '/lead-time', icon: Truck },
+    { name: 'Lead Time', href: '/lead-time', icon: Truck },
     { name: 'Segurança', href: '/seguranca', icon: Shield },
     { name: 'Ações', href: '/actions', icon: ListTodo },
     { name: 'Propostas', href: '/ideas', icon: Lightbulb },

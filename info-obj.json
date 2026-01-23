@@ -1,0 +1,321 @@
+{
+  "metadata": {
+    "sheet_name": "Objetives Coorp",
+    "sheet_index_num": 1
+  },
+  "header_info": {
+    "title": "GSC OBJETIVES 2026",
+    "team": "Spirax 2026",
+    "period": "2026",
+    "last_check_in": "2-Jan-26",
+    "okrs_updated_ago": "18 días"
+  },
+  "instructions": [
+    "Definir los Objetivos (cualiltativo) del Equipo, deben estar alineados al aspiracional anual.",
+    "Establecer Resultados Clave (cuantitativo) que nos permitan lograr los Objetivos.",
+    "Actuailzar el Valor Real y Nivel de Confianza en cada Check-in para un buen seguimiento."
+  ],
+  "columns": {
+    "key_result_responsible": "Responsable del Key Result",
+    "source": "Fuente",
+    "quarters": {
+      "Q1-2026": ["Baseline", "Real", "Target", "% Avance", "Confianza"],
+      "Q2-2026": ["Baseline", "Real", "Target", "% Avance", "Confianza"],
+      "Q3-2026": ["% Avance", "Confianza"],
+      "Q4-2026": ["% Avance", "Confianza"]
+    }
+  },
+  "objectives": [
+    {
+      "category": "Seguridad",
+      "id": 1,
+      "description": "Embed accountability for Safety and implement One Planet refresh Strategy",
+      "key_results": [
+        {
+          "id": "1.1",
+          "description": "Progress in Framework with aspiration of completing Silver plus consolidation of Foundation-SIlver; evidence consolidation through completion of monthly KPI report.",
+          "responsible": "Karina",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            }
+          }
+        },
+        {
+          "id": "1.2",
+          "description": "Action plans in place and progress made for new Group Mandatory Instructions, tracker(s) updated. Training records 100% for new system roll-out.",
+          "responsible": "Karina",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            }
+          }
+        },
+        {
+          "id": "1.3",
+          "description": "Achieve target for CO2 emissions and water comsuption",
+          "responsible": "Caitly",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "category": "People",
+      "id": 2,
+      "description": "Improve culture and performance in the organization",
+      "key_results": [
+        {
+          "id": "2.1",
+          "description": "Cultivate a Value based, sustainable, inclusive and  High Performing culture, MT individual coach. HPT program.",
+          "responsible": "Ariel",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            }
+          }
+        },
+        {
+          "id": "2.2",
+          "description": "Implement an Engagement improvement plan",
+          "responsible": "Eduardo",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            }
+          }
+        },
+        {
+          "id": "2.3",
+          "description": "Recruitment: Implement our recruitment approach and make meaningful progress on 50/50 diversity hiring",
+          "responsible": "Eduardo",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "category": "OPERATIONAL EXCELENCE",
+      "id": 3,
+      "description": "Drive efficiency gains in GSC and improve performance in OPEX Framework",
+      "key_results": [
+        {
+          "id": "3.1",
+          "description": "Drive procurement savings and continuous improvement: £0.25m savings of Procurement and £0.15m CI (SXS Brazil + Hiter)",
+          "responsible": "Rafael",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            }
+          }
+        },
+        {
+          "id": "3.2",
+          "description": "Reach Foundation Level in OpEx Framework",
+          "responsible": "Gabriel & Beatriz",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "",
+              "confidence": "🙂"
+            }
+          }
+        },
+        {
+          "id": "3.3",
+          "description": "Partner with Supply and Sales to implement a proper strategic rationalization initiative, moving beyond simple tail cutting. Deliver SKU reductions and savings this year.",
+          "responsible": "Marcos",
+          "source": "LINK",
+          "quarters": {
+            "Q1": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q2": {
+              "baseline": "",
+              "real": "",
+              "target": "",
+              "progress_percentage": "",
+              "confidence": "🙂"
+            },
+            "Q3": {
+              "progress_percentage": "0",
+              "confidence": "🙂"
+            },
+            "Q4": {
+              "progress_percentage": "0",
+              "confidence": "🙂"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

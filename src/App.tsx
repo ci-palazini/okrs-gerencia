@@ -11,6 +11,7 @@ import { ActionsPage } from './pages/actions/ActionsPage'
 
 import { LeadTimePage } from './pages/leadtime/LeadTimePage'
 import { SegurancaPage } from './pages/seguranca/SegurancaPage'
+import { ObjectivesCorporatePage } from './pages/objectives-corporate/ObjectivesCorporatePage'
 import { AuditLogPage } from './pages/audit/AuditLogPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
 import { HelpPage } from './pages/help/HelpPage'
@@ -30,6 +31,7 @@ function App() {
             {/* Protected routes */}
             <Route element={<MainLayout />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/objectives-corporate" element={<ObjectivesCorporatePage />} />
               <Route path="/okrs" element={<OKRsPage />} />
               <Route path="/rentabilidade" element={<RentabilidadePage />} />
               <Route path="/lead-time" element={<LeadTimePage />} />

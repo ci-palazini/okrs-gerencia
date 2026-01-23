@@ -28,6 +28,7 @@ interface QuarterlyCardProps {
     quarterlyData: QuarterlyData[]
     currentQuarter?: number
     onUpdate?: (quarterId: string, field: string, value: any) => void
+    onUpdateKeyResult?: (krId: string, field: string, value: any) => void
     editable?: boolean
 }
 
@@ -36,10 +37,15 @@ export function QuarterlyCard({
     quarterlyData,
     currentQuarter = 1,
     onUpdate,
+    onUpdateKeyResult,
     editable = true
 }: QuarterlyCardProps) {
     const [editingCell, setEditingCell] = useState<string | null>(null)
     const [editValue, setEditValue] = useState<string>('')
+    const [editingSource, setEditingSource] = useState(false)
+    const [sourceValue, setSourceValue] = useState(keyResult.source || '')
+    const [editingOwner, setEditingOwner] = useState(false)
+    const [ownerValue, setOwnerValue] = useState(keyResult.owner_name || '')
 
     const formatValue = (value: number | null, metricType: string, unit: string): string => {
         if (value === null || value === undefined) return '-'
@@ -74,6 +80,26 @@ export function QuarterlyCard({
     const cancelEdit = () => {
         setEditingCell(null)
         setEditValue('')
+    }
+
+    const saveSourceEdit = () => {
+        onUpdateKeyResult?.(keyResult.id, 'source', sourceValue || null)
+        setEditingSource(false)
+    }
+
+    const cancelSourceEdit = () => {
+        setSourceValue(keyResult.source || '')
+        setEditingSource(false)
+    }
+
+    const saveOwnerEdit = () => {
+        onUpdateKeyResult?.(keyResult.id, 'owner_name', ownerValue || null)
+        setEditingOwner(false)
+    }
+
+    const cancelOwnerEdit = () => {
+        setOwnerValue(keyResult.owner_name || '')
+        setEditingOwner(false)
     }
 
     // Calculate YTD
@@ -125,12 +151,92 @@ export function QuarterlyCard({
                                 {keyResult.title}
                             </h4>
                             <div className="flex items-center gap-4 mt-1">
-                                <span className="text-sm text-[var(--color-text-muted)]">
-                                    Responsável: <strong className="text-[var(--color-text-secondary)]">{keyResult.owner_name || '-'}</strong>
-                                </span>
-                                <Badge variant="outline" size="sm" className="bg-white">
-                                    Fonte: {keyResult.source || '-'}
-                                </Badge>
+                                {editingOwner ? (
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs text-[var(--color-text-muted)]">Responsável:</span>
+                                        <input
+                                            type="text"
+                                            value={ownerValue}
+                                            onChange={(e) => setOwnerValue(e.target.value)}
+                                            className="w-28 px-2 py-0.5 text-xs rounded border border-[var(--color-primary)] bg-[var(--color-surface)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') saveOwnerEdit()
+                                                if (e.key === 'Escape') cancelOwnerEdit()
+                                            }}
+                                        />
+                                        <button
+                                            onClick={saveOwnerEdit}
+                                            className="p-0.5 text-[var(--color-success)] hover:bg-[var(--color-success)]/10 rounded"
+                                        >
+                                            <Save className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                            onClick={cancelOwnerEdit}
+                                            className="p-0.5 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 rounded"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => editable && onUpdateKeyResult && setEditingOwner(true)}
+                                        className={cn(
+                                            "text-sm transition-all",
+                                            editable && onUpdateKeyResult
+                                                ? "hover:text-[var(--color-primary)] cursor-pointer"
+                                                : "cursor-default",
+                                            "text-[var(--color-text-muted)]"
+                                        )}
+                                        disabled={!editable || !onUpdateKeyResult}
+                                    >
+                                        Responsável: <strong className="text-[var(--color-text-secondary)]">{keyResult.owner_name || '-'}</strong>
+                                        {editable && onUpdateKeyResult && <Edit3 className="w-3 h-3 inline ml-1 opacity-50" />}
+                                    </button>
+                                )}
+                                {editingSource ? (
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs text-[var(--color-text-muted)]">Fonte:</span>
+                                        <input
+                                            type="text"
+                                            value={sourceValue}
+                                            onChange={(e) => setSourceValue(e.target.value)}
+                                            className="w-24 px-2 py-0.5 text-xs rounded border border-[var(--color-primary)] bg-[var(--color-surface)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') saveSourceEdit()
+                                                if (e.key === 'Escape') cancelSourceEdit()
+                                            }}
+                                        />
+                                        <button
+                                            onClick={saveSourceEdit}
+                                            className="p-0.5 text-[var(--color-success)] hover:bg-[var(--color-success)]/10 rounded"
+                                        >
+                                            <Save className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                            onClick={cancelSourceEdit}
+                                            className="p-0.5 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 rounded"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => editable && onUpdateKeyResult && setEditingSource(true)}
+                                        className={cn(
+                                            "inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border bg-white transition-all",
+                                            editable && onUpdateKeyResult
+                                                ? "hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] cursor-pointer"
+                                                : "cursor-default",
+                                            "border-[var(--color-border)] text-[var(--color-text-secondary)]"
+                                        )}
+                                        disabled={!editable || !onUpdateKeyResult}
+                                    >
+                                        Fonte: {keyResult.source || '-'}
+                                        {editable && onUpdateKeyResult && <Edit3 className="w-3 h-3 opacity-50" />}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

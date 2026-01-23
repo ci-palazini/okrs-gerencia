@@ -106,6 +106,7 @@ export function OKRsPage() {
                 .from('business_units')
                 .select('*')
                 .eq('is_active', true)
+                .neq('code', 'GSC')
                 .order('order_index')
 
             if (unitsData && unitsData.length > 0) {

@@ -62,6 +62,7 @@ export function SegurancaPage() {
                 .from('business_units')
                 .select('*')
                 .eq('is_active', true)
+                .neq('code', 'GSC')
                 .order('order_index')
 
             if (unitsData && unitsData.length > 0) {
@@ -192,6 +193,44 @@ export function SegurancaPage() {
         }
     }
 
+    async function handleUpdateKeyResult(krId: string, field: string, value: any) {
+        setSaving(true)
+        try {
+            const updateData: Record<string, any> = {}
+            updateData[field] = value
+
+            const currentKR = keyResults.find(kr => kr.id === krId)
+
+            const { error } = await supabase
+                .from('key_results')
+                .update(updateData)
+                .eq('id', krId)
+
+            if (error) throw error
+
+            if (user && currentKR) {
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email,
+                    action: 'update',
+                    entity_type: 'key_result',
+                    entity_id: krId,
+                    entity_name: `${currentKR.title} - ${field}`,
+                    old_value: { [field]: currentKR[field as keyof KeyResult] },
+                    new_value: { [field]: value }
+                })
+            }
+
+            setKeyResults(prev =>
+                prev.map(kr => kr.id === krId ? { ...kr, [field]: value } : kr)
+            )
+        } catch (error) {
+            console.error('Error updating key result:', error)
+        } finally {
+            setSaving(false)
+        }
+    }
+
     // Get quarterly data for a specific KR
     function getQuarterlyDataForKR(krId: string): QuarterlyData[] {
         return [1, 2, 3, 4].map(quarter => {
@@ -284,6 +323,7 @@ export function SegurancaPage() {
                             quarterlyData={getQuarterlyDataForKR(kr.id)}
                             currentQuarter={currentQuarter}
                             onUpdate={handleUpdateQuarterly}
+                            onUpdateKeyResult={handleUpdateKeyResult}
                             editable={true}
                         />
                     ))}
