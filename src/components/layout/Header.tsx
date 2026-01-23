@@ -1,5 +1,5 @@
 import { useAuth } from '../../hooks/useAuth'
-import { LogOut, User, Bell } from 'lucide-react'
+import { LogOut, User } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 
 export function Header() {
@@ -19,11 +19,6 @@ export function Header() {
 
             {/* Right side - User menu */}
             <div className="flex items-center gap-4">
-                {/* Notifications */}
-                <button className="relative p-2 rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--color-primary)]" />
-                </button>
 
                 {/* User Dropdown */}
                 <DropdownMenu.Root>

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Settings, Palette, Bell, Shield, Database, Download } from 'lucide-react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { Settings, Palette, Shield, Database, Download, X, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
+import { Input } from '../../components/ui/Input'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
+import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 
 interface DatabaseStats {
@@ -15,8 +18,21 @@ interface DatabaseStats {
 }
 
 export function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'data'>('general')
+    const [activeTab, setActiveTab] = useState<'general' | 'data'>('general')
     const { sidebarCollapsed, toggleSidebar, theme } = useSettings()
+    const { updatePassword } = useAuth()
+
+    // Password modal state
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+    const [currentPassword, setCurrentPassword] = useState('')
+    const [newPassword, setNewPassword] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+    const [showNewPassword, setShowNewPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [passwordLoading, setPasswordLoading] = useState(false)
+    const [passwordError, setPasswordError] = useState<string | null>(null)
+    const [passwordSuccess, setPasswordSuccess] = useState(false)
 
     // Stats state
     const [stats, setStats] = useState<DatabaseStats>({
@@ -110,6 +126,62 @@ export function SettingsPage() {
         }
     }
 
+    async function handlePasswordChange() {
+        setPasswordError(null)
+        setPasswordSuccess(false)
+
+        // Validations
+        if (!newPassword || !confirmPassword) {
+            setPasswordError('Por favor, preencha todos os campos')
+            return
+        }
+
+        if (newPassword.length < 6) {
+            setPasswordError('A nova senha deve ter pelo menos 6 caracteres')
+            return
+        }
+
+        if (newPassword !== confirmPassword) {
+            setPasswordError('As senhas não coincidem')
+            return
+        }
+
+        setPasswordLoading(true)
+
+        try {
+            const { error } = await updatePassword(newPassword)
+
+            if (error) {
+                setPasswordError(error.message)
+            } else {
+                setPasswordSuccess(true)
+                // Reset form after success
+                setTimeout(() => {
+                    setPasswordModalOpen(false)
+                    setCurrentPassword('')
+                    setNewPassword('')
+                    setConfirmPassword('')
+                    setPasswordSuccess(false)
+                }, 2000)
+            }
+        } catch (err: any) {
+            setPasswordError(err.message || 'Erro ao alterar senha')
+        } finally {
+            setPasswordLoading(false)
+        }
+    }
+
+    function resetPasswordForm() {
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+        setPasswordError(null)
+        setPasswordSuccess(false)
+        setShowCurrentPassword(false)
+        setShowNewPassword(false)
+        setShowConfirmPassword(false)
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -124,7 +196,6 @@ export function SettingsPage() {
             <div className="flex items-center gap-2 p-1 rounded-xl bg-[var(--color-surface)] w-fit border border-[var(--color-border)]">
                 {[
                     { key: 'general', label: 'Geral', icon: Settings },
-                    { key: 'notifications', label: 'Notificações', icon: Bell },
                     { key: 'data', label: 'Dados', icon: Database },
                 ].map(({ key, label, icon: Icon }) => (
                     <button
@@ -209,7 +280,15 @@ export function SettingsPage() {
                                 </div>
                                 <Badge variant="success">Ativo</Badge>
                             </div>
-                            <Button variant="outline" className="w-full">
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => {
+                                    resetPasswordForm()
+                                    setPasswordModalOpen(true)
+                                }}
+                            >
+                                <Lock className="w-4 h-4 mr-2" />
                                 Alterar Senha
                             </Button>
                         </CardContent>
@@ -217,39 +296,7 @@ export function SettingsPage() {
                 </div>
             )}
 
-            {activeTab === 'notifications' && (
-                <Card variant="elevated">
-                    <CardHeader>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--color-warning)]/15">
-                                <Bell className="w-5 h-5 text-[var(--color-warning)]" />
-                            </div>
-                            <div>
-                                <CardTitle>Notificações</CardTitle>
-                                <CardDescription>Gerencie suas preferências de notificação</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {[
-                            { label: 'Atualizações de KRs', description: 'Quando um KR é atualizado', enabled: true },
-                            { label: 'Novas Ações', description: 'Quando ações são criadas', enabled: true },
-                            { label: 'Prazos Próximos', description: 'Lembretes de ações com prazo próximo', enabled: false },
-                            { label: 'Resumo Semanal', description: 'Email com resumo de progresso', enabled: false },
-                        ].map((item, index) => (
-                            <div key={index} className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                                <div>
-                                    <p className="font-medium text-[var(--color-text-primary)]">{item.label}</p>
-                                    <p className="text-sm text-[var(--color-text-muted)]">{item.description}</p>
-                                </div>
-                                <Badge variant={item.enabled ? 'success' : 'outline'}>
-                                    {item.enabled ? 'Ativo' : 'Desativado'}
-                                </Badge>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            )}
+
 
             {activeTab === 'data' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -323,6 +370,121 @@ export function SettingsPage() {
                     </Card>
                 </div>
             )}
+
+            {/* Password Change Modal */}
+            <Dialog.Root open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--color-success)]/15">
+                                    <Lock className="w-5 h-5 text-[var(--color-success)]" />
+                                </div>
+                                <div>
+                                    <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
+                                        Alterar Senha
+                                    </Dialog.Title>
+                                    <Dialog.Description className="text-sm text-[var(--color-text-muted)]">
+                                        Digite sua nova senha abaixo
+                                    </Dialog.Description>
+                                </div>
+                            </div>
+                            <Dialog.Close asChild>
+                                <button className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </Dialog.Close>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-4">
+                            {passwordSuccess ? (
+                                <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                                    <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[var(--color-success)]/15">
+                                        <CheckCircle className="w-8 h-8 text-[var(--color-success)]" />
+                                    </div>
+                                    <p className="text-lg font-medium text-[var(--color-success)]">
+                                        Senha alterada com sucesso!
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* New Password */}
+                                    <div className="relative">
+                                        <Input
+                                            type={showNewPassword ? 'text' : 'password'}
+                                            label="Nova Senha"
+                                            placeholder="Digite sua nova senha"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            icon={<Lock className="w-5 h-5" />}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="absolute right-3 top-[38px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                        >
+                                            {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
+                                    </div>
+
+                                    {/* Confirm Password */}
+                                    <div className="relative">
+                                        <Input
+                                            type={showConfirmPassword ? 'text' : 'password'}
+                                            label="Confirmar Nova Senha"
+                                            placeholder="Confirme sua nova senha"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            icon={<Lock className="w-5 h-5" />}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="absolute right-3 top-[38px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        >
+                                            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
+                                    </div>
+
+                                    {/* Password requirements */}
+                                    <div className="p-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)]">
+                                        <p className="text-xs text-[var(--color-text-muted)]">
+                                            A senha deve ter pelo menos 6 caracteres
+                                        </p>
+                                    </div>
+
+                                    {passwordError && (
+                                        <div className="p-3 rounded-lg bg-[var(--color-danger)]/10 text-[var(--color-danger)] text-sm">
+                                            {passwordError}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        {!passwordSuccess && (
+                            <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
+                                <Button variant="ghost" onClick={() => setPasswordModalOpen(false)}>
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handlePasswordChange}
+                                    loading={passwordLoading}
+                                >
+                                    <Lock className="w-4 h-4" />
+                                    Alterar Senha
+                                </Button>
+                            </div>
+                        )}
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
         </div>
     )
 }
+
