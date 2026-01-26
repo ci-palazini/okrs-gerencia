@@ -284,7 +284,6 @@ export function HelpPage() {
                     </div>
                     <div className="flex items-center gap-4">
                         <Badge variant="info">Gabriel - SXS Brazil</Badge>
-                        <Badge variant="info">Beatriz - Hiter</Badge>
                     </div>
                 </CardContent>
             </Card>
