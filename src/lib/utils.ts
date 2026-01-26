@@ -47,9 +47,9 @@ export function formatDate(date: Date | string, locale = 'pt-BR'): string {
 /**
  * Calculate progress percentage
  */
-export function calculateProgress(current: number, target: number, baseline = 0): number {
-    if (target === baseline) return 0
-    const progress = ((current - baseline) / (target - baseline)) * 100
+export function calculateProgress(current: number, target: number): number {
+    if (target === 0) return 0
+    const progress = (current / target) * 100
     return Math.max(0, Math.min(100, progress))
 }
 

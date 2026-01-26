@@ -47,8 +47,7 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
 
     const progress = calculateProgress(
         parseFloat(currentValue) || keyResult.current_value,
-        keyResult.target,
-        keyResult.baseline
+        keyResult.target
     )
 
     async function handleSave() {

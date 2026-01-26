@@ -123,10 +123,10 @@ export function QuarterlyCard({
         const target = calculateYTD('target')
         const actual = calculateYTD('actual')
 
-        if (target === null || baseline === null || actual === null) return null
-        if (target === baseline) return 0
+        if (target === null || actual === null) return null
+        if (target === 0) return 0
 
-        return Math.round(((actual - baseline) / (target - baseline)) * 100)
+        return Math.round((actual / target) * 100)
     })()
 
     const rows = [

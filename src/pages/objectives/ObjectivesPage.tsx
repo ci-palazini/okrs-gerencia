@@ -99,7 +99,7 @@ export function ObjectivesPage() {
     function calculateObjectiveProgress(krs: ObjectiveWithKRs['key_results']) {
         if (!krs || krs.length === 0) return 0
         const total = krs.reduce((acc, kr) => {
-            return acc + calculateProgress(kr.current_value, kr.target, kr.baseline)
+            return acc + calculateProgress(kr.current_value, kr.target)
         }, 0)
         return Math.round(total / krs.length)
     }
@@ -235,7 +235,7 @@ export function ObjectivesPage() {
                                                 Key Results
                                             </h4>
                                             {objective.key_results.map((kr) => {
-                                                const krProgress = calculateProgress(kr.current_value, kr.target, kr.baseline)
+                                                const krProgress = calculateProgress(kr.current_value, kr.target)
 
                                                 return (
                                                     <div
