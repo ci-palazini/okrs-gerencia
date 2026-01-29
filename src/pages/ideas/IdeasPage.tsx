@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Lightbulb, Plus, Trash2, Pencil } from 'lucide-react' // Added Pencil
 import * as Dialog from '@radix-ui/react-dialog'
 import { Button } from '../../components/ui/Button'
@@ -30,6 +31,7 @@ const CARD_COLORS = [
 ]
 
 export function IdeasPage() {
+    const { t } = useTranslation()
     const { user } = useAuth()
     const [loading, setLoading] = useState(true)
     const [ideas, setIdeas] = useState<Idea[]>([])
@@ -116,7 +118,7 @@ export function IdeasPage() {
     }
 
     async function handleDelete(id: string) {
-        if (!confirm('Tem certeza que deseja excluir esta proposta?')) return
+        if (!confirm(t('ideas.card.deleteConfirm'))) return
 
         try {
             const { error } = await supabase
@@ -170,15 +172,15 @@ export function IdeasPage() {
                         <div className="p-3 rounded-xl bg-[var(--color-accent-purple)]/10 text-[var(--color-accent-purple)]">
                             <Lightbulb className="w-8 h-8" />
                         </div>
-                        <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Propostas da Equipe</h1>
+                        <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('ideas.title')}</h1>
                     </div>
                     <p className="text-[var(--color-text-secondary)] mt-1 max-w-2xl">
-                        Acompanhe as propostas e iniciativas de melhoria de cada membro.
+                        {t('ideas.subtitle')}
                     </p>
                 </div>
                 <Button variant="primary" size="md" onClick={() => setModalOpen(true)}>
                     <Plus className="w-4 h-4" />
-                    Nova Proposta
+                    {t('ideas.newIdea')}
                 </Button>
             </div>
 
@@ -195,7 +197,7 @@ export function IdeasPage() {
                                 {/* Card Header */}
                                 <div className="p-4 border-b border-black/5">
                                     <h3 className="font-bold text-gray-800 text-sm uppercase tracking-wide">
-                                        {ideaUser?.full_name || 'Usuário'}
+                                        {ideaUser?.full_name || t('audit.unknownUser')}
                                     </h3>
                                     <span className="text-xs text-gray-600 font-medium">
                                         {ideaUser?.email?.split('@')[0]}
@@ -233,7 +235,7 @@ export function IdeasPage() {
                                                                 handleEdit(idea)
                                                             }}
                                                             className="p-1.5 rounded-full bg-white/50 text-gray-600 hover:bg-white hover:text-blue-600 hover:shadow-sm"
-                                                            title="Editar proposta"
+                                                            title={t('ideas.card.edit')}
                                                         >
                                                             <Pencil className="w-3.5 h-3.5" />
                                                         </button>
@@ -243,7 +245,7 @@ export function IdeasPage() {
                                                                 handleDelete(idea.id)
                                                             }}
                                                             className="p-1.5 rounded-full bg-white/50 text-gray-600 hover:bg-white hover:text-red-600 hover:shadow-sm"
-                                                            title="Excluir proposta"
+                                                            title={t('ideas.card.delete')}
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </button>
@@ -263,14 +265,14 @@ export function IdeasPage() {
                         <Lightbulb className="w-10 h-10 text-[var(--color-text-muted)] opacity-50" />
                     </div>
                     <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">
-                        Nenhuma proposta ainda
+                        {t('ideas.emptyState.title')}
                     </h3>
                     <p className="text-[var(--color-text-muted)] max-w-md mb-8">
-                        Clique em "Nova Proposta" para criar o primeiro cartão.
+                        {t('ideas.emptyState.description')}
                     </p>
                     <Button variant="outline" onClick={() => setModalOpen(true)}>
                         <Plus className="w-4 h-4" />
-                        Adicionar Proposta
+                        {t('ideas.addIdea')}
                     </Button>
                 </div>
             )}
@@ -282,7 +284,7 @@ export function IdeasPage() {
                     <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95">
                         <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
                             <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
-                                {editingIdea ? 'Editar Proposta' : 'Nova Proposta'}
+                                {editingIdea ? t('ideas.modal.titleEdit') : t('ideas.modal.titleNew')}
                             </Dialog.Title>
                             <Dialog.Close asChild>
                                 <button className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]">
@@ -293,21 +295,21 @@ export function IdeasPage() {
 
                         <div className="p-6 space-y-4">
                             <Input
-                                label="Título da Proposta"
+                                label={t('ideas.modal.titleLabel')}
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Ex: Melhoria no processo X..."
+                                placeholder={t('ideas.modal.titlePlaceholder')}
                                 autoFocus
                             />
 
                             <div>
                                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                    Descrição (Opcional)
+                                    {t('ideas.modal.descriptionLabel')}
                                 </label>
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Detalhes..."
+                                    placeholder={t('ideas.modal.descriptionPlaceholder')}
                                     rows={5}
                                     className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
                                 />
@@ -316,10 +318,10 @@ export function IdeasPage() {
 
                         <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
                             <Button variant="ghost" onClick={() => setModalOpen(false)}>
-                                Cancelar
+                                {t('common.cancel')}
                             </Button>
                             <Button variant="primary" onClick={handleSubmit} loading={submitting}>
-                                {editingIdea ? 'Salvar Alterações' : 'Criar Proposta'}
+                                {editingIdea ? t('ideas.modal.saveEdit') : t('ideas.modal.saveNew')}
                             </Button>
                         </div>
                     </Dialog.Content>

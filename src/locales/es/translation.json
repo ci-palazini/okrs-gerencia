@@ -1,0 +1,501 @@
+{
+    "app": {
+        "title": "OKR Dashboard",
+        "loading": "Cargando..."
+    },
+    "auth": {
+        "login": "Entrar",
+        "logout": "Cerrar sesión",
+        "register": "Registrarse",
+        "email": "Correo electrónico",
+        "password": "Contraseña",
+        "welcomeBack": "Bienvenido de nuevo",
+        "enterCredentials": "Ingrese sus credenciales para acceder",
+        "username": "Usuario",
+        "usernamePlaceholder": "su.usuario",
+        "noAccount": "¿No tiene una cuenta?",
+        "createAccount": "Crear cuenta",
+        "createAccountTitle": "Crear cuenta",
+        "fillData": "Complete los datos para registrarse",
+        "fullName": "Nombre completo",
+        "namePlaceholder": "Su nombre",
+        "emailPlaceholder": "su@email.com",
+        "confirmPassword": "Confirmar contraseña",
+        "passwordMismatch": "Las contraseñas no coinciden",
+        "passwordLength": "La contraseña debe tener al menos 6 caracteres",
+        "alreadyHaveAccount": "¿Ya tiene una cuenta?",
+        "doLogin": "Iniciar sesión",
+        "landingTitle": "Control de Objetivos y Resultados",
+        "landingSubtitle": "Gestión integrada y mejora continua.",
+        "groupCompanies": "Empresas del Grupo"
+    },
+    "common": {
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "delete": "Eliminar",
+        "edit": "Editar",
+        "create": "Crear",
+        "back": "Volver",
+        "confirm": "Confirmar"
+    },
+    "sidebar": {
+        "managementControl": "Control de Gestión",
+        "dashboard": "Dashboard",
+        "corporateObjectives": "Objetivos Corp.",
+        "okrs": "OKR's",
+        "managePillars": "Gestionar Pilares",
+        "actions": "Acciones",
+        "ideas": "Propuestas",
+        "audit": "Auditoría",
+        "help": "Ayuda",
+        "settings": "Configuración"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "overview": "Visión general de los OKRs {{year}} - {{unit}}",
+        "loadingData": "Cargando datos...",
+        "pillars": "Pilares",
+        "keyResults": "Key Results",
+        "withData": "Con Datos",
+        "overdueActions": "Acciones Atrasadas",
+        "generalProgress": "Progreso General Q{{quarter}}",
+        "average": "Promedio",
+        "averageProgressDesc": "Promedio de progreso de todos los Key Results",
+        "progressByPillar": "Progresso por Pilar",
+        "krs": "KRs",
+        "noData": "Ningún dato disponible.",
+        "attentionKRs": "Key Results que Necesitan Atención",
+        "lowestProgress": "Menor progreso",
+        "noKRsFound": "Ningún Key Result encontrado."
+    },
+    "okr": {
+        "title": "OKRs",
+        "subtitle": "Gestión de Objetivos y Resultados Clave",
+        "newObjective": "Nuevo Objetivo",
+        "newKR": "Nuevo KR",
+        "loadingData": "Cargando datos...",
+        "local": "Local",
+        "deleteObjectiveConfirm": "¿Está seguro de que desea eliminar este objetivo? ATENCIÓN: Todos los Key Results asociados se eliminarán permanentemente.",
+        "deleteObjectiveError": "Error al eliminar el objetivo",
+        "deleteKRConfirm": "¿Está seguro de que desea eliminar este Key Result?",
+        "deleteKRError": "Error al eliminar el Key Result",
+        "noKRs": "Ningún Key Result registrado para este objetivo.",
+        "addFirstKR": "Agregar primer KR",
+        "noObjectives": "Ningún objetivo definido para este pilar.",
+        "defineFirstObjective": "Definir Primer Objetivo",
+        "noPillars": "Ningún pilar registrado."
+    },
+    "objectives": {
+        "title": "Objetivos",
+        "subtitle": "OKRs {{year}} - {{company}}",
+        "loading": "Cargando objetivos...",
+        "allUnits": "Todas las Unidades",
+        "newObjective": "Nuevo Objetivo",
+        "progress": "Progreso",
+        "noObjectives": "Ningún objetivo encontrado",
+        "seedData": "Ejecute el script {{script}} en el Supabase SQL Editor para poblar los datos.",
+        "base": "Base",
+        "target": "Meta",
+        "current": "Actual",
+        "corporate": {
+            "title": "Objetivos Corporativos",
+            "subtitle": "GSC Objectives {{year}} - Visión consolidada de todos los pilares",
+            "saving": "Guardando...",
+            "tip": "Consejo:",
+            "tipContent": "Haga clic en los valores de Baseline, Meta o Real para editar directamente. El % de Avance se calcula automáticamente. Use los indicadores de confianza para señalar el estado de cada KR.",
+            "pillarSummary": "{{objectives}} objetivo(s) • {{krs}} Key Result(s)",
+            "emptyState": {
+                "title": "Ningún objetivo corporativo encontrado.",
+                "description": "Ejecute la migración <1>migration004_objectives_corporate.sql</1> en Supabase para poblar los datos."
+            }
+        }
+    },
+    "actions": {
+        "title": "Acciones",
+        "subtitle": "Iniciativas vinculadas a los Key Results",
+        "newAction": "Nueva Acción",
+        "loading": "Cargando acciones...",
+        "status": {
+            "all": "Todas",
+            "pending": "Pendiente",
+            "inProgress": "En Progreso",
+            "done": "Finalizado"
+        },
+        "overdue": "Atrasada",
+        "markAsDone": "Marcar como finalizada",
+        "deleteConfirm": "¿Está seguro de que desea eliminar esta acción?",
+        "deleteError": "Error al eliminar la acción",
+        "noActions": "Ninguna acción encontrada",
+        "noActionsFilter": "No hay acciones con el estado \"{{status}}\".",
+        "noActionsDesc": "Registre acciones vinculadas a los Key Results para realizar el seguimiento de las iniciativas.",
+        "createFirst": "Crear Primera Acción"
+    },
+    "modals": {
+        "createObjective": {
+            "title": "Nuevo Objetivo",
+            "subtitle": "Cree un nuevo objetivo estratégico",
+            "unit": "Unidad",
+            "pillar": "Pilar",
+            "code": "Código",
+            "codePlaceholder": "1",
+            "titleLabel": "Título",
+            "titlePlaceholder": "Ej: Aumentar Rentabilidad",
+            "description": "Descripción",
+            "descriptionPlaceholder": "Detalles opcionales sobre el objetivo...",
+            "year": "Año",
+            "cancel": "Cancelar",
+            "save": "Crear Objetivo",
+            "errorRequired": "Complete todos los campos obligatorios",
+            "errorSave": "Error al guardar"
+        },
+        "action": {
+            "titleNew": "Nueva Acción",
+            "titleEdit": "Editar Acción",
+            "subtitleNew": "Añada una iniciativa vinculada a un KR",
+            "subtitleEdit": "Actualice los detalles de la acción",
+            "titleLabel": "Título de la Acción",
+            "titlePlaceholder": "Ej: Implementar sistema de gestión visual",
+            "description": "Descripción",
+            "descriptionPlaceholder": "Detalles adicionales sobre la acción...",
+            "linkedKR": "Key Result Vinculado",
+            "selectKR": "Seleccione un KR",
+            "noKRFound": "Ningún KR encontrado",
+            "dueDate": "Fecha Límite",
+            "cancel": "Cancelar",
+            "saveNew": "Crear Acción",
+            "saveEdit": "Guardar Cambios",
+            "errorRequired": "Complete todos los campos obligatorios",
+            "errorSave": "Error al guardar"
+        },
+        "editKR": {
+            "title": "Actualizar Key Result",
+            "subtitle": "Actualice el valor actual del KR",
+            "currentValue": "Valor actual",
+            "newValue": "Nuevo valor actual",
+            "invalidValue": "Valor inválido",
+            "save": "Guardar Cambio",
+            "progress": "Progreso"
+        },
+        "createKR": {
+            "titleNew": "Nuevo Key Result",
+            "titleEdit": "Editar Key Result",
+            "subtitleNew": "Añada un nuevo KR al objetivo",
+            "subtitleEdit": "Cambie los datos del KR",
+            "linkedObjective": "Objetivo Vinculado",
+            "selectObjective": "Seleccione un objetivo",
+            "code": "Código",
+            "titleLabel": "Título",
+            "titlePlaceholder": "Ej: Reducción de Lead Time",
+            "owner": "Responsable",
+            "ownerPlaceholder": "Nombre del responsable",
+            "source": "Fuente",
+            "sourcePlaceholder": "SAP, Finanzas, etc.",
+            "metricType": "Tipo de Métrica",
+            "unit": "Unidad",
+            "unitPlaceholder": "%, $, días, etc.",
+            "metrics": {
+                "percentage": "Porcentaje",
+                "number": "Número",
+                "currency": "Moneda",
+                "days": "Días"
+            },
+            "saveNew": "Crear Key Result",
+            "saveEdit": "Guardar Cambios",
+            "cancel": "Cancelar",
+            "errorRequired": "Complete todos los campos obligatorios",
+            "errorSave": "Error al guardar"
+        }
+    },
+    "header": {
+        "user": "Usuario",
+        "myProfile": "Mi Perfil"
+    },
+    "audit": {
+        "title": "Auditoría",
+        "subtitle": "Historial de todos los cambios en el sistema",
+        "loading": "Cargando logs...",
+        "unknownUser": "Usuario desconocido",
+        "changedFields": "Campos modificados:",
+        "noLogs": "Ningún registro de auditoría",
+        "noLogsDesc": "Los cambios realizados en el sistema se registrarán aquí automáticamente.",
+        "filter": {
+            "all": "Todas las Acciones",
+            "create": "Creaciones",
+            "update": "Actualizaciones",
+            "delete": "Eliminaciones"
+        },
+        "actions": {
+            "create": "Creación",
+            "update": "Actualización",
+            "delete": "Eliminación"
+        },
+        "entities": {
+            "key_results": "Key Result",
+            "objectives": "Objetivo",
+            "actions": "Acción",
+            "pillars": "Pilar",
+            "kr_quarterly_data": "Datos Trimestrales"
+        }
+    },
+    "help": {
+        "title": "Centro de Ayuda",
+        "subtitle": "Guía de transición de Excel a la plataforma",
+        "searchPlaceholder": "Buscar ayuda...",
+        "excelMap": {
+            "title": "De Excel a la Plataforma",
+            "description": "Encuentre dónde está cada pestaña de Excel en la nueva plataforma",
+            "excel": "En Excel:",
+            "platform": "En la Plataforma:",
+            "items": {
+                "corporate": {
+                    "excel": "Objetivos Corporativos",
+                    "platform": "Dashboard + Objetivos"
+                },
+                "okrs": {
+                    "excel": "OKRs",
+                    "platform": "OKRs (filtrar por unidad)"
+                },
+                "profitability": {
+                    "excel": "Rentabilidad",
+                    "platform": "Rentabilidad"
+                },
+                "actions": {
+                    "excel": "Acciones SXS / Acciones Hiter",
+                    "platform": "Acciones (filtrar por unidad)"
+                },
+                "quarterly": {
+                    "excel": "Seguimiento Trimestral",
+                    "platform": "Dashboard (indicador Q1 2026)"
+                },
+                "history": {
+                    "excel": "Historial de Cambios (no existía)",
+                    "platform": "Auditoría"
+                }
+            }
+        },
+        "colors": {
+            "title": "Colores de Progreso",
+            "green": "Verde (70-100%)",
+            "greenDesc": "En buen camino",
+            "yellow": "Amarillo (40-69%)",
+            "yellowDesc": "Atención necesaria",
+            "red": "Rojo (0-39%)",
+            "redDesc": "Crítico"
+        },
+        "actionStatus": {
+            "title": "Estado de las Acciones",
+            "pending": "Pendiente",
+            "pendingDesc": "Aún no iniciado",
+            "inProgress": "En Progreso",
+            "inProgressDesc": "Trabajo en curso",
+            "done": "Finalizado",
+            "blocked": "Bloqueado",
+            "blockedDesc": "Impedido, requiere acción"
+        },
+        "faq": {
+            "title": "Preguntas Frecuentes",
+            "description": "Respuestas a las dudas más comunes",
+            "categories": {
+                "dashboard": "Dashboard",
+                "objectives": "Objetivos",
+                "actions": "Acciones",
+                "general": "General"
+            },
+            "questions": {
+                "generalProgress": {
+                    "q": "¿Dónde veo el progreso general?",
+                    "a": "En el Dashboard, la tarjeta \"Progreso General\" muestra un círculo con el porcentaje promedio de todos los Key Results."
+                },
+                "lateKRs": {
+                    "q": "¿Cómo sé qué KRs están atrasados?",
+                    "a": "En la sección \"Key Results que Necesitan Atención\" del Dashboard, los KRs se ordenan de menor a mayor progreso."
+                },
+                "editKR": {
+                    "q": "¿Cómo edito el valor de un KR?",
+                    "a": "Puede editar valores (Baseline, Real, Meta) haciendo clic directamente en la celda de la tabla. Para editar el título u otras propiedades, haga clic en el icono de editar (<0></0>)."
+                },
+                "krColors": {
+                    "q": "¿Qué significan los colores de los KRs?",
+                    "a": "Verde (70-100%): En buen camino. Amarillo (40-69%): Atención necesaria. Rojo (0-39%): Crítico, requiere acción urgente."
+                },
+                "filterUnits": {
+                    "q": "¿Cómo filtro por SXS o Hiter?",
+                    "a": "Use el menú desplegable \"Todas las Unidades\" en la parte superior derecha de las páginas Dashboard y Objetivos para filtrar por unidad de negocio."
+                },
+                "createAction": {
+                    "q": "¿Cómo creo una nueva acción?",
+                    "a": "Vaya a Acciones → Haga clic en \"+ Nueva Acción\" → Complete título, descripción, KR vinculado, prioridad y fecha límite → Haga clic en \"Crear Acción\"."
+                },
+                "changeActionStatus": {
+                    "q": "¿Cómo cambio el estado de una acción?",
+                    "a": "Pase el mouse sobre la acción → Haga clic en los 3 puntos (⋮) → Elija el nuevo estado: En Progreso, Finalizado o Bloqueado."
+                },
+                "priorityColors": {
+                    "q": "¿Qué significan los colores de prioridad?",
+                    "a": "Rojo: Alta prioridad. Amarillo: Media prioridad. Gris: Baja prioridad."
+                },
+                "autoSave": {
+                    "q": "¿Los datos se guardan automáticamente?",
+                    "a": "¡Sí! Todos los cambios se guardan en la base de datos inmediatamente y se registran en la página de Auditoría."
+                },
+                "audit": {
+                    "q": "¿Dónde veo los cambios realizados?",
+                    "a": "En el menú lateral, haga clic en \"Auditoría\" para ver todo el historial de cambios realizados en el sistema."
+                }
+            }
+        },
+        "support": {
+            "title": "¿Necesita más ayuda?",
+            "subtitle": "Póngase en contacto con el equipo de Mejora Continua"
+        }
+    },
+    "ideas": {
+        "title": "Propuestas del Equipo",
+        "subtitle": "Siga las propuestas e iniciativas de mejora de cada miembro.",
+        "newIdea": "Nueva Propuesta",
+        "addIdea": "Añadir Propuesta",
+        "emptyState": {
+            "title": "Aún no hay propuestas",
+            "description": "Haga clic en \"Nueva Propuesta\" para crear la primera tarjeta."
+        },
+        "card": {
+            "edit": "Editar propuesta",
+            "delete": "Eliminar propuesta",
+            "deleteConfirm": "¿Está seguro de que desea eliminar esta propuesta?"
+        },
+        "modal": {
+            "titleNew": "Nueva Propuesta",
+            "titleEdit": "Editar Propuesta",
+            "titleLabel": "Título de la Propuesta",
+            "titlePlaceholder": "Ej: Mejora en el proceso X...",
+            "descriptionLabel": "Descripción (Opcional)",
+            "descriptionPlaceholder": "Detalles...",
+            "saveNew": "Crear Propuesta",
+            "saveEdit": "Guardar Cambios"
+        }
+    },
+    "pillar": {
+        "page": {
+            "saving": "Guardando...",
+            "error": "Error",
+            "tip": "Consejo:",
+            "tipContent": "Haga clic en los valores de Baseline, Meta o Real para editar directamente. El % de Avance se calcula automáticamente. Use los indicadores de confianza para señalar el estado de cada KR.",
+            "emptyState": {
+                "title": "Ningún Key Result encontrado para el pilar {{pillar}} en la unidad {{unit}}.",
+                "description": "Registre OBJETIVOS y KEY RESULTS en la página de OKRs para verlos aquí."
+            }
+        }
+    },
+    "settings": {
+        "page": {
+            "title": "Configuración",
+            "subtitle": "Personalice su experiencia en el OKR Dashboard",
+            "tabs": {
+                "general": "General",
+                "pillars": "Pilares",
+                "data": "Datos"
+            },
+            "general": {
+                "appearance": {
+                    "title": "Apariencia",
+                    "description": "Personalice el aspecto del dashboard",
+                    "theme": "Tema",
+                    "currentTheme": "Actualmente: {{theme}}",
+                    "themeLight": "Claro",
+                    "themeDark": "Oscuro",
+                    "lightDefault": "Claro (Predeterminado)"
+                },
+                "sidebar": {
+                    "title": "Barra lateral compacta",
+                    "description": "Contraer menú lateral"
+                },
+                "security": {
+                    "title": "Seguridad",
+                    "description": "Configuración de la cuenta",
+                    "auth": "Autenticación",
+                    "authDesc": "Correo y contraseña",
+                    "active": "Activo",
+                    "changePassword": "Cambiar Contraseña"
+                },
+                "passwordModal": {
+                    "title": "Cambiar Contraseña",
+                    "description": "Ingrese su nueva contraseña abajo",
+                    "success": "¡Contraseña cambiada con éxito!",
+                    "newPassword": "Nueva Contraseña",
+                    "newPasswordPlaceholder": "Ingrese su nueva contraseña",
+                    "confirmPassword": "Confirmar Nueva Contraseña",
+                    "confirmPasswordPlaceholder": "Confirme su nueva contraseña",
+                    "requirements": "La contraseña debe tener al menos 6 caracteres",
+                    "cancel": "Cancelar",
+                    "save": "Cambiar Contraseña",
+                    "errors": {
+                        "fillAll": "Por favor, complete todos los campos",
+                        "minChars": "La nueva contraseña debe tener al menos 6 caracteres",
+                        "mismatch": "Las contraseñas no coinciden",
+                        "generic": "Error al cambiar la contraseña"
+                    }
+                }
+            },
+            "data": {
+                "export": {
+                    "title": "Exportar Datos",
+                    "description": "Descargue sus datos en formato JSON",
+                    "okrs": "Exportar OKRs (JSON)",
+                    "actions": "Exportar Acciones (JSON)",
+                    "exporting": "Exportando..."
+                },
+                "stats": {
+                    "title": "Estadísticas de la Base",
+                    "description": "Visión general de los datos",
+                    "objectives": "Objetivos",
+                    "keyResults": "Key Results",
+                    "actions": "Acciones",
+                    "audit": "Logs de Auditoría"
+                }
+            },
+            "pillars": {
+                "management": {
+                    "title": "Gestión de Pilares",
+                    "description": "Configure los pilares globales y por unidad",
+                    "newPillar": "Nuevo Pilar"
+                },
+                "list": {
+                    "order": "Orden",
+                    "color": "Color",
+                    "nameCode": "Nombre / Código",
+                    "unit": "Unidad",
+                    "status": "Estado",
+                    "actions": "Acciones",
+                    "global": "Global",
+                    "active": "Activo",
+                    "inactive": "Inactivo",
+                    "unknown": "Desconocido"
+                },
+                "form": {
+                    "titleNew": "Nuevo Pilar",
+                    "titleEdit": "Editar Pilar",
+                    "name": "Nombre",
+                    "namePlaceholder": "Ej: Rentabilidad",
+                    "code": "Código",
+                    "codePlaceholder": "Ej: RENT",
+                    "color": "Color (Hex)",
+                    "icon": "Icono",
+                    "iconSelected": "Seleccionado:",
+                    "none": "Ninguno",
+                    "unit": "Unidad de Negocio",
+                    "unitGlobal": "Global (Todas las Unidades)",
+                    "order": "Orden",
+                    "description": "Descripción",
+                    "descriptionPlaceholder": "Descripción del pilar...",
+                    "cancel": "Cancelar",
+                    "save": "Guardar",
+                    "createError": "Error al guardar el pilar. Verifique los datos."
+                },
+                "delete": {
+                    "confirm": "ATENCIÓN: Esto eliminará permanentemente el pilar y TODOS sus Objetivos y Key Results. ¿Está seguro?",
+                    "error": "Error al eliminar el pilar. Verifique si existen dependencias o intente recargar la página."
+                }
+            }
+        }
+    }
+}

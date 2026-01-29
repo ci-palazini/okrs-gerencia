@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Edit3, X } from 'lucide-react'
+import { Edit3, Trash2, X, ChevronDown } from 'lucide-react'
 import { ProgressBar } from '../ui/ProgressBar'
 import { Badge } from '../ui/Badge'
 import { ConfidenceEmoji } from '../ui/ConfidenceIndicator'
@@ -25,23 +25,38 @@ interface KeyResultRow {
 interface KRTableProps {
     keyResults: KeyResultRow[]
     onEdit?: (kr: KeyResultRow) => void
+    onDelete?: (krId: string) => void
     onUpdateConfidence?: (krId: string, confidence: ConfidenceLevel) => void
     onUpdateValue?: (krId: string, field: 'baseline' | 'target' | 'actual', value: number | null) => void
     compact?: boolean
     showDataColumns?: boolean // Show Baseline, Target, Real columns
 }
 
+
 export function KRTable({
     keyResults,
     onEdit,
+    onDelete,
     onUpdateConfidence,
     onUpdateValue,
+    renderExpandedRow, // New prop
     compact = false,
     showDataColumns = true
-}: KRTableProps) {
+}: KRTableProps & { renderExpandedRow?: (kr: KeyResultRow) => React.ReactNode }) {
     const [editingConfidence, setEditingConfidence] = useState<string | null>(null)
     const [editingCell, setEditingCell] = useState<string | null>(null)
     const [editValue, setEditValue] = useState<string>('')
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
+    const toggleExpand = (krId: string) => {
+        const newExpanded = new Set(expandedIds)
+        if (newExpanded.has(krId)) {
+            newExpanded.delete(krId)
+        } else {
+            newExpanded.add(krId)
+        }
+        setExpandedIds(newExpanded)
+    }
 
     const getProgressVariant = (progress: number): 'success' | 'warning' | 'danger' => {
         if (progress >= 70) return 'success'
@@ -89,7 +104,8 @@ export function KRTable({
             <table className="w-full">
                 <thead>
                     <tr className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
-                        <th className="px-3 py-3 w-14">KR</th>
+                        <th className="px-3 py-3 w-8"></th> {/* Expand toggle column */}
+                        <th className="px-3 py-3 w-28">KR</th>
                         <th className="px-3 py-3">Descrição</th>
                         <th className="px-3 py-3 w-28">Responsável</th>
                         {showDataColumns && (
@@ -101,200 +117,248 @@ export function KRTable({
                         )}
                         <th className="px-3 py-3 w-28">% Avanço</th>
                         <th className="px-3 py-3 w-24 text-center">Confiança</th>
-                        {onEdit && <th className="px-3 py-3 w-10"></th>}
+                        {(onEdit || onDelete) && <th className="px-3 py-3 w-20 text-right"></th>}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
-                    {keyResults.map((kr) => (
-                        <tr
-                            key={kr.id}
-                            className="group hover:bg-[var(--color-surface-hover)] transition-colors"
-                        >
-                            {/* Code */}
-                            <td className="px-3 py-3">
-                                <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-bold text-sm">
-                                    {kr.code}
-                                </span>
-                            </td>
-
-                            {/* Title */}
-                            <td className="px-3 py-3">
-                                <p className="font-medium text-[var(--color-text-primary)] text-sm">
-                                    {kr.title}
-                                </p>
-                            </td>
-
-                            {/* Owner */}
-                            <td className="px-3 py-3">
-                                <span className="text-sm text-[var(--color-text-secondary)]">
-                                    {kr.owner_name || '-'}
-                                </span>
-                            </td>
-
-                            {/* Data Columns: Baseline, Real, Target */}
-                            {showDataColumns && (
-                                <>
-                                    {/* Baseline */}
-                                    <td className="px-3 py-3 text-center">
-                                        {editingCell === `${kr.id}-baseline` ? (
-                                            <div className="flex items-center gap-1">
-                                                <input
-                                                    type="number"
-                                                    value={editValue}
-                                                    onChange={(e) => setEditValue(e.target.value)}
-                                                    className="w-16 px-2 py-1 text-xs text-center rounded border border-[var(--color-primary)] bg-[var(--color-surface)] focus:outline-none"
-                                                    autoFocus
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') saveEditCell(kr.id, 'baseline')
-                                                        if (e.key === 'Escape') cancelEdit()
-                                                    }}
-                                                    onBlur={() => saveEditCell(kr.id, 'baseline')}
-                                                />
-                                            </div>
-                                        ) : (
+                    {keyResults.map((kr) => {
+                        const isExpanded = expandedIds.has(kr.id)
+                        return (
+                            <>
+                                <tr
+                                    key={kr.id}
+                                    className={cn(
+                                        "group transition-colors",
+                                        isExpanded ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
+                                    )}
+                                >
+                                    {/* Expand Toggle */}
+                                    <td className="px-3 py-3">
+                                        {renderExpandedRow && (
                                             <button
-                                                onClick={() => onUpdateValue && startEditCell(kr.id, 'baseline', kr.baseline)}
-                                                className={cn(
-                                                    'text-xs px-2 py-1 rounded',
-                                                    onUpdateValue && 'hover:bg-[var(--color-surface)] cursor-pointer'
-                                                )}
-                                                disabled={!onUpdateValue}
+                                                onClick={() => toggleExpand(kr.id)}
+                                                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[var(--color-text-muted)] transition-colors"
                                             >
-                                                {formatValue(kr.baseline, kr.metric_type, kr.unit)}
+                                                <ChevronDown className={cn(
+                                                    "w-4 h-4 transition-transform duration-200",
+                                                    isExpanded && "transform rotate-180"
+                                                )} />
                                             </button>
                                         )}
                                     </td>
 
-                                    {/* Actual/Real */}
-                                    <td className="px-3 py-3 text-center">
-                                        {editingCell === `${kr.id}-actual` ? (
-                                            <div className="flex items-center gap-1">
-                                                <input
-                                                    type="number"
-                                                    value={editValue}
-                                                    onChange={(e) => setEditValue(e.target.value)}
-                                                    className="w-16 px-2 py-1 text-xs text-center rounded border border-[var(--color-primary)] bg-[var(--color-surface)] focus:outline-none"
-                                                    autoFocus
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') saveEditCell(kr.id, 'actual')
-                                                        if (e.key === 'Escape') cancelEdit()
-                                                    }}
-                                                    onBlur={() => saveEditCell(kr.id, 'actual')}
+                                    {/* Code */}
+                                    <td className="px-3 py-3">
+                                        <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-bold text-sm whitespace-nowrap">
+                                            {kr.code}
+                                        </span>
+                                    </td>
+
+                                    {/* Title */}
+                                    <td className="px-3 py-3">
+                                        <p className="font-medium text-[var(--color-text-primary)] text-sm cursor-pointer hover:text-[var(--color-primary)]" onClick={() => renderExpandedRow && toggleExpand(kr.id)}>
+                                            {kr.title}
+                                        </p>
+                                    </td>
+
+                                    {/* Owner */}
+                                    <td className="px-3 py-3">
+                                        <span className="text-sm text-[var(--color-text-secondary)]">
+                                            {kr.owner_name || '-'}
+                                        </span>
+                                    </td>
+
+                                    {/* Data Columns: Baseline, Real, Target */}
+                                    {showDataColumns && (
+                                        <>
+                                            {/* Baseline */}
+                                            <td className="px-3 py-3 text-center">
+                                                {editingCell === `${kr.id}-baseline` ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="number"
+                                                            value={editValue}
+                                                            onChange={(e) => setEditValue(e.target.value)}
+                                                            className="w-16 px-2 py-1 text-xs text-center rounded border border-[var(--color-primary)] bg-[var(--color-surface)] focus:outline-none"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') saveEditCell(kr.id, 'baseline')
+                                                                if (e.key === 'Escape') cancelEdit()
+                                                            }}
+                                                            onBlur={() => saveEditCell(kr.id, 'baseline')}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => onUpdateValue && startEditCell(kr.id, 'baseline', kr.baseline)}
+                                                        className={cn(
+                                                            'text-xs px-2 py-1 rounded',
+                                                            onUpdateValue && 'hover:bg-[var(--color-surface)] cursor-pointer'
+                                                        )}
+                                                        disabled={!onUpdateValue}
+                                                    >
+                                                        {formatValue(kr.baseline, kr.metric_type, kr.unit)}
+                                                    </button>
+                                                )}
+                                            </td>
+
+                                            {/* Actual/Real */}
+                                            <td className="px-3 py-3 text-center">
+                                                {editingCell === `${kr.id}-actual` ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="number"
+                                                            value={editValue}
+                                                            onChange={(e) => setEditValue(e.target.value)}
+                                                            className="w-16 px-2 py-1 text-xs text-center rounded border border-[var(--color-primary)] bg-[var(--color-surface)] focus:outline-none"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') saveEditCell(kr.id, 'actual')
+                                                                if (e.key === 'Escape') cancelEdit()
+                                                            }}
+                                                            onBlur={() => saveEditCell(kr.id, 'actual')}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => onUpdateValue && startEditCell(kr.id, 'actual', kr.actual)}
+                                                        className={cn(
+                                                            'text-xs px-2 py-1 rounded font-medium text-[var(--color-primary)]',
+                                                            onUpdateValue && 'hover:bg-[var(--color-surface)] cursor-pointer'
+                                                        )}
+                                                        disabled={!onUpdateValue}
+                                                    >
+                                                        {formatValue(kr.actual, kr.metric_type, kr.unit)}
+                                                    </button>
+                                                )}
+                                            </td>
+
+                                            {/* Target */}
+                                            <td className="px-3 py-3 text-center">
+                                                {editingCell === `${kr.id}-target` ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="number"
+                                                            value={editValue}
+                                                            onChange={(e) => setEditValue(e.target.value)}
+                                                            className="w-16 px-2 py-1 text-xs text-center rounded border border-[var(--color-primary)] bg-[var(--color-surface)] focus:outline-none"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') saveEditCell(kr.id, 'target')
+                                                                if (e.key === 'Escape') cancelEdit()
+                                                            }}
+                                                            onBlur={() => saveEditCell(kr.id, 'target')}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => onUpdateValue && startEditCell(kr.id, 'target', kr.target)}
+                                                        className={cn(
+                                                            'text-xs px-2 py-1 rounded text-[var(--color-success)]',
+                                                            onUpdateValue && 'hover:bg-[var(--color-surface)] cursor-pointer'
+                                                        )}
+                                                        disabled={!onUpdateValue}
+                                                    >
+                                                        {formatValue(kr.target, kr.metric_type, kr.unit)}
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </>
+                                    )}
+
+                                    {/* Progress */}
+                                    <td className="px-3 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 min-w-16">
+                                                <ProgressBar
+                                                    value={kr.progress}
+                                                    size="sm"
+                                                    variant="gradient"
                                                 />
+                                            </div>
+                                            <Badge variant={getProgressVariant(kr.progress)} size="sm">
+                                                {kr.progress}%
+                                            </Badge>
+                                        </div>
+                                    </td>
+
+                                    {/* Confidence */}
+                                    <td className="px-3 py-3 text-center">
+                                        {editingConfidence === kr.id ? (
+                                            <div className="flex items-center justify-center gap-1">
+                                                {(['on_track', 'at_risk', 'off_track'] as ConfidenceLevel[]).map((level) => (
+                                                    <button
+                                                        key={level}
+                                                        onClick={() => {
+                                                            onUpdateConfidence?.(kr.id, level)
+                                                            setEditingConfidence(null)
+                                                        }}
+                                                        className="text-lg hover:scale-125 transition-transform"
+                                                    >
+                                                        <ConfidenceEmoji value={level} />
+                                                    </button>
+                                                ))}
+                                                <button
+                                                    onClick={() => setEditingConfidence(null)}
+                                                    className="ml-1 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
                                             </div>
                                         ) : (
                                             <button
-                                                onClick={() => onUpdateValue && startEditCell(kr.id, 'actual', kr.actual)}
+                                                onClick={() => onUpdateConfidence && setEditingConfidence(kr.id)}
                                                 className={cn(
-                                                    'text-xs px-2 py-1 rounded font-medium text-[var(--color-primary)]',
-                                                    onUpdateValue && 'hover:bg-[var(--color-surface)] cursor-pointer'
+                                                    'transition-transform',
+                                                    onUpdateConfidence && 'hover:scale-125 cursor-pointer'
                                                 )}
-                                                disabled={!onUpdateValue}
+                                                disabled={!onUpdateConfidence}
                                             >
-                                                {formatValue(kr.actual, kr.metric_type, kr.unit)}
+                                                <ConfidenceEmoji value={kr.confidence} />
                                             </button>
                                         )}
                                     </td>
 
-                                    {/* Target */}
-                                    <td className="px-3 py-3 text-center">
-                                        {editingCell === `${kr.id}-target` ? (
-                                            <div className="flex items-center gap-1">
-                                                <input
-                                                    type="number"
-                                                    value={editValue}
-                                                    onChange={(e) => setEditValue(e.target.value)}
-                                                    className="w-16 px-2 py-1 text-xs text-center rounded border border-[var(--color-primary)] bg-[var(--color-surface)] focus:outline-none"
-                                                    autoFocus
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') saveEditCell(kr.id, 'target')
-                                                        if (e.key === 'Escape') cancelEdit()
+                                    {/* Actions */}
+                                    {(onEdit || onDelete) && (
+                                        <td className="px-3 py-3 text-right whitespace-nowrap">
+                                            {onEdit && (
+                                                <button
+                                                    onClick={() => onEdit(kr)}
+                                                    className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 opacity-0 group-hover:opacity-100 transition-all mr-1"
+                                                    title="Editar KR"
+                                                >
+                                                    <Edit3 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            {onDelete && (
+                                                <button
+                                                    onClick={() => {
+                                                        if (window.confirm('Tem certeza que deseja excluir este Key Result?')) {
+                                                            onDelete(kr.id)
+                                                        }
                                                     }}
-                                                    onBlur={() => saveEditCell(kr.id, 'target')}
-                                                />
+                                                    className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 opacity-0 group-hover:opacity-100 transition-all"
+                                                    title="Excluir KR"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </td>
+                                    )}
+                                </tr>
+                                {isExpanded && renderExpandedRow && (
+                                    <tr>
+                                        <td colSpan={showDataColumns ? 10 : 7} className="p-0 bg-[var(--color-surface-subtle)]/50 border-b border-[var(--color-border)] animate-in slide-in-from-top-2 duration-200">
+                                            <div className="p-4 pl-14">
+                                                {renderExpandedRow(kr)}
                                             </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => onUpdateValue && startEditCell(kr.id, 'target', kr.target)}
-                                                className={cn(
-                                                    'text-xs px-2 py-1 rounded text-[var(--color-success)]',
-                                                    onUpdateValue && 'hover:bg-[var(--color-surface)] cursor-pointer'
-                                                )}
-                                                disabled={!onUpdateValue}
-                                            >
-                                                {formatValue(kr.target, kr.metric_type, kr.unit)}
-                                            </button>
-                                        )}
-                                    </td>
-                                </>
-                            )}
-
-                            {/* Progress */}
-                            <td className="px-3 py-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1 min-w-16">
-                                        <ProgressBar
-                                            value={kr.progress}
-                                            size="sm"
-                                            variant="gradient"
-                                        />
-                                    </div>
-                                    <Badge variant={getProgressVariant(kr.progress)} size="sm">
-                                        {kr.progress}%
-                                    </Badge>
-                                </div>
-                            </td>
-
-                            {/* Confidence */}
-                            <td className="px-3 py-3 text-center">
-                                {editingConfidence === kr.id ? (
-                                    <div className="flex items-center justify-center gap-1">
-                                        {(['on_track', 'at_risk', 'off_track'] as ConfidenceLevel[]).map((level) => (
-                                            <button
-                                                key={level}
-                                                onClick={() => {
-                                                    onUpdateConfidence?.(kr.id, level)
-                                                    setEditingConfidence(null)
-                                                }}
-                                                className="text-lg hover:scale-125 transition-transform"
-                                            >
-                                                <ConfidenceEmoji value={level} />
-                                            </button>
-                                        ))}
-                                        <button
-                                            onClick={() => setEditingConfidence(null)}
-                                            className="ml-1 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={() => onUpdateConfidence && setEditingConfidence(kr.id)}
-                                        className={cn(
-                                            'transition-transform',
-                                            onUpdateConfidence && 'hover:scale-125 cursor-pointer'
-                                        )}
-                                        disabled={!onUpdateConfidence}
-                                    >
-                                        <ConfidenceEmoji value={kr.confidence} />
-                                    </button>
+                                        </td>
+                                    </tr>
                                 )}
-                            </td>
-
-                            {/* Actions */}
-                            {onEdit && (
-                                <td className="px-3 py-3">
-                                    <button
-                                        onClick={() => onEdit(kr)}
-                                        className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 opacity-0 group-hover:opacity-100 transition-all"
-                                    >
-                                        <Edit3 className="w-4 h-4" />
-                                    </button>
-                                </td>
-                            )}
-                        </tr>
-                    ))}
+                            </>
+                        )
+                    })}
                 </tbody>
             </table>
 

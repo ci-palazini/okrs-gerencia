@@ -143,7 +143,7 @@ export function QuarterlyCard({
             <div className="p-5 border-b border-[var(--color-border)] bg-[var(--color-surface-subtle)]/50">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                        <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-bold border border-[var(--color-primary)]/20 shadow-sm">
+                        <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-bold border border-[var(--color-primary)]/20 shadow-sm min-w-[4rem] whitespace-nowrap">
                             {keyResult.code}
                         </span>
                         <div>

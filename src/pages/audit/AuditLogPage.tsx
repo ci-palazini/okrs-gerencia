@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { History, User, FileEdit, Trash2, Plus } from 'lucide-react'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
@@ -22,21 +23,22 @@ interface AuditLogEntry {
     }
 }
 
-const actionConfig = {
-    create: { label: 'Criação', color: 'success', icon: Plus },
-    update: { label: 'Atualização', color: 'info', icon: FileEdit },
-    delete: { label: 'Exclusão', color: 'danger', icon: Trash2 }
-}
+const actionConfig = (t: any) => ({
+    create: { label: t('audit.actions.create'), color: 'success', icon: Plus },
+    update: { label: t('audit.actions.update'), color: 'info', icon: FileEdit },
+    delete: { label: t('audit.actions.delete'), color: 'danger', icon: Trash2 }
+})
 
-const entityLabels: Record<string, string> = {
-    key_results: 'Key Result',
-    objectives: 'Objetivo',
-    actions: 'Ação',
-    pillars: 'Pilar',
-    kr_quarterly_data: 'Dados Trimestrais'
-}
+const entityLabels = (t: any): Record<string, string> => ({
+    key_results: t('audit.entities.key_results'),
+    objectives: t('audit.entities.objectives'),
+    actions: t('audit.entities.actions'),
+    pillars: t('audit.entities.pillars'),
+    kr_quarterly_data: t('audit.entities.kr_quarterly_data')
+})
 
 export function AuditLogPage() {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [logs, setLogs] = useState<AuditLogEntry[]>([])
     const [filter, setFilter] = useState<string>('all')
@@ -90,7 +92,7 @@ export function AuditLogPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[var(--color-text-secondary)]">Carregando logs...</p>
+                    <p className="text-[var(--color-text-secondary)]">{t('audit.loading')}</p>
                 </div>
             </div>
         )
@@ -101,9 +103,9 @@ export function AuditLogPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Auditoria</h1>
+                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('audit.title')}</h1>
                     <p className="text-[var(--color-text-secondary)] mt-1">
-                        Histórico de todas as alterações no sistema
+                        {t('audit.subtitle')}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -112,10 +114,10 @@ export function AuditLogPage() {
                         onChange={(e) => setFilter(e.target.value)}
                         className="h-10 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                     >
-                        <option value="all">Todas as Ações</option>
-                        <option value="create">Criações</option>
-                        <option value="update">Atualizações</option>
-                        <option value="delete">Exclusões</option>
+                        <option value="all">{t('audit.filter.all')}</option>
+                        <option value="create">{t('audit.filter.create')}</option>
+                        <option value="update">{t('audit.filter.update')}</option>
+                        <option value="delete">{t('audit.filter.delete')}</option>
                     </select>
                 </div>
             </div>
@@ -124,9 +126,10 @@ export function AuditLogPage() {
             {logs.length > 0 ? (
                 <div className="space-y-3">
                     {logs.map((log) => {
-                        const config = actionConfig[log.action]
+                        const config = actionConfig(t)[log.action]
                         const ActionIcon = config.icon
                         const changedFields = getChangedFields(log.old_value, log.new_value)
+                        const labels = entityLabels(t)
 
                         return (
                             <Card key={log.id} variant="elevated" className="group">
@@ -153,7 +156,7 @@ export function AuditLogPage() {
                                                 {config.label}
                                             </Badge>
                                             <Badge variant="outline" size="sm">
-                                                {entityLabels[log.entity_type] || log.entity_type}
+                                                {labels[log.entity_type] || log.entity_type}
                                             </Badge>
                                             {log.entity_name && (
                                                 <span className="text-sm text-[var(--color-text-primary)] font-medium">
@@ -164,15 +167,18 @@ export function AuditLogPage() {
 
                                         <div className="flex items-center gap-2 mt-2">
                                             <User className="w-4 h-4 text-[var(--color-text-muted)]" />
-                                            <span className="text-sm text-[var(--color-text-secondary)]">
-                                                {log.user?.full_name || log.user?.email || log.user_email || 'Usuário desconhecido'}
-                                            </span>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <User className="w-4 h-4 text-[var(--color-text-muted)]" />
+                                                <span className="text-sm text-[var(--color-text-secondary)]">
+                                                    {log.user?.full_name || log.user?.email || log.user_email || t('audit.unknownUser')}
+                                                </span>
+                                            </div>
                                         </div>
 
                                         {/* Changed Fields */}
                                         {log.action === 'update' && changedFields.length > 0 && (
                                             <div className="mt-2 p-3 rounded-lg bg-[var(--color-surface)]">
-                                                <p className="text-xs text-[var(--color-text-muted)] mb-2">Campos alterados:</p>
+                                                <p className="text-xs text-[var(--color-text-muted)] mb-2">{t('audit.changedFields')}</p>
                                                 <div className="flex flex-wrap gap-2">
                                                     {changedFields.map(field => (
                                                         <span key={field} className="px-2 py-1 text-xs rounded bg-[var(--color-primary)]/15 text-[var(--color-primary)]">
@@ -205,10 +211,10 @@ export function AuditLogPage() {
                             <History className="w-8 h-8 text-[var(--color-text-muted)]" />
                         </div>
                         <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
-                            Nenhum registro de auditoria
+                            {t('audit.noLogs')}
                         </h3>
                         <p className="text-[var(--color-text-muted)] text-center max-w-md">
-                            As alterações feitas no sistema serão registradas aqui automaticamente.
+                            {t('audit.noLogsDesc')}
                         </p>
                     </CardContent>
                 </Card>

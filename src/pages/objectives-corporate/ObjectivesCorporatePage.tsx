@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { RefreshCw, Target, ChevronDown, ChevronRight } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -20,6 +21,7 @@ interface Pillar {
     name: string
     color: string
     icon: string
+    business_unit_id: string | null
 }
 
 interface Objective {
@@ -61,6 +63,7 @@ interface PillarWithObjectives extends Pillar {
 }
 
 export function ObjectivesCorporatePage() {
+    const { t } = useTranslation()
     const { user } = useAuth()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -133,6 +136,7 @@ export function ObjectivesCorporatePage() {
                 .eq('business_unit_id', selectedUnit)
                 .eq('year', 2026)
                 .eq('is_active', true)
+                .order('code')
 
             if (!objectivesData || objectivesData.length === 0) {
                 setPillarsData(pillarsResult.map(p => ({ ...p, objectives: [] })))
@@ -164,7 +168,9 @@ export function ObjectivesCorporatePage() {
             }
 
             // Group objectives by pillar with their KRs
-            const pillarsWithData: PillarWithObjectives[] = pillarsResult.map(pillar => {
+            const relevantPillars = pillarsResult.filter(p => !p.business_unit_id || p.business_unit_id === selectedUnit)
+
+            const pillarsWithData: PillarWithObjectives[] = relevantPillars.map(pillar => {
                 const pillarObjectives = objectivesData.filter(o => o.pillar_id === pillar.id)
                 const objectivesWithKRs = pillarObjectives.map(obj => ({
                     ...obj,
@@ -316,7 +322,7 @@ export function ObjectivesCorporatePage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[var(--color-text-secondary)]">Carregando dados...</p>
+                    <p className="text-[var(--color-text-secondary)]">{t('dashboard.loadingData')}</p>
                 </div>
             </div>
         )
@@ -331,10 +337,10 @@ export function ObjectivesCorporatePage() {
                         <div className="p-3 rounded-xl bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
                             <Target className="w-8 h-8" />
                         </div>
-                        <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Objetivos Corporativos</h1>
+                        <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('objectives.corporate.title')}</h1>
                     </div>
                     <p className="text-[var(--color-text-secondary)] mt-1">
-                        GSC Objectives 2026 - Visão consolidada de todos os pilares
+                        {t('objectives.corporate.subtitle', { year: '2026' })}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -343,7 +349,7 @@ export function ObjectivesCorporatePage() {
                     </Badge>
                     {saving && (
                         <Badge variant="warning" size="sm">
-                            Salvando...
+                            {t('objectives.corporate.saving')}
                         </Badge>
                     )}
                     <Button
@@ -360,8 +366,7 @@ export function ObjectivesCorporatePage() {
             {/* Info Banner */}
             <div className="p-4 rounded-xl bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20">
                 <p className="text-sm text-[var(--color-text-secondary)]">
-                    <strong className="text-[var(--color-primary)]">Dica:</strong> Clique nos valores de Baseline, Target ou Real para editar diretamente.
-                    O % de Avanço é calculado automaticamente. Use os indicadores de confiança para sinalizar o status de cada KR.
+                    <strong className="text-[var(--color-primary)]">{t('objectives.corporate.tip')}</strong> {t('objectives.corporate.tipContent')}
                 </p>
             </div>
 
@@ -395,7 +400,7 @@ export function ObjectivesCorporatePage() {
                                             {pillar.name}
                                         </h2>
                                         <p className="text-sm text-[var(--color-text-muted)]">
-                                            {pillar.objectives.length} objetivo(s) • {totalKRs} Key Result(s)
+                                            {t('objectives.corporate.pillarSummary', { objectives: pillar.objectives.length, krs: totalKRs })}
                                         </p>
                                     </div>
                                     <Badge
@@ -460,10 +465,13 @@ export function ObjectivesCorporatePage() {
             ) : (
                 <div className="text-center py-16">
                     <p className="text-[var(--color-text-muted)]">
-                        Nenhum objetivo corporativo encontrado.
+                        {t('objectives.corporate.emptyState.title')}
                     </p>
                     <p className="text-sm text-[var(--color-text-muted)] mt-2">
-                        Execute a migration <code className="px-2 py-1 rounded bg-[var(--color-surface-hover)] text-[var(--color-primary)]">migration004_objectives_corporate.sql</code> no Supabase para popular os dados.
+                        <Trans
+                            i18nKey="objectives.corporate.emptyState.description"
+                            components={{ 1: <code className="px-2 py-1 rounded bg-[var(--color-surface-hover)] text-[var(--color-primary)]" /> }}
+                        />
                     </p>
                 </div>
             )}

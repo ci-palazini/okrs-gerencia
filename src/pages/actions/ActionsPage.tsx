@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Calendar, User, CheckCircle2, Clock, AlertTriangle, MoreVertical, ListTodo } from 'lucide-react'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -38,6 +39,7 @@ const statusConfig = {
 type StatusFilter = 'all' | 'pending' | 'in_progress' | 'done'
 
 export function ActionsPage() {
+    const { t } = useTranslation()
     const { user } = useAuth()
     const [loading, setLoading] = useState(true)
     const [actions, setActions] = useState<ActionWithRelations[]>([])
@@ -111,7 +113,7 @@ export function ActionsPage() {
     }
 
     async function deleteAction(actionId: string) {
-        if (!confirm('Tem certeza que deseja excluir esta ação?')) return
+        if (!confirm(t('actions.deleteConfirm'))) return
 
         try {
             // Get action details before checking deletion for audit log name
@@ -141,6 +143,7 @@ export function ActionsPage() {
             loadActions()
         } catch (error) {
             console.error('Error deleting action:', error)
+            alert(t('actions.deleteError'))
         }
     }
 
@@ -160,7 +163,10 @@ export function ActionsPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[var(--color-text-secondary)]">Carregando ações...</p>
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                        <p className="text-[var(--color-text-secondary)]">{t('actions.loading')}</p>
+                    </div>
                 </div>
             </div>
         )
@@ -171,14 +177,14 @@ export function ActionsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Ações</h1>
+                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('actions.title')}</h1>
                     <p className="text-[var(--color-text-secondary)] mt-1">
-                        Iniciativas vinculadas aos Key Results
+                        {t('actions.subtitle')}
                     </p>
                 </div>
                 <Button variant="primary" size="md" onClick={() => setAddModalOpen(true)}>
                     <Plus className="w-4 h-4" />
-                    Nova Ação
+                    {t('actions.newAction')}
                 </Button>
             </div>
 
@@ -195,7 +201,7 @@ export function ActionsPage() {
                                 : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
                         )}
                     >
-                        {status === 'all' ? 'Todas' : statusConfig[status].label}
+                        {status === 'all' ? t('actions.status.all') : t(`actions.status.${status === 'in_progress' ? 'inProgress' : status}`)}
                         <span className={cn(
                             'px-2 py-0.5 rounded-full text-xs',
                             filter === status
@@ -259,7 +265,7 @@ export function ActionsPage() {
                                                 )}>
                                                     <Calendar className="w-3 h-3" />
                                                     {formatDate(action.due_date)}
-                                                    {isOverdue && ' (Atrasado)'}
+                                                    {isOverdue && ` (${t('actions.overdue')})`}
                                                 </span>
                                             )}
                                         </div>
@@ -274,7 +280,7 @@ export function ActionsPage() {
 
                                     {/* Status Badge */}
                                     <Badge variant={status.color as any} size="sm">
-                                        {status.label}
+                                        {t(`actions.status.${action.status === 'in_progress' ? 'inProgress' : action.status}`)}
                                     </Badge>
 
                                     {/* Actions Menu */}
@@ -294,20 +300,20 @@ export function ActionsPage() {
                                                     className="flex items-center px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
                                                     onClick={() => updateActionStatus(action.id, 'in_progress')}
                                                 >
-                                                    Em Progresso
+                                                    {t('actions.status.inProgress')}
                                                 </DropdownMenu.Item>
                                                 <DropdownMenu.Item
                                                     className="flex items-center px-3 py-2 text-sm text-[var(--color-success)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-success-muted)]"
                                                     onClick={() => updateActionStatus(action.id, 'done')}
                                                 >
-                                                    Marcar como concluído
+                                                    {t('actions.markAsDone')}
                                                 </DropdownMenu.Item>
                                                 <DropdownMenu.Separator className="h-px my-2 bg-[var(--color-border)]" />
                                                 <DropdownMenu.Item
                                                     className="flex items-center px-3 py-2 text-sm text-[var(--color-danger)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-danger-muted)]"
                                                     onClick={() => deleteAction(action.id)}
                                                 >
-                                                    Excluir
+                                                    {t('common.delete')}
                                                 </DropdownMenu.Item>
                                             </DropdownMenu.Content>
                                         </DropdownMenu.Portal>
@@ -324,16 +330,16 @@ export function ActionsPage() {
                             <ListTodo className="w-8 h-8 text-[var(--color-text-muted)]" />
                         </div>
                         <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
-                            Nenhuma ação encontrada
+                            {t('actions.noActions')}
                         </h3>
                         <p className="text-[var(--color-text-muted)] text-center max-w-md mb-4">
                             {filter !== 'all'
-                                ? `Não há ações com status "${statusConfig[filter].label}".`
-                                : 'Cadastre ações vinculadas aos Key Results para acompanhar as iniciativas.'}
+                                ? t('actions.noActionsFilter', { status: t(`actions.status.${filter === 'in_progress' ? 'inProgress' : filter}`) })
+                                : t('actions.noActionsDesc')}
                         </p>
                         <Button variant="primary" onClick={() => setAddModalOpen(true)}>
                             <Plus className="w-4 h-4" />
-                            Criar Primeira Ação
+                            {t('actions.createFirst')}
                         </Button>
                     </CardContent>
                 </Card>

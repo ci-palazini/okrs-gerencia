@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Settings, Palette, Shield, Database, Download, X, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card'
@@ -9,6 +11,7 @@ import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
+import { PillarsTab } from './PillarsTab'
 
 interface DatabaseStats {
     objectives: number
@@ -18,7 +21,14 @@ interface DatabaseStats {
 }
 
 export function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<'general' | 'data'>('general')
+    const { t } = useTranslation()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const activeTab = (searchParams.get('tab') as 'general' | 'data' | 'pillars') || 'general'
+
+    const setActiveTab = (tab: string) => {
+        setSearchParams({ tab })
+    }
+
     const { sidebarCollapsed, toggleSidebar, theme } = useSettings()
     const { updatePassword } = useAuth()
 
@@ -132,17 +142,17 @@ export function SettingsPage() {
 
         // Validations
         if (!newPassword || !confirmPassword) {
-            setPasswordError('Por favor, preencha todos os campos')
+            setPasswordError(t('settings.page.general.passwordModal.errors.fillAll'))
             return
         }
 
         if (newPassword.length < 6) {
-            setPasswordError('A nova senha deve ter pelo menos 6 caracteres')
+            setPasswordError(t('settings.page.general.passwordModal.errors.minChars'))
             return
         }
 
         if (newPassword !== confirmPassword) {
-            setPasswordError('As senhas não coincidem')
+            setPasswordError(t('settings.page.general.passwordModal.errors.mismatch'))
             return
         }
 
@@ -165,7 +175,7 @@ export function SettingsPage() {
                 }, 2000)
             }
         } catch (err: any) {
-            setPasswordError(err.message || 'Erro ao alterar senha')
+            setPasswordError(err.message || t('settings.page.general.passwordModal.errors.generic'))
         } finally {
             setPasswordLoading(false)
         }
@@ -186,17 +196,18 @@ export function SettingsPage() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Configurações</h1>
+                <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('settings.page.title')}</h1>
                 <p className="text-[var(--color-text-secondary)] mt-1">
-                    Personalize sua experiência no OKR Dashboard
+                    {t('settings.page.subtitle')}
                 </p>
             </div>
 
             {/* Tabs */}
             <div className="flex items-center gap-2 p-1 rounded-xl bg-[var(--color-surface)] w-fit border border-[var(--color-border)]">
                 {[
-                    { key: 'general', label: 'Geral', icon: Settings },
-                    { key: 'data', label: 'Dados', icon: Database },
+                    { key: 'general', label: t('settings.page.tabs.general'), icon: Settings },
+                    { key: 'pillars', label: t('settings.page.tabs.pillars'), icon: Palette }, // Reusing Palette icon
+                    { key: 'data', label: t('settings.page.tabs.data'), icon: Database },
                 ].map(({ key, label, icon: Icon }) => (
                     <button
                         key={key}
@@ -224,23 +235,23 @@ export function SettingsPage() {
                                     <Palette className="w-5 h-5 text-[var(--color-primary)]" />
                                 </div>
                                 <div>
-                                    <CardTitle>Aparência</CardTitle>
-                                    <CardDescription>Personalize o visual do dashboard</CardDescription>
+                                    <CardTitle>{t('settings.page.general.appearance.title')}</CardTitle>
+                                    <CardDescription>{t('settings.page.general.appearance.description')}</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                                 <div>
-                                    <p className="font-medium text-[var(--color-text-primary)]">Tema</p>
-                                    <p className="text-sm text-[var(--color-text-muted)]">Atualmente: {theme === 'light' ? 'Claro' : 'Escuro'}</p>
+                                    <p className="font-medium text-[var(--color-text-primary)]">{t('settings.page.general.appearance.theme')}</p>
+                                    <p className="text-sm text-[var(--color-text-muted)]">{t('settings.page.general.appearance.currentTheme', { theme: theme === 'light' ? t('settings.page.general.appearance.themeLight') : t('settings.page.general.appearance.themeDark') })}</p>
                                 </div>
-                                <Badge variant="success">Light (Padrão)</Badge>
+                                <Badge variant="success">{t('settings.page.general.appearance.lightDefault')}</Badge>
                             </div>
                             <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                                 <div>
-                                    <p className="font-medium text-[var(--color-text-primary)]">Sidebar Compacta</p>
-                                    <p className="text-sm text-[var(--color-text-muted)]">Recolher menu lateral</p>
+                                    <p className="font-medium text-[var(--color-text-primary)]">{t('settings.page.general.sidebar.title')}</p>
+                                    <p className="text-sm text-[var(--color-text-muted)]">{t('settings.page.general.sidebar.description')}</p>
                                 </div>
                                 <button
                                     onClick={toggleSidebar}
@@ -267,18 +278,18 @@ export function SettingsPage() {
                                     <Shield className="w-5 h-5 text-[var(--color-success)]" />
                                 </div>
                                 <div>
-                                    <CardTitle>Segurança</CardTitle>
-                                    <CardDescription>Configurações de conta</CardDescription>
+                                    <CardTitle>{t('settings.page.general.security.title')}</CardTitle>
+                                    <CardDescription>{t('settings.page.general.security.description')}</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                                 <div>
-                                    <p className="font-medium text-[var(--color-text-primary)]">Autenticação</p>
-                                    <p className="text-sm text-[var(--color-text-muted)]">Email e senha</p>
+                                    <p className="font-medium text-[var(--color-text-primary)]">{t('settings.page.general.security.auth')}</p>
+                                    <p className="text-sm text-[var(--color-text-muted)]">{t('settings.page.general.security.authDesc')}</p>
                                 </div>
-                                <Badge variant="success">Ativo</Badge>
+                                <Badge variant="success">{t('settings.page.general.security.active')}</Badge>
                             </div>
                             <Button
                                 variant="outline"
@@ -289,7 +300,7 @@ export function SettingsPage() {
                                 }}
                             >
                                 <Lock className="w-4 h-4 mr-2" />
-                                Alterar Senha
+                                {t('settings.page.general.security.changePassword')}
                             </Button>
                         </CardContent>
                     </Card>
@@ -297,6 +308,10 @@ export function SettingsPage() {
             )}
 
 
+
+            {activeTab === 'pillars' && (
+                <PillarsTab />
+            )}
 
             {activeTab === 'data' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -307,8 +322,8 @@ export function SettingsPage() {
                                     <Download className="w-5 h-5 text-[var(--color-accent-cyan)]" />
                                 </div>
                                 <div>
-                                    <CardTitle>Exportar Dados</CardTitle>
-                                    <CardDescription>Baixe seus dados em formato JSON</CardDescription>
+                                    <CardTitle>{t('settings.page.data.export.title')}</CardTitle>
+                                    <CardDescription>{t('settings.page.data.export.description')}</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
@@ -320,7 +335,7 @@ export function SettingsPage() {
                                 disabled={exporting !== null}
                             >
                                 <Download className={cn("w-4 h-4 mr-2", exporting === 'okrs' && "animate-bounce")} />
-                                {exporting === 'okrs' ? 'Exportando...' : 'Exportar OKRs (JSON)'}
+                                {exporting === 'okrs' ? t('settings.page.data.export.exporting') : t('settings.page.data.export.okrs')}
                             </Button>
                             <Button
                                 variant="outline"
@@ -329,7 +344,7 @@ export function SettingsPage() {
                                 disabled={exporting !== null}
                             >
                                 <Download className={cn("w-4 h-4 mr-2", exporting === 'actions' && "animate-bounce")} />
-                                {exporting === 'actions' ? 'Exportando...' : 'Exportar Ações (JSON)'}
+                                {exporting === 'actions' ? t('settings.page.data.export.exporting') : t('settings.page.data.export.actions')}
                             </Button>
                         </CardContent>
                     </Card>
@@ -341,8 +356,8 @@ export function SettingsPage() {
                                     <Database className="w-5 h-5 text-[var(--color-primary)]" />
                                 </div>
                                 <div>
-                                    <CardTitle>Estatísticas do Banco</CardTitle>
-                                    <CardDescription>Visão geral dos dados</CardDescription>
+                                    <CardTitle>{t('settings.page.data.stats.title')}</CardTitle>
+                                    <CardDescription>{t('settings.page.data.stats.description')}</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
@@ -354,10 +369,10 @@ export function SettingsPage() {
                             ) : (
                                 <div className="grid grid-cols-2 gap-4">
                                     {[
-                                        { label: 'Objetivos', value: stats.objectives },
-                                        { label: 'Key Results', value: stats.keyResults },
-                                        { label: 'Ações', value: stats.actions },
-                                        { label: 'Logs de Auditoria', value: stats.audit },
+                                        { label: t('settings.page.data.stats.objectives'), value: stats.objectives },
+                                        { label: t('settings.page.data.stats.keyResults'), value: stats.keyResults },
+                                        { label: t('settings.page.data.stats.actions'), value: stats.actions },
+                                        { label: t('settings.page.data.stats.audit'), value: stats.audit },
                                     ].map((stat, index) => (
                                         <div key={index} className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-center">
                                             <p className="text-2xl font-bold text-[var(--color-primary)]">{stat.value}</p>
@@ -384,10 +399,10 @@ export function SettingsPage() {
                                 </div>
                                 <div>
                                     <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
-                                        Alterar Senha
+                                        {t('settings.page.general.passwordModal.title')}
                                     </Dialog.Title>
                                     <Dialog.Description className="text-sm text-[var(--color-text-muted)]">
-                                        Digite sua nova senha abaixo
+                                        {t('settings.page.general.passwordModal.description')}
                                     </Dialog.Description>
                                 </div>
                             </div>
@@ -406,7 +421,7 @@ export function SettingsPage() {
                                         <CheckCircle className="w-8 h-8 text-[var(--color-success)]" />
                                     </div>
                                     <p className="text-lg font-medium text-[var(--color-success)]">
-                                        Senha alterada com sucesso!
+                                        {t('settings.page.general.passwordModal.success')}
                                     </p>
                                 </div>
                             ) : (
@@ -415,8 +430,8 @@ export function SettingsPage() {
                                     <div className="relative">
                                         <Input
                                             type={showNewPassword ? 'text' : 'password'}
-                                            label="Nova Senha"
-                                            placeholder="Digite sua nova senha"
+                                            label={t('settings.page.general.passwordModal.newPassword')}
+                                            placeholder={t('settings.page.general.passwordModal.newPasswordPlaceholder')}
                                             value={newPassword}
                                             onChange={(e) => setNewPassword(e.target.value)}
                                             icon={<Lock className="w-5 h-5" />}
@@ -434,8 +449,8 @@ export function SettingsPage() {
                                     <div className="relative">
                                         <Input
                                             type={showConfirmPassword ? 'text' : 'password'}
-                                            label="Confirmar Nova Senha"
-                                            placeholder="Confirme sua nova senha"
+                                            label={t('settings.page.general.passwordModal.confirmPassword')}
+                                            placeholder={t('settings.page.general.passwordModal.confirmPasswordPlaceholder')}
                                             value={confirmPassword}
                                             onChange={(e) => setConfirmPassword(e.target.value)}
                                             icon={<Lock className="w-5 h-5" />}
@@ -452,7 +467,7 @@ export function SettingsPage() {
                                     {/* Password requirements */}
                                     <div className="p-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)]">
                                         <p className="text-xs text-[var(--color-text-muted)]">
-                                            A senha deve ter pelo menos 6 caracteres
+                                            {t('settings.page.general.passwordModal.requirements')}
                                         </p>
                                     </div>
 
@@ -469,7 +484,7 @@ export function SettingsPage() {
                         {!passwordSuccess && (
                             <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
                                 <Button variant="ghost" onClick={() => setPasswordModalOpen(false)}>
-                                    Cancelar
+                                    {t('settings.page.general.passwordModal.cancel')}
                                 </Button>
                                 <Button
                                     variant="primary"
@@ -477,7 +492,7 @@ export function SettingsPage() {
                                     loading={passwordLoading}
                                 >
                                     <Lock className="w-4 h-4" />
-                                    Alterar Senha
+                                    {t('settings.page.general.passwordModal.save')}
                                 </Button>
                             </div>
                         )}

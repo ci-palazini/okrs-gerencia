@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { User, Lock, Sparkles, ArrowRight } from 'lucide-react'
 
 export function LoginPage() {
+    const { t } = useTranslation()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
@@ -48,15 +50,15 @@ export function LoginPage() {
                     </div>
 
                     <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
-                        Controle de Objetivos<br />e Resultados
+                        {t('auth.landingTitle').split(' e ').join(' e ')}
                     </h2>
                     <p className="text-lg text-white/80 max-w-md leading-relaxed">
-                        Gestão integrada e melhoria contínua.
+                        {t('auth.landingSubtitle')}
                     </p>
 
                     {/* Partner Logos */}
                     <div className="absolute bottom-12 left-16 right-16">
-                        <p className="text-xs text-white/40 uppercase tracking-widest mb-6 font-medium">Empresas do Grupo</p>
+                        <p className="text-xs text-white/40 uppercase tracking-widest mb-6 font-medium">{t('auth.groupCompanies')}</p>
                         <div className="flex items-center gap-8 opacity-80 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
                             <img
                                 src="/Spirax Sarco Logo_Blue_RGB_72dpi_WebRes.png"
@@ -92,18 +94,18 @@ export function LoginPage() {
 
                     <div className="text-center lg:text-left mb-8">
                         <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">
-                            Bem-vindo de volta
+                            {t('auth.welcomeBack')}
                         </h2>
                         <p className="text-[var(--color-text-secondary)]">
-                            Entre com suas credenciais para acessar
+                            {t('auth.enterCredentials')}
                         </p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <Input
                             type="text"
-                            label="Usuário"
-                            placeholder="seu.usuario"
+                            label={t('auth.username')}
+                            placeholder={t('auth.usernamePlaceholder')}
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             icon={<User className="w-5 h-5" />}
@@ -113,7 +115,7 @@ export function LoginPage() {
 
                         <Input
                             type="password"
-                            label="Senha"
+                            label={t('auth.password')}
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -134,15 +136,15 @@ export function LoginPage() {
                             className="w-full group"
                             loading={loading}
                         >
-                            Entrar
+                            {t('auth.login')}
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                         </Button>
                     </form>
 
                     <p className="text-center text-[var(--color-text-secondary)] mt-8">
-                        Não tem uma conta?{' '}
+                        {t('auth.noAccount')}{' '}
                         <Link to="/register" className="text-[var(--color-primary)] hover:underline font-medium">
-                            Criar conta
+                            {t('auth.createAccount')}
                         </Link>
                     </p>
                 </div>

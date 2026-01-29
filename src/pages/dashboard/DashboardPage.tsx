@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Target, TrendingUp, CheckCircle2, AlertCircle, ArrowUpRight, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import { ProgressRing } from '../../components/ui/ProgressRing'
@@ -41,6 +42,7 @@ interface KeyResultDisplay {
 }
 
 export function DashboardPage() {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [units, setUnits] = useState<BusinessUnit[]>([])
     const [selectedUnit, setSelectedUnit] = useState<string>('')
@@ -217,7 +219,7 @@ export function DashboardPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[var(--color-text-secondary)]">Carregando dados...</p>
+                    <p className="text-[var(--color-text-secondary)]">{t('dashboard.loadingData')}</p>
                 </div>
             </div>
         )
@@ -228,9 +230,9 @@ export function DashboardPage() {
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Dashboard</h1>
+                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('dashboard.title')}</h1>
                     <p className="text-[var(--color-text-secondary)] mt-1">
-                        Visão geral dos OKRs 2026 - {selectedUnitName}
+                        {t('dashboard.overview', { year: 2026, unit: selectedUnitName })}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -261,7 +263,7 @@ export function DashboardPage() {
                             <Target className="w-7 h-7 text-[var(--color-primary)]" />
                         </div>
                         <div>
-                            <p className="text-sm text-[var(--color-text-muted)]">Pilares</p>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('dashboard.pillars')}</p>
                             <p className="text-2xl font-bold text-[var(--color-text-primary)]">{stats.totalPillars}</p>
                         </div>
                     </CardContent>
@@ -273,7 +275,7 @@ export function DashboardPage() {
                             <TrendingUp className="w-7 h-7 text-[var(--color-accent-cyan)]" />
                         </div>
                         <div>
-                            <p className="text-sm text-[var(--color-text-muted)]">Key Results</p>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('dashboard.keyResults')}</p>
                             <p className="text-2xl font-bold text-[var(--color-text-primary)]">{stats.totalKRs}</p>
                         </div>
                     </CardContent>
@@ -285,7 +287,7 @@ export function DashboardPage() {
                             <CheckCircle2 className="w-7 h-7 text-[var(--color-success)]" />
                         </div>
                         <div>
-                            <p className="text-sm text-[var(--color-text-muted)]">Com Dados</p>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('dashboard.withData')}</p>
                             <div className="flex items-center gap-2">
                                 <p className="text-2xl font-bold text-[var(--color-text-primary)]">{stats.krsWithData}</p>
                                 {stats.krsWithData > 0 && stats.totalKRs > 0 && (
@@ -305,7 +307,7 @@ export function DashboardPage() {
                             <AlertCircle className="w-7 h-7 text-[var(--color-danger)]" />
                         </div>
                         <div>
-                            <p className="text-sm text-[var(--color-text-muted)]">Ações Atrasadas</p>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('dashboard.overdueActions')}</p>
                             <div className="flex items-center gap-2">
                                 <p className="text-2xl font-bold text-[var(--color-text-primary)]">{stats.overdueActions}</p>
                             </div>
@@ -319,17 +321,17 @@ export function DashboardPage() {
                 {/* Overall Progress */}
                 <Card variant="glass" className="lg:col-span-1">
                     <CardHeader>
-                        <CardTitle>Progresso Geral Q{currentQuarter}</CardTitle>
+                        <CardTitle>{t('dashboard.generalProgress', { quarter: currentQuarter })}</CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center py-4">
                         <ProgressRing
                             value={stats.averageProgress}
                             size={160}
                             strokeWidth={12}
-                            label="Média"
+                            label={t('dashboard.average')}
                         />
                         <p className="text-[var(--color-text-secondary)] mt-4 text-center">
-                            Média de progresso de todos os Key Results
+                            {t('dashboard.averageProgressDesc')}
                         </p>
                     </CardContent>
                 </Card>
@@ -337,7 +339,7 @@ export function DashboardPage() {
                 {/* Progress by Pillar */}
                 <Card variant="elevated" className="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>Progresso por Pilar</CardTitle>
+                        <CardTitle>{t('dashboard.progressByPillar')}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         {pillarsProgress.length > 0 ? (
@@ -353,7 +355,7 @@ export function DashboardPage() {
                                                 {pillar.name}
                                             </span>
                                             <Badge variant="outline" size="sm">
-                                                {pillar.krCount} KRs
+                                                {pillar.krCount} {t('dashboard.krs')}
                                             </Badge>
                                         </div>
                                         <span className="text-sm font-semibold text-[var(--color-text-secondary)]">
@@ -369,7 +371,7 @@ export function DashboardPage() {
                             ))
                         ) : (
                             <p className="text-[var(--color-text-muted)] text-center py-8">
-                                Nenhum dado disponível. Execute o script seed.sql no Supabase.
+                                {t('dashboard.noData')}
                             </p>
                         )}
                     </CardContent>
@@ -379,8 +381,8 @@ export function DashboardPage() {
             {/* Key Results that need attention */}
             <Card variant="elevated">
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Key Results que Precisam de Atenção</CardTitle>
-                    <Badge variant="outline">Menor progresso</Badge>
+                    <CardTitle>{t('dashboard.attentionKRs')}</CardTitle>
+                    <Badge variant="outline">{t('dashboard.lowestProgress')}</Badge>
                 </CardHeader>
                 <CardContent>
                     {topKRs.length > 0 ? (
@@ -408,7 +410,7 @@ export function DashboardPage() {
                         </div>
                     ) : (
                         <p className="text-[var(--color-text-muted)] text-center py-8">
-                            Nenhum Key Result encontrado. Execute o script seed.sql no Supabase.
+                            {t('dashboard.noKRsFound')}
                         </p>
                     )}
                 </CardContent>

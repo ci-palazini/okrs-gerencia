@@ -1,4 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
     LayoutDashboard,
     Target,
@@ -6,40 +8,71 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
-    Sparkles,
     History,
     HelpCircle,
-    TrendingUp,
     Building2,
-    DollarSign,
-    Truck,
-    Shield,
-    Lightbulb
+    Lightbulb,
+    Plus,
+    Edit3
 } from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
+import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
+import { supabase } from '../../lib/supabase'
 
-const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Objetivos Corp.', href: '/objectives-corporate', icon: Building2 },
-    { name: "OKR's", href: '/okrs', icon: Target },
-    { name: 'Rentabilidade', href: '/rentabilidade', icon: DollarSign },
-    { name: 'Lead Time', href: '/lead-time', icon: Truck },
-    { name: 'Segurança', href: '/seguranca', icon: Shield },
-    { name: 'Ações', href: '/actions', icon: ListTodo },
-    { name: 'Propostas', href: '/ideas', icon: Lightbulb },
-    { name: 'Auditoria', href: '/audit', icon: History },
-]
 
-const bottomNavigation = [
-    { name: 'Ajuda', href: '/help', icon: HelpCircle },
-    { name: 'Configurações', href: '/settings', icon: Settings },
-]
 
 export function Sidebar() {
+    const { t } = useTranslation()
     const { sidebarCollapsed, toggleSidebar } = useSettings()
+    const { selectedUnit } = useBusinessUnit() // Use global context
     const location = useLocation()
     const collapsed = sidebarCollapsed
+
+    const [dynamicPillars, setDynamicPillars] = useState<any[]>([])
+
+    useEffect(() => {
+        if (selectedUnit) {
+            loadPillars()
+        }
+    }, [selectedUnit])
+
+    async function loadPillars() {
+        try {
+            const { data } = await supabase
+                .from('pillars')
+                .select('*')
+                .eq('is_active', true)
+                .order('order_index')
+
+            if (data) {
+                // Filter: Global (null) OR Matching Unit
+                // AND Exclude Corporate GSC pillars (Safety, People, Opex) - Usually these are GSC specific.
+                // Depending on user rule: "GSC Corporate Objectives... don't need to be hidden"
+                // If user wants them in sidebar, we include them.
+                // But GSC objectives usually have their own "Objectives Corp" page. 
+                // Showing "Safety" (GSC) alongside "Safety" (Local)?
+                // Wait, "Segurança" (SEG) is local. "Safety" (SAFETY) is GSC.
+                // Including all for now, as per "contextual" request.
+
+                const filtered = data.filter(p => !p.business_unit_id || p.business_unit_id === selectedUnit)
+
+                // Map to nav items
+                const navItems = filtered.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    // Usar sempre a rota dinâmica
+                    href: `/pillar/${p.id}`,
+                    icon: p.icon // Pass original icon name (kebab-case)
+                }))
+
+                setDynamicPillars(navItems)
+            }
+        } catch (error) {
+            console.error('Error loading sidebar pillars:', error)
+        }
+    }
 
     return (
         <aside
@@ -69,8 +102,8 @@ export function Sidebar() {
                         />
                         {!collapsed && (
                             <div className="flex flex-col whitespace-nowrap">
-                                <span className="text-lg font-bold text-[var(--color-text-primary)] leading-none">OKR's</span>
-                                <span className="text-[10px] font-medium text-[var(--color-text-secondary)] uppercase tracking-tight">Controle de Gestão</span>
+                                <span className="text-lg font-bold text-[var(--color-text-primary)] leading-none">{t('sidebar.okrs')}</span>
+                                <span className="text-[10px] font-medium text-[var(--color-text-secondary)] uppercase tracking-tight">{t('sidebar.managementControl')}</span>
                             </div>
                         )}
                     </div>
@@ -78,11 +111,14 @@ export function Sidebar() {
             </div>
 
             {/* Main Navigation */}
-            <nav className="flex flex-col gap-1 p-3 mt-4 flex-1">
-                {navigation.map((item) => {
-                    const isActive = location.pathname === item.href ||
-                        (item.href !== '/' && location.pathname.startsWith(item.href))
-
+            <nav className="flex flex-col gap-1 p-3 mt-4 flex-1 overflow-y-auto">
+                {/* Static Links */}
+                {[
+                    { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
+                    { name: t('sidebar.corporateObjectives'), href: '/objectives-corporate', icon: Building2 },
+                    { name: t('sidebar.okrs'), href: '/okrs', icon: Target },
+                ].map((item) => {
+                    const isActive = location.pathname === item.href
                     return (
                         <NavLink
                             key={item.name}
@@ -109,11 +145,111 @@ export function Sidebar() {
                         </NavLink>
                     )
                 })}
+
+                {/* Divider if pillars exist */}
+                {dynamicPillars.length > 0 && (
+                    <div className="my-2 border-t border-[var(--color-border)] opacity-50" />
+                )}
+
+                {/* Dynamic Pillar Links */}
+                {dynamicPillars.map((pillar) => {
+                    const isActive = location.pathname === pillar.href
+
+                    // Dynamic icon mapping (kebab-case -> PascalCase)
+                    const iconName = pillar.icon
+                        ? pillar.icon.split('-').map((part: string) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
+                        : 'Circle'
+
+                    const IconComponent = (LucideIcons[iconName as keyof typeof LucideIcons] as React.ElementType) || Target
+
+                    return (
+                        <NavLink
+                            key={pillar.id}
+                            to={pillar.href}
+                            className={cn(
+                                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group',
+                                isActive
+                                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+                                collapsed && 'justify-center px-3'
+                            )}
+                        >
+                            <IconComponent className={cn(
+                                'w-5 h-5 transition-transform duration-200',
+                                isActive && 'drop-shadow-[0_0_8px_var(--color-primary)]',
+                                'group-hover:scale-110'
+                            )} />
+                            {!collapsed && (
+                                <span className="font-medium truncate" title={pillar.name}>{pillar.name}</span>
+                            )}
+                            {isActive && !collapsed && (
+                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
+                            )}
+                        </NavLink>
+                    )
+                })}
+
+                {/* Manage Pillars Shortcut */}
+                <NavLink
+                    to="/settings?tab=pillars"
+                    className={({ isActive }) => cn(
+                        'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group mt-2',
+                        isActive && location.search.includes('tab=pillars')
+                            ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                            : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+                        collapsed && 'justify-center px-3'
+                    )}
+                    title="Gerenciar Pilares"
+                >
+                    <Edit3 className={cn(
+                        "w-5 h-5 transition-transform duration-200 group-hover:scale-110",
+                        location.pathname === '/settings' && location.search.includes('tab=pillars') && 'drop-shadow-[0_0_8px_var(--color-primary)]'
+                    )} />
+                    {!collapsed && <span className="font-medium">{t('sidebar.managePillars')}</span>}
+                </NavLink>
+
+                {/* Other standard links that are not pillars but specific pages */}
+                {[
+                    { name: t('sidebar.actions'), href: '/actions', icon: ListTodo },
+                    { name: t('sidebar.ideas'), href: '/ideas', icon: Lightbulb },
+                    { name: t('sidebar.audit'), href: '/audit', icon: History },
+                ].map((item) => {
+                    const isActive = location.pathname === item.href
+                    return (
+                        <NavLink
+                            key={item.name}
+                            to={item.href}
+                            className={cn(
+                                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group',
+                                isActive
+                                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+                                collapsed && 'justify-center px-3'
+                            )}
+                        >
+                            <item.icon className={cn(
+                                'w-5 h-5 transition-transform duration-200',
+                                isActive && 'drop-shadow-[0_0_8px_var(--color-primary)]',
+                                'group-hover:scale-110'
+                            )} />
+                            {!collapsed && (
+                                <span className="font-medium">{item.name}</span>
+                            )}
+                            {isActive && !collapsed && (
+                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
+                            )}
+                        </NavLink>
+                    )
+                })}
+
             </nav>
 
             {/* Bottom Navigation - Help & Settings */}
             <nav className="flex flex-col gap-1 p-3 border-t border-[var(--color-border)]">
-                {bottomNavigation.map((item) => {
+                {[
+                    { name: t('sidebar.help'), href: '/help', icon: HelpCircle },
+                    { name: t('sidebar.settings'), href: '/settings', icon: Settings },
+                ].map((item) => {
                     const isActive = location.pathname === item.href
 
                     return (

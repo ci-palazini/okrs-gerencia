@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import {
     Check, Pencil, BarChart2, Palette, ClipboardList,
     LayoutDashboard, History, Search, BookOpen, Target,
@@ -15,75 +16,77 @@ interface FAQItem {
     category: string
 }
 
-const faqs: FAQItem[] = [
-    {
-        category: 'Dashboard',
-        question: 'Onde vejo o progresso geral?',
-        answer: 'No Dashboard, o card "Progresso Geral" mostra um círculo com a porcentagem média de todos os Key Results.'
-    },
-    {
-        category: 'Dashboard',
-        question: 'Como sei quais KRs estão atrasados?',
-        answer: 'Na seção "Key Results que Precisam de Atenção" do Dashboard, os KRs são ordenados do menor para maior progresso.'
-    },
-    {
-        category: 'Objetivos',
-        question: 'Como edito o valor de um KR?',
-        answer: (
-            <span>
-                Você pode editar valores (Baseline, Real, Target) clicando diretamente na célula da tabela. Para editar título ou outras propriedades, clique no ícone de editar (<Pencil className="w-3 h-3 inline mx-1" />).
-            </span>
-        )
-    },
-    {
-        category: 'Objetivos',
-        question: 'O que significam as cores dos KRs?',
-        answer: 'Verde (70-100%): No caminho certo. Amarelo (40-69%): Atenção necessária. Vermelho (0-39%): Crítico, precisa de ação urgente.'
-    },
-    {
-        category: 'Objetivos',
-        question: 'Como filtro por SXS ou Hiter?',
-        answer: 'Use o dropdown "Todas Unidades" no topo direito das páginas Dashboard e Objetivos para filtrar por unidade de negócio.'
-    },
-    {
-        category: 'Ações',
-        question: 'Como crio uma nova ação?',
-        answer: 'Vá em Ações → Clique em "+ Nova Ação" → Preencha título, descrição, KR vinculado, prioridade e data limite → Clique em "Criar Ação".'
-    },
-    {
-        category: 'Ações',
-        question: 'Como mudo o status de uma ação?',
-        answer: 'Passe o mouse sobre a ação → Clique nos 3 pontinhos (⋮) → Escolha o novo status: Em Progresso, Concluído ou Bloqueado.'
-    },
-    {
-        category: 'Ações',
-        question: 'O que significam as cores de prioridade?',
-        answer: 'Vermelho: Alta prioridade. Amarelo: Média prioridade. Cinza: Baixa prioridade.'
-    },
-    {
-        category: 'Geral',
-        question: 'Os dados são salvos automaticamente?',
-        answer: 'Sim! Todas as alterações são salvas no banco de dados imediatamente e registradas na página de Auditoria.'
-    },
-    {
-        category: 'Geral',
-        question: 'Onde vejo as alterações feitas?',
-        answer: 'No menu lateral, clique em "Auditoria" para ver todo o histórico de mudanças feitas no sistema.'
-    }
-]
-
-const excelMapping = [
-    { excel: 'Objetivos Corporativos', platform: 'Dashboard + Objetivos', icon: LayoutDashboard },
-    { excel: 'OKRs', platform: 'OKRs (filtrar por unidade)', icon: Target },
-    { excel: 'Rentabilidade', platform: 'Rentabilidade', icon: TrendingUp },
-    { excel: 'Ações SXS / Ações Hiter', platform: 'Ações (filtrar por unidade)', icon: ListTodo },
-    { excel: 'Acompanhamento Trimestral', platform: 'Dashboard (indicador Q1 2026)', icon: LayoutDashboard },
-    { excel: 'Histórico de Alterações (não havia)', platform: 'Auditoria', icon: History },
-]
-
 export function HelpPage() {
+    const { t } = useTranslation()
     const [searchTerm, setSearchTerm] = useState('')
     const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null)
+
+    const faqs: FAQItem[] = [
+        {
+            category: t('help.faq.categories.dashboard'),
+            question: t('help.faq.questions.generalProgress.q'),
+            answer: t('help.faq.questions.generalProgress.a')
+        },
+        {
+            category: t('help.faq.categories.dashboard'),
+            question: t('help.faq.questions.lateKRs.q'),
+            answer: t('help.faq.questions.lateKRs.a')
+        },
+        {
+            category: t('help.faq.categories.objectives'),
+            question: t('help.faq.questions.editKR.q'),
+            answer: (
+                <Trans
+                    i18nKey="help.faq.questions.editKR.a"
+                    components={[<Pencil className="w-3 h-3 inline mx-1" />]}
+                />
+            )
+        },
+        {
+            category: t('help.faq.categories.objectives'),
+            question: t('help.faq.questions.krColors.q'),
+            answer: t('help.faq.questions.krColors.a')
+        },
+        {
+            category: t('help.faq.categories.objectives'),
+            question: t('help.faq.questions.filterUnits.q'),
+            answer: t('help.faq.questions.filterUnits.a')
+        },
+        {
+            category: t('help.faq.categories.actions'),
+            question: t('help.faq.questions.createAction.q'),
+            answer: t('help.faq.questions.createAction.a')
+        },
+        {
+            category: t('help.faq.categories.actions'),
+            question: t('help.faq.questions.changeActionStatus.q'),
+            answer: t('help.faq.questions.changeActionStatus.a')
+        },
+        {
+            category: t('help.faq.categories.actions'),
+            question: t('help.faq.questions.priorityColors.q'),
+            answer: t('help.faq.questions.priorityColors.a')
+        },
+        {
+            category: t('help.faq.categories.general'),
+            question: t('help.faq.questions.autoSave.q'),
+            answer: t('help.faq.questions.autoSave.a')
+        },
+        {
+            category: t('help.faq.categories.general'),
+            question: t('help.faq.questions.audit.q'),
+            answer: t('help.faq.questions.audit.a')
+        }
+    ]
+
+    const excelMapping = [
+        { excel: t('help.excelMap.items.corporate.excel'), platform: t('help.excelMap.items.corporate.platform'), icon: LayoutDashboard },
+        { excel: t('help.excelMap.items.okrs.excel'), platform: t('help.excelMap.items.okrs.platform'), icon: Target },
+        { excel: t('help.excelMap.items.profitability.excel'), platform: t('help.excelMap.items.profitability.platform'), icon: TrendingUp },
+        { excel: t('help.excelMap.items.actions.excel'), platform: t('help.excelMap.items.actions.platform'), icon: ListTodo },
+        { excel: t('help.excelMap.items.quarterly.excel'), platform: t('help.excelMap.items.quarterly.platform'), icon: LayoutDashboard },
+        { excel: t('help.excelMap.items.history.excel'), platform: t('help.excelMap.items.history.platform'), icon: History },
+    ]
 
     const filteredFAQs = faqs.filter(faq =>
         faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,15 +99,15 @@ export function HelpPage() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Central de Ajuda</h1>
+                <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('help.title')}</h1>
                 <p className="text-[var(--color-text-secondary)] mt-1">
-                    Guia de transição do Excel para a plataforma
+                    {t('help.subtitle')}
                 </p>
             </div>
 
             {/* Search */}
             <Input
-                placeholder="Buscar ajuda..."
+                placeholder={t('help.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 icon={<Search className="w-5 h-5" />}
@@ -121,9 +124,9 @@ export function HelpPage() {
                         <div>
                             <CardTitle>
                                 <BarChart2 className="w-5 h-5 inline mr-2 text-[var(--color-primary)]" />
-                                Do Excel para a Plataforma
+                                {t('help.excelMap.title')}
                             </CardTitle>
-                            <CardDescription>Encontre onde cada aba do Excel está na nova plataforma</CardDescription>
+                            <CardDescription>{t('help.excelMap.description')}</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -140,12 +143,12 @@ export function HelpPage() {
                                         <Icon className="w-5 h-5 text-[var(--color-primary)]" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-sm text-[var(--color-text-muted)]">No Excel:</p>
+                                        <p className="text-sm text-[var(--color-text-muted)]">{t('help.excelMap.excel')}</p>
                                         <p className="font-medium text-[var(--color-text-primary)]">{item.excel}</p>
                                     </div>
                                     <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)]" />
                                     <div className="flex-1">
-                                        <p className="text-sm text-[var(--color-text-muted)]">Na Plataforma:</p>
+                                        <p className="text-sm text-[var(--color-text-muted)]">{t('help.excelMap.platform')}</p>
                                         <p className="font-medium text-[var(--color-success)]">{item.platform}</p>
                                     </div>
                                 </div>
@@ -161,24 +164,24 @@ export function HelpPage() {
                     <CardHeader>
                         <CardTitle>
                             <Palette className="w-5 h-5 inline mr-2 text-[var(--color-text-primary)]" />
-                            Cores de Progresso
+                            {t('help.colors.title')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-success-muted)]">
                             <div className="w-4 h-4 rounded-full bg-[var(--color-success)]" />
-                            <span className="font-medium text-[var(--color-success)]">Verde (70-100%)</span>
-                            <span className="text-sm text-[var(--color-text-secondary)]">No caminho certo</span>
+                            <span className="font-medium text-[var(--color-success)]">{t('help.colors.green')}</span>
+                            <span className="text-sm text-[var(--color-text-secondary)]">{t('help.colors.greenDesc')}</span>
                         </div>
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-warning-muted)]">
                             <div className="w-4 h-4 rounded-full bg-[var(--color-warning)]" />
-                            <span className="font-medium text-[var(--color-warning)]">Amarelo (40-69%)</span>
-                            <span className="text-sm text-[var(--color-text-secondary)]">Atenção necessária</span>
+                            <span className="font-medium text-[var(--color-warning)]">{t('help.colors.yellow')}</span>
+                            <span className="text-sm text-[var(--color-text-secondary)]">{t('help.colors.yellowDesc')}</span>
                         </div>
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-danger-muted)]">
                             <div className="w-4 h-4 rounded-full bg-[var(--color-danger)]" />
-                            <span className="font-medium text-[var(--color-danger)]">Vermelho (0-39%)</span>
-                            <span className="text-sm text-[var(--color-text-secondary)]">Crítico</span>
+                            <span className="font-medium text-[var(--color-danger)]">{t('help.colors.red')}</span>
+                            <span className="text-sm text-[var(--color-text-secondary)]">{t('help.colors.redDesc')}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -187,27 +190,27 @@ export function HelpPage() {
                     <CardHeader>
                         <CardTitle>
                             <ClipboardList className="w-5 h-5 inline mr-2 text-[var(--color-text-primary)]" />
-                            Status das Ações
+                            {t('help.actionStatus.title')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface)]">
-                            <Badge variant="default">Pendente</Badge>
-                            <span className="text-sm text-[var(--color-text-secondary)]">Ainda não iniciado</span>
+                            <Badge variant="default">{t('help.actionStatus.pending')}</Badge>
+                            <span className="text-sm text-[var(--color-text-secondary)]">{t('help.actionStatus.pendingDesc')}</span>
                         </div>
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface)]">
-                            <Badge variant="info">Em Progresso</Badge>
-                            <span className="text-sm text-[var(--color-text-secondary)]">Trabalho em andamento</span>
+                            <Badge variant="info">{t('help.actionStatus.inProgress')}</Badge>
+                            <span className="text-sm text-[var(--color-text-secondary)]">{t('help.actionStatus.inProgressDesc')}</span>
                         </div>
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface)]">
-                            <Badge variant="success">Concluído</Badge>
+                            <Badge variant="success">{t('help.actionStatus.done')}</Badge>
                             <span className="text-sm text-[var(--color-text-secondary)] flex items-center gap-1">
-                                Finalizado <Check className="w-3 h-3" />
+                                {t('help.actionStatus.doneDesc')} <Check className="w-3 h-3" />
                             </span>
                         </div>
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface)]">
-                            <Badge variant="danger">Bloqueado</Badge>
-                            <span className="text-sm text-[var(--color-text-secondary)]">Impedido, precisa de ação</span>
+                            <Badge variant="danger">{t('help.actionStatus.blocked')}</Badge>
+                            <span className="text-sm text-[var(--color-text-secondary)]">{t('help.actionStatus.blockedDesc')}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -221,8 +224,8 @@ export function HelpPage() {
                             <HelpCircle className="w-5 h-5 text-[var(--color-primary)]" />
                         </div>
                         <div>
-                            <CardTitle>Perguntas Frequentes</CardTitle>
-                            <CardDescription>Respostas para as dúvidas mais comuns</CardDescription>
+                            <CardTitle>{t('help.faq.title')}</CardTitle>
+                            <CardDescription>{t('help.faq.description')}</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -277,9 +280,9 @@ export function HelpPage() {
             <Card variant="glass">
                 <CardContent className="flex items-center justify-between py-6">
                     <div>
-                        <h3 className="font-semibold text-[var(--color-text-primary)]">Precisa de mais ajuda?</h3>
+                        <h3 className="font-semibold text-[var(--color-text-primary)]">{t('help.support.title')}</h3>
                         <p className="text-sm text-[var(--color-text-muted)]">
-                            Entre em contato com a equipe de Melhoria Contínua
+                            {t('help.support.subtitle')}
                         </p>
                     </div>
                     <div className="flex items-center gap-4">

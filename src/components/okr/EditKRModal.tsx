@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, Save, TrendingUp, Target } from 'lucide-react'
 import { Button } from '../ui/Button'
@@ -32,6 +33,7 @@ interface EditKRModalProps {
 }
 
 export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRModalProps) {
+    const { t } = useTranslation()
     const { user } = useAuth()
     const [currentValue, setCurrentValue] = useState<string>('')
     const [loading, setSaving] = useState(false)
@@ -60,7 +62,7 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
             const newValue = parseFloat(currentValue)
 
             if (isNaN(newValue)) {
-                throw new Error('Valor inválido')
+                throw new Error(t('modals.editKR.invalidValue'))
             }
 
             // Get old data for audit
@@ -96,7 +98,7 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
             onSave()
             onOpenChange(false)
         } catch (err: any) {
-            setError(err.message || 'Erro ao salvar')
+            setError(err.message || t('modals.createKR.errorSave'))
         } finally {
             setSaving(false)
         }
@@ -115,10 +117,10 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
                             </div>
                             <div>
                                 <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
-                                    Atualizar Key Result
+                                    {t('modals.editKR.title')}
                                 </Dialog.Title>
                                 <Dialog.Description className="text-sm text-[var(--color-text-muted)]">
-                                    Atualize o valor atual do KR
+                                    {t('modals.editKR.subtitle')}
                                 </Dialog.Description>
                             </div>
                         </div>
@@ -152,19 +154,19 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
                         {/* Metrics */}
                         <div className="grid grid-cols-3 gap-4">
                             <div className="p-4 rounded-xl bg-[var(--color-surface-elevated)] text-center">
-                                <p className="text-xs text-[var(--color-text-muted)] mb-1">Baseline</p>
+                                <p className="text-xs text-[var(--color-text-muted)] mb-1">{t('objectives.base')}</p>
                                 <p className="text-lg font-bold text-[var(--color-text-secondary)]">
                                     {keyResult.baseline} {keyResult.unit}
                                 </p>
                             </div>
                             <div className="p-4 rounded-xl bg-[var(--color-primary)]/10 text-center border-2 border-[var(--color-primary)]/30">
-                                <p className="text-xs text-[var(--color-primary)] mb-1">Atual</p>
+                                <p className="text-xs text-[var(--color-primary)] mb-1">{t('objectives.current')}</p>
                                 <p className="text-lg font-bold text-[var(--color-primary)]">
                                     {currentValue || keyResult.current_value} {keyResult.unit}
                                 </p>
                             </div>
                             <div className="p-4 rounded-xl bg-[var(--color-surface-elevated)] text-center">
-                                <p className="text-xs text-[var(--color-text-muted)] mb-1">Target</p>
+                                <p className="text-xs text-[var(--color-text-muted)] mb-1">{t('objectives.target')}</p>
                                 <p className="text-lg font-bold text-[var(--color-success)]">
                                     {keyResult.target} {keyResult.unit}
                                 </p>
@@ -174,7 +176,7 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
                         {/* Progress Preview */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-[var(--color-text-muted)]">Progresso</span>
+                                <span className="text-sm text-[var(--color-text-muted)]">{t('modals.editKR.progress')}</span>
                                 <Badge variant={progress >= 70 ? 'success' : progress >= 40 ? 'warning' : 'danger'}>
                                     {Math.round(progress)}%
                                 </Badge>
@@ -185,7 +187,7 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
                         {/* Input */}
                         <Input
                             type="number"
-                            label="Novo valor atual"
+                            label={t('modals.editKR.newValue')}
                             value={currentValue}
                             onChange={(e) => setCurrentValue(e.target.value)}
                             placeholder={`Ex: ${keyResult.target}`}
@@ -202,11 +204,11 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
                     {/* Footer */}
                     <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
                         <Button variant="ghost" onClick={() => onOpenChange(false)}>
-                            Cancelar
+                            {t('modals.createKR.cancel')}
                         </Button>
                         <Button variant="primary" onClick={handleSave} loading={loading}>
                             <Save className="w-4 h-4" />
-                            Salvar Alteração
+                            {t('modals.editKR.save')}
                         </Button>
                     </div>
                 </Dialog.Content>

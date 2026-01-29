@@ -1,3 +1,10 @@
+/**
+ * Tipos gerados a partir do schema do Supabase
+ * Este arquivo deve ser atualizado quando o schema do banco mudar.
+ * 
+ * Para tipos de uso geral na aplicação, use src/types/index.ts
+ */
+
 export type Json =
     | string
     | number
@@ -37,102 +44,105 @@ export interface Database {
                     updated_at?: string
                 }
             }
+            business_units: {
+                Row: {
+                    id: string
+                    code: string
+                    name: string
+                    description: string | null
+                    is_active: boolean
+                    order_index: number
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    code: string
+                    name: string
+                    description?: string | null
+                    is_active?: boolean
+                    order_index?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    code?: string
+                    name?: string
+                    description?: string | null
+                    is_active?: boolean
+                    order_index?: number
+                    updated_at?: string
+                }
+            }
             pillars: {
                 Row: {
                     id: string
+                    code: string
                     name: string
                     description: string | null
                     icon: string
                     color: string
                     order_index: number
+                    is_active: boolean
                     created_at: string
+                    updated_at: string
                 }
                 Insert: {
                     id?: string
+                    code: string
                     name: string
                     description?: string | null
-                    icon: string
-                    color: string
+                    icon?: string
+                    color?: string
                     order_index?: number
+                    is_active?: boolean
                     created_at?: string
+                    updated_at?: string
                 }
                 Update: {
+                    code?: string
                     name?: string
                     description?: string | null
                     icon?: string
                     color?: string
                     order_index?: number
+                    is_active?: boolean
+                    updated_at?: string
                 }
             }
-            objectives_corporate: {
+            objectives: {
                 Row: {
                     id: string
+                    business_unit_id: string
                     pillar_id: string
                     code: string
                     title: string
                     description: string | null
-                    owner_id: string | null
                     year: number
+                    is_active: boolean
                     created_at: string
                     updated_at: string
                 }
                 Insert: {
                     id?: string
+                    business_unit_id: string
                     pillar_id: string
                     code: string
                     title: string
                     description?: string | null
-                    owner_id?: string | null
-                    year: number
+                    year?: number
+                    is_active?: boolean
                     created_at?: string
                     updated_at?: string
                 }
                 Update: {
+                    business_unit_id?: string
                     pillar_id?: string
                     code?: string
                     title?: string
                     description?: string | null
-                    owner_id?: string | null
                     year?: number
-                    updated_at?: string
-                }
-            }
-            objectives_local: {
-                Row: {
-                    id: string
-                    corporate_objective_id: string | null
-                    pillar_id: string
-                    code: string
-                    title: string
-                    description: string | null
-                    owner_id: string | null
-                    country: string
-                    year: number
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    corporate_objective_id?: string | null
-                    pillar_id: string
-                    code: string
-                    title: string
-                    description?: string | null
-                    owner_id?: string | null
-                    country: string
-                    year: number
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    corporate_objective_id?: string | null
-                    pillar_id?: string
-                    code?: string
-                    title?: string
-                    description?: string | null
-                    owner_id?: string | null
-                    country?: string
-                    year?: number
+                    is_active?: boolean
                     updated_at?: string
                 }
             }
@@ -142,13 +152,13 @@ export interface Database {
                     objective_id: string
                     code: string
                     title: string
+                    description: string | null
+                    owner_name: string | null
+                    source: string | null
                     metric_type: 'percentage' | 'number' | 'currency' | 'days'
-                    baseline: number
-                    target: number
-                    current_value: number
                     unit: string
-                    owner_id: string | null
-                    quarter: number | null
+                    order_index: number
+                    is_active: boolean
                     created_at: string
                     updated_at: string
                 }
@@ -157,13 +167,13 @@ export interface Database {
                     objective_id: string
                     code: string
                     title: string
-                    metric_type: 'percentage' | 'number' | 'currency' | 'days'
-                    baseline?: number
-                    target: number
-                    current_value?: number
+                    description?: string | null
+                    owner_name?: string | null
+                    source?: string | null
+                    metric_type?: 'percentage' | 'number' | 'currency' | 'days'
                     unit?: string
-                    owner_id?: string | null
-                    quarter?: number | null
+                    order_index?: number
+                    is_active?: boolean
                     created_at?: string
                     updated_at?: string
                 }
@@ -171,13 +181,53 @@ export interface Database {
                     objective_id?: string
                     code?: string
                     title?: string
+                    description?: string | null
+                    owner_name?: string | null
+                    source?: string | null
                     metric_type?: 'percentage' | 'number' | 'currency' | 'days'
-                    baseline?: number
-                    target?: number
-                    current_value?: number
                     unit?: string
-                    owner_id?: string | null
-                    quarter?: number | null
+                    order_index?: number
+                    is_active?: boolean
+                    updated_at?: string
+                }
+            }
+            kr_quarterly_data: {
+                Row: {
+                    id: string
+                    key_result_id: string
+                    quarter: number
+                    year: number
+                    baseline: number | null
+                    target: number | null
+                    actual: number | null
+                    progress: number | null
+                    confidence: 'on_track' | 'at_risk' | 'off_track' | null
+                    notes: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    key_result_id: string
+                    quarter: number
+                    year?: number
+                    baseline?: number | null
+                    target?: number | null
+                    actual?: number | null
+                    confidence?: 'on_track' | 'at_risk' | 'off_track' | null
+                    notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    key_result_id?: string
+                    quarter?: number
+                    year?: number
+                    baseline?: number | null
+                    target?: number | null
+                    actual?: number | null
+                    confidence?: 'on_track' | 'at_risk' | 'off_track' | null
+                    notes?: string | null
                     updated_at?: string
                 }
             }
@@ -187,7 +237,8 @@ export interface Database {
                     key_result_id: string
                     title: string
                     description: string | null
-                    status: 'pending' | 'in_progress' | 'done'
+                    status: 'pending' | 'in_progress' | 'done' | 'blocked'
+                    priority: 'low' | 'medium' | 'high'
                     due_date: string | null
                     owner_name: string | null
                     created_at: string
@@ -198,7 +249,8 @@ export interface Database {
                     key_result_id: string
                     title: string
                     description?: string | null
-                    status?: 'pending' | 'in_progress' | 'done'
+                    status?: 'pending' | 'in_progress' | 'done' | 'blocked'
+                    priority?: 'low' | 'medium' | 'high'
                     due_date?: string | null
                     owner_name?: string | null
                     created_at?: string
@@ -208,7 +260,8 @@ export interface Database {
                     key_result_id?: string
                     title?: string
                     description?: string | null
-                    status?: 'pending' | 'in_progress' | 'done'
+                    status?: 'pending' | 'in_progress' | 'done' | 'blocked'
+                    priority?: 'low' | 'medium' | 'high'
                     due_date?: string | null
                     owner_name?: string | null
                     updated_at?: string
@@ -217,20 +270,26 @@ export interface Database {
             audit_logs: {
                 Row: {
                     id: string
-                    user_id: string
+                    user_id: string | null
+                    user_email: string | null
+                    user_name: string | null
                     action: 'create' | 'update' | 'delete'
                     entity_type: string
                     entity_id: string
+                    entity_name: string | null
                     old_value: Json | null
                     new_value: Json | null
                     created_at: string
                 }
                 Insert: {
                     id?: string
-                    user_id: string
+                    user_id?: string | null
+                    user_email?: string | null
+                    user_name?: string | null
                     action: 'create' | 'update' | 'delete'
                     entity_type: string
                     entity_id: string
+                    entity_name?: string | null
                     old_value?: Json | null
                     new_value?: Json | null
                     created_at?: string
@@ -241,30 +300,12 @@ export interface Database {
     }
 }
 
-// Convenience types
+// Convenience types - extraídos da interface Database
 export type User = Database['public']['Tables']['users']['Row']
+export type BusinessUnit = Database['public']['Tables']['business_units']['Row']
 export type Pillar = Database['public']['Tables']['pillars']['Row']
-export type ObjectiveCorporate = Database['public']['Tables']['objectives_corporate']['Row']
-export type ObjectiveLocal = Database['public']['Tables']['objectives_local']['Row']
+export type Objective = Database['public']['Tables']['objectives']['Row']
 export type KeyResult = Database['public']['Tables']['key_results']['Row']
+export type QuarterlyData = Database['public']['Tables']['kr_quarterly_data']['Row']
 export type Action = Database['public']['Tables']['actions']['Row']
 export type AuditLog = Database['public']['Tables']['audit_logs']['Row']
-
-// Extended types with relations
-export type ObjectiveLocalWithRelations = ObjectiveLocal & {
-    pillar?: Pillar
-    corporate_objective?: ObjectiveCorporate
-    owner?: User
-    key_results?: KeyResultWithRelations[]
-}
-
-export type KeyResultWithRelations = KeyResult & {
-    objective?: ObjectiveLocal
-    owner?: User
-    actions?: Action[]
-}
-
-export type ActionWithRelations = Action & {
-    key_result?: KeyResult
-    owner?: User
-}

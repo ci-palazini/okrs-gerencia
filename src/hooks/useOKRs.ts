@@ -1,6 +1,17 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import type { ObjectiveLocal, KeyResult, ObjectiveLocalWithRelations, KeyResultWithRelations, Pillar } from '../types/database'
+import type { Objective, KeyResult, Pillar, Action } from '../types'
+
+// Tipos com relações para este hook
+interface ObjectiveWithRelations extends Objective {
+    pillar?: Pillar
+    key_results?: KeyResultWithRelations[]
+}
+
+interface KeyResultWithRelations extends KeyResult {
+    objective?: Objective
+    actions?: Action[]
+}
 
 export function useOKRs() {
     const [loading, setLoading] = useState(false)
@@ -13,6 +24,7 @@ export function useOKRs() {
             const { data, error } = await supabase
                 .from('pillars')
                 .select('*')
+                .eq('is_active', true)
                 .order('order_index')
 
             if (error) throw error
@@ -25,29 +37,32 @@ export function useOKRs() {
         }
     }, [])
 
-    const fetchObjectives = useCallback(async (year: number = 2026, country: string = 'Brazil') => {
+    const fetchObjectives = useCallback(async (year: number = 2026, businessUnitId?: string) => {
         setLoading(true)
         setError(null)
         try {
-            const { data, error } = await supabase
-                .from('objectives_local')
+            let query = supabase
+                .from('objectives')
                 .select(`
-          *,
-          pillar:pillars(*),
-          corporate_objective:objectives_corporate(*),
-          owner:users(*),
-          key_results(
-            *,
-            owner:users(*),
-            actions(*)
-          )
-        `)
+                    *,
+                    pillar:pillars(*),
+                    key_results(
+                        *,
+                        actions(*)
+                    )
+                `)
                 .eq('year', year)
-                .eq('country', country)
+                .eq('is_active', true)
                 .order('code')
 
+            if (businessUnitId) {
+                query = query.eq('business_unit_id', businessUnitId)
+            }
+
+            const { data, error } = await query
+
             if (error) throw error
-            return data as ObjectiveLocalWithRelations[]
+            return data as ObjectiveWithRelations[]
         } catch (err) {
             setError(err as Error)
             return []
@@ -56,27 +71,24 @@ export function useOKRs() {
         }
     }, [])
 
-    const fetchKeyResults = useCallback(async (objectiveId?: string, quarter?: number) => {
+    const fetchKeyResults = useCallback(async (objectiveId?: string) => {
         setLoading(true)
         setError(null)
         try {
             let query = supabase
                 .from('key_results')
                 .select(`
-          *,
-          objective:objectives_local(*),
-          owner:users(*),
-          actions(*)
-        `)
+                    *,
+                    objective:objectives(*),
+                    actions(*)
+                `)
+                .eq('is_active', true)
 
             if (objectiveId) {
                 query = query.eq('objective_id', objectiveId)
             }
-            if (quarter) {
-                query = query.eq('quarter', quarter)
-            }
 
-            const { data, error } = await query.order('code')
+            const { data, error } = await query.order('order_index')
 
             if (error) throw error
             return data as KeyResultWithRelations[]
@@ -90,7 +102,8 @@ export function useOKRs() {
 
     const updateKeyResultProgress = useCallback(async (
         id: string,
-        currentValue: number,
+        field: string,
+        value: unknown,
         userId: string
     ) => {
         setLoading(true)
@@ -106,7 +119,7 @@ export function useOKRs() {
             // Update value
             const { data, error } = await supabase
                 .from('key_results')
-                .update({ current_value: currentValue, updated_at: new Date().toISOString() })
+                .update({ [field]: value, updated_at: new Date().toISOString() })
                 .eq('id', id)
                 .select()
                 .single()

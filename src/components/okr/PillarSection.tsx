@@ -19,21 +19,20 @@ interface PillarSectionProps {
     actions?: React.ReactNode
 }
 
-// Map icon names to Lucide icons
-const iconMap: Record<string, React.ElementType> = {
-    'trending-up': TrendingUp,
-    'truck': Truck,
-    'shield': Shield,
-    'target': Target,
-    'users': Users,
-    'dollar-sign': DollarSign,
-    'clock': Clock
-}
+// Helper to dynamic icon load
+import * as LucideIcons from 'lucide-react'
+
+// ...
 
 export function PillarSection({ pillar, children, defaultExpanded = true, actions }: PillarSectionProps) {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
-    const Icon = iconMap[pillar.icon] || Pin
+    // Convert kebab-case (target) to PascalCase (Target)
+    const iconName = pillar.icon
+        ? pillar.icon.split('-').map((part: string) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
+        : 'Circle'
+
+    const Icon = (LucideIcons[iconName as keyof typeof LucideIcons] as React.ElementType) || Pin
 
     return (
         <div className="rounded-2xl bg-[var(--color-surface-elevated)] border border-[var(--color-border)] overflow-hidden">

@@ -1,4 +1,5 @@
 import { Outlet, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { useAuth } from '../../hooks/useAuth'
@@ -6,6 +7,7 @@ import { useSettings } from '../../contexts/SettingsContext'
 import { cn } from '../../lib/utils'
 
 export function MainLayout() {
+    const { t } = useTranslation()
     const { user, loading } = useAuth()
     const { sidebarCollapsed } = useSettings()
 
@@ -14,7 +16,7 @@ export function MainLayout() {
             <div className="flex items-center justify-center min-h-screen bg-[var(--color-background)]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[var(--color-text-secondary)]">Carregando...</p>
+                    <p className="text-[var(--color-text-secondary)]">{t('app.loading')}</p>
                 </div>
             </div>
         )

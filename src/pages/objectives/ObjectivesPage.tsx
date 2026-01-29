@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, Plus, Building2, Edit3 } from 'lucide-react'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -44,6 +45,7 @@ interface ObjectiveCountry {
 }
 
 export function ObjectivesPage() {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [objectives, setObjectives] = useState<ObjectiveWithKRs[]>([])
     const [expandedObjective, setExpandedObjective] = useState<string | null>(null)
@@ -124,7 +126,10 @@ export function ObjectivesPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[var(--color-text-secondary)]">Carregando objetivos...</p>
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                        <p className="text-[var(--color-text-secondary)]">{t('objectives.loading')}</p>
+                    </div>
                 </div>
             </div>
         )
@@ -135,9 +140,9 @@ export function ObjectivesPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Objetivos</h1>
+                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('objectives.title')}</h1>
                     <p className="text-[var(--color-text-secondary)] mt-1">
-                        OKRs 2026 - Spirax
+                        {t('objectives.subtitle', { year: 2026, company: 'Spirax' })}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -147,14 +152,14 @@ export function ObjectivesPage() {
                         onChange={(e) => setSelectedUnit(e.target.value)}
                         className="h-10 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                     >
-                        <option value="all">Todas Unidades</option>
+                        <option value="all">{t('objectives.allUnits')}</option>
                         {units.map(unit => (
                             <option key={unit} value={unit}>{unit}</option>
                         ))}
                     </select>
                     <Button variant="primary" size="md">
                         <Plus className="w-4 h-4" />
-                        Novo Objetivo
+                        {t('objectives.newObjective')}
                     </Button>
                 </div>
             </div>
@@ -211,7 +216,7 @@ export function ObjectivesPage() {
                                     <div className="flex items-center gap-6">
                                         <div className="w-40">
                                             <div className="flex items-center justify-between mb-2">
-                                                <span className="text-xs font-medium text-[var(--color-text-muted)]">Progresso</span>
+                                                <span className="text-xs font-medium text-[var(--color-text-muted)]">{t('objectives.progress')}</span>
                                                 <span className="text-sm font-bold text-[var(--color-text-primary)]">{progress}%</span>
                                             </div>
                                             <ProgressBar value={progress} size="md" variant="gradient" className="shadow-inner" />
@@ -232,7 +237,7 @@ export function ObjectivesPage() {
                                         <div className="p-6 space-y-4">
                                             <h4 className="flex items-center gap-2 text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
                                                 <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)]" />
-                                                Key Results
+                                                {t('dashboard.keyResults')}
                                             </h4>
                                             {objective.key_results.map((kr) => {
                                                 const krProgress = calculateProgress(kr.current_value, kr.target)
@@ -249,15 +254,15 @@ export function ObjectivesPage() {
                                                             <p className="font-semibold text-[var(--color-text-primary)]">{kr.title}</p>
                                                             <div className="flex items-center gap-2 mt-1">
                                                                 <code className="text-xs px-1.5 py-0.5 rounded bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)]">
-                                                                    Base: {kr.baseline} {kr.unit}
+                                                                    {t('objectives.base')}: {kr.baseline} {kr.unit}
                                                                 </code>
                                                                 <span className="text-xs text-[var(--color-text-muted)]">→</span>
                                                                 <code className="text-xs px-1.5 py-0.5 rounded bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] font-medium">
-                                                                    Target: {kr.target} {kr.unit}
+                                                                    {t('objectives.target')}: {kr.target} {kr.unit}
                                                                 </code>
                                                                 <span className="text-xs text-[var(--color-border)]">|</span>
                                                                 <span className="text-xs font-medium text-[var(--color-primary)]">
-                                                                    Atual: {kr.current_value} {kr.unit}
+                                                                    {t('objectives.current')}: {kr.current_value} {kr.unit}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -294,10 +299,10 @@ export function ObjectivesPage() {
                             <Building2 className="w-8 h-8 text-[var(--color-text-muted)]" />
                         </div>
                         <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
-                            Nenhum objetivo encontrado
+                            {t('objectives.noObjectives')}
                         </h3>
                         <p className="text-[var(--color-text-muted)] text-center max-w-md">
-                            Execute o script <code className="px-2 py-1 rounded bg-[var(--color-surface-hover)] text-[var(--color-primary)]">seed.sql</code> no Supabase SQL Editor para popular os dados.
+                            {t('objectives.seedData', { script: 'seed.sql' })}
                         </p>
                     </CardContent>
                 </Card>

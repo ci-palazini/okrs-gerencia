@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Plus, RefreshCw, Trash2, Target, ChevronDown, ChevronUp, MoreHorizontal, Pencil, ArrowRight } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import { UnitToggle } from '../../components/ui/UnitToggle'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card'
 import { PillarSection } from '../../components/okr/PillarSection'
 import { KRTable } from '../../components/okr/KRTable'
 import { EditKRModalV2 } from '../../components/okr/EditKRModalV2'
+import { CreateObjectiveModalV2 } from '../../components/okr/CreateObjectiveModalV2'
+import { ActionPlanList } from '../../components/okr/ActionPlanList'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
+import { cn } from '../../lib/utils'
 import type { ConfidenceLevel } from '../../components/ui/ConfidenceIndicator'
 
 interface BusinessUnit {
@@ -24,6 +30,7 @@ interface Pillar {
     icon: string
     color: string
     order_index: number
+    business_unit_id: string | null
 }
 
 interface KeyResult {
@@ -61,6 +68,12 @@ interface ObjectiveWithRelations {
     } | null
 }
 
+interface ObjectiveWithKRs extends Objective {
+    key_results: KeyResult[]
+    pillar: Pillar
+    progress: number
+}
+
 interface QuarterlyData {
     id: string
     key_result_id: string
@@ -72,13 +85,29 @@ interface QuarterlyData {
     confidence: ConfidenceLevel
 }
 
+// Helper function to calculate objective progress (placeholder, implement actual logic)
+function calculateObjectiveProgress(keyResults: KeyResult[] | null): number {
+    if (!keyResults || keyResults.length === 0) return 0
+    // This is a placeholder. In a real app, you'd fetch quarterly data for each KR
+    // and calculate an aggregate progress based on baseline, target, actual, and weights.
+    // For now, let's just return a dummy value or average of some KR progress if available.
+    return 0 // Or some actual calculation based on your data model
+}
+
 export function OKRsPage() {
     const { user } = useAuth()
+    const { t } = useTranslation()
+    const { selectedUnit, selectedUnitData } = useBusinessUnit() // Use global context
+    const [searchParams] = useSearchParams()
+
+    // UI State
     const [loading, setLoading] = useState(true)
-    const [units, setUnits] = useState<BusinessUnit[]>([])
-    const [selectedUnit, setSelectedUnit] = useState<string>('')
+    const [activeTab, setActiveTab] = useState<'overview' | 'krs' | 'dashboard'>('overview')
+    const [filterPillar, setFilterPillar] = useState<string | null>(searchParams.get('pillar'))
+
+    // Data State
     const [pillars, setPillars] = useState<Pillar[]>([])
-    const [objectives, setObjectives] = useState<Objective[]>([])
+    const [objectives, setObjectives] = useState<ObjectiveWithKRs[]>([])
     const [objectivesWithRelations, setObjectivesWithRelations] = useState<ObjectiveWithRelations[]>([])
     const [keyResults, setKeyResults] = useState<KeyResult[]>([])
     const [quarterlyData, setQuarterlyData] = useState<QuarterlyData[]>([])
@@ -89,58 +118,61 @@ export function OKRsPage() {
     const [selectedKR, setSelectedKR] = useState<KeyResult | null>(null)
     const [defaultObjectiveId, setDefaultObjectiveId] = useState<string>('')
 
-    useEffect(() => {
-        loadInitialData()
-    }, [])
+    // Create modal states
+    const [isCreatingObjective, setIsCreatingObjective] = useState(false)
+    const [isCreatingKR, setIsCreatingKR] = useState(false)
+    const [selectedObjectiveId, setSelectedObjectiveId] = useState<string | null>(null)
 
     useEffect(() => {
         if (selectedUnit) {
-            loadOKRData()
+            loadData()
         }
-    }, [selectedUnit])
+    }, [selectedUnit, filterPillar])
 
-    async function loadInitialData() {
+    useEffect(() => {
+        setFilterPillar(searchParams.get('pillar'))
+    }, [searchParams])
+
+    async function loadData() {
+        setLoading(true)
         try {
-            // Load business units
-            const { data: unitsData } = await supabase
-                .from('business_units')
-                .select('*')
-                .eq('is_active', true)
-                .neq('code', 'GSC')
-                .order('order_index')
-
-            if (unitsData && unitsData.length > 0) {
-                setUnits(unitsData)
-                setSelectedUnit(unitsData[0].id)
-            }
-
-            // Load pillars
+            // 1. Load pillars
             const { data: pillarsData } = await supabase
                 .from('pillars')
                 .select('*')
                 .eq('is_active', true)
                 .order('order_index')
 
-            setPillars(pillarsData || [])
-        } catch (error) {
-            console.error('Error loading initial data:', error)
-        }
-    }
+            if (pillarsData) setPillars(pillarsData)
 
-    async function loadOKRData() {
-        setLoading(true)
-        try {
-            // Load objectives for selected unit
-            const { data: objectivesData } = await supabase
+            // 2. Load Objectives for selected unit
+            let objectivesQuery = supabase
                 .from('objectives')
-                .select('*')
+                .select(`
+                    *,
+                    pillar:pillars(*),
+                    key_results(*)
+                `)
+                .eq('is_active', true)
                 .eq('business_unit_id', selectedUnit)
                 .eq('year', 2026)
-                .eq('is_active', true)
 
-            setObjectives(objectivesData || [])
+            if (filterPillar) {
+                objectivesQuery = objectivesQuery.eq('pillar_id', filterPillar)
+            }
 
-            // Load objectives with relations for the modal
+            const { data: objectivesData, error: objError } = await objectivesQuery
+            if (objError) throw objError
+
+            // Map progress (placeholder calculation)
+            const processedObjectives = (objectivesData || []).map(obj => ({
+                ...obj,
+                progress: calculateObjectiveProgress(obj.key_results || [])
+            }))
+
+            setObjectives(processedObjectives as unknown as ObjectiveWithKRs[])
+
+            // 3. Load objectives with relations (for modals)
             const { data: objectivesWithRel } = await supabase
                 .from('objectives')
                 .select(`
@@ -156,7 +188,7 @@ export function OKRsPage() {
 
             setObjectivesWithRelations((objectivesWithRel || []) as unknown as ObjectiveWithRelations[])
 
-            // Load key results for these objectives
+            // 4. Load Key Results and Quarterly Data
             const objectiveIds = (objectivesData || []).map(o => o.id)
 
             if (objectiveIds.length > 0) {
@@ -169,25 +201,26 @@ export function OKRsPage() {
 
                 setKeyResults(krsData || [])
 
-                // Load quarterly data for current quarter
                 const krIds = (krsData || []).map(kr => kr.id)
-
                 if (krIds.length > 0) {
-                    const { data: quarterlyDataResult } = await supabase
+                    const { data: qData } = await supabase
                         .from('kr_quarterly_data')
                         .select('*')
                         .in('key_result_id', krIds)
                         .eq('quarter', currentQuarter)
                         .eq('year', 2026)
 
-                    setQuarterlyData(quarterlyDataResult || [])
+                    setQuarterlyData(qData || [])
+                } else {
+                    setQuarterlyData([])
                 }
             } else {
                 setKeyResults([])
                 setQuarterlyData([])
             }
+
         } catch (error) {
-            console.error('Error loading OKR data:', error)
+            console.error('Error loading data:', error)
         } finally {
             setLoading(false)
         }
@@ -278,7 +311,8 @@ export function OKRsPage() {
     }
 
     async function deleteKR(krId: string) {
-        if (!confirm('Tem certeza que deseja excluir este Key Result?')) return
+        if (!confirm(t('okr.deleteKRConfirm'))) return
+
 
         try {
             const kr = keyResults.find(k => k.id === krId)
@@ -304,7 +338,7 @@ export function OKRsPage() {
             }
 
             // Reload data
-            loadOKRData()
+            loadData()
         } catch (error) {
             console.error('Error deleting KR:', error)
         }
@@ -323,42 +357,15 @@ export function OKRsPage() {
     }
 
     function handleKRSaved() {
-        loadOKRData()
+        loadData()
     }
 
-    // Get KRs for a specific pillar
-    function getKRsForPillar(pillarId: string) {
-        const pillarObjectives = objectives.filter(o => o.pillar_id === pillarId)
-        const objectiveIds = pillarObjectives.map(o => o.id)
-
-        return keyResults
-            .filter(kr => objectiveIds.includes(kr.objective_id))
-            .map(kr => {
-                const qData = quarterlyData.find(q => q.key_result_id === kr.id)
-                return {
-                    ...kr,
-                    progress: qData?.progress || 0,
-                    confidence: qData?.confidence || null,
-                    baseline: qData?.baseline,
-                    target: qData?.target,
-                    actual: qData?.actual
-                }
-            })
-    }
-
-    // Get objective for a pillar
-    function getObjectiveForPillar(pillarId: string) {
-        return objectives.find(o => o.pillar_id === pillarId)
-    }
-
-    const selectedUnitName = units.find(u => u.id === selectedUnit)?.name || ''
-
-    if (loading && units.length === 0) {
+    if (loading && !selectedUnitData) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[var(--color-text-secondary)]">Carregando dados...</p>
+                    <p className="text-[var(--color-text-secondary)]">{t('okr.loadingData')}</p>
                 </div>
             </div>
         )
@@ -367,26 +374,27 @@ export function OKRsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">OKRs 2026</h1>
-                    <p className="text-[var(--color-text-secondary)] mt-1">
-                        Objetivos e Key Results - {selectedUnitName}
+                    <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+                        {t('okr.title')} - {selectedUnitData?.name || t('okr.local')}
+                    </h1>
+                    <p className="text-[var(--color-text-secondary)]">
+                        {t('okr.subtitle')}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <UnitToggle
-                        units={units}
-                        selectedUnit={selectedUnit}
-                        onSelect={setSelectedUnit}
-                    />
+                    <Button onClick={() => setIsCreatingObjective(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        {t('okr.newObjective')}
+                    </Button>
                     <Badge variant="info" size="md">
                         Q{currentQuarter} 2026
                     </Badge>
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={loadOKRData}
+                        onClick={loadData}
                         disabled={loading}
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -400,67 +408,175 @@ export function OKRsPage() {
                     <div className="w-8 h-8 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {pillars.map((pillar) => {
-                        const pillarKRs = getKRsForPillar(pillar.id)
-                        const objective = getObjectiveForPillar(pillar.id)
+                <div className="space-y-8">
+                    {pillars
+                        .filter(pillar => !pillar.business_unit_id || pillar.business_unit_id === selectedUnit)
+                        .filter(pillar => !filterPillar || pillar.id === filterPillar)
+                        .map((pillar) => {
+                            const pillarObjectives = objectives.filter(o => o.pillar_id === pillar.id)
 
-                        return (
-                            <PillarSection
-                                key={pillar.id}
-                                pillar={{
-                                    ...pillar,
-                                    description: objective?.title || pillar.description
-                                }}
-                                actions={
-                                    objective && (
+                            return (
+                                <PillarSection
+                                    key={pillar.id}
+                                    pillar={pillar}
+                                    actions={
                                         <Button
-                                            variant="outline"
+                                            variant="ghost"
                                             size="sm"
+                                            className="text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
                                             onClick={(e) => {
                                                 e.stopPropagation()
-                                                handleAddKR(objective.id)
+                                                setIsCreatingObjective(true)
                                             }}
                                         >
-                                            <Plus className="w-4 h-4" />
-                                            Novo KR
+                                            <Target className="w-4 h-4 mr-2" />
+                                            {t('okr.newObjective')}
                                         </Button>
-                                    )
-                                }
-                            >
-                                {pillarKRs.length > 0 ? (
-                                    <KRTable
-                                        keyResults={pillarKRs}
-                                        onUpdateConfidence={updateConfidence}
-                                        onUpdateValue={updateValue}
-                                        onEdit={handleEditKR}
-                                    />
-                                ) : (
-                                    <div className="text-center py-8 text-[var(--color-text-muted)]">
-                                        <p>Nenhum Key Result cadastrado para este pilar.</p>
-                                        {objective && (
+                                    }
+                                >
+                                    {pillarObjectives.length > 0 ? (
+                                        <div className="space-y-8">
+                                            {pillarObjectives.map((objective, index) => {
+                                                const objectiveKRs = keyResults
+                                                    .filter(kr => kr.objective_id === objective.id)
+                                                    .map(kr => {
+                                                        const qData = quarterlyData.find(q => q.key_result_id === kr.id)
+                                                        return {
+                                                            ...kr,
+                                                            progress: qData?.progress || 0,
+                                                            confidence: qData?.confidence || null,
+                                                            baseline: qData?.baseline,
+                                                            target: qData?.target,
+                                                            actual: qData?.actual
+                                                        }
+                                                    })
+
+                                                return (
+                                                    <div key={objective.id} className={cn(
+                                                        "space-y-4",
+                                                        index > 0 && "pt-8 border-t border-[var(--color-border-subtle)]"
+                                                    )}>
+                                                        {/* Objective Header */}
+                                                        <div className="flex items-start justify-between gap-4">
+                                                            <div>
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <Badge variant="outline" className="text-xs font-bold font-mono">
+                                                                        {objective.code}
+                                                                    </Badge>
+                                                                    <h4 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                                                                        {objective.title}
+                                                                    </h4>
+                                                                </div>
+                                                                {objective.description && (
+                                                                    <p className="text-sm text-[var(--color-text-secondary)] pl-1">
+                                                                        {objective.description}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 p-0 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+                                                                    title={t('common.delete')}
+                                                                    onClick={async () => {
+                                                                        if (window.confirm(t('okr.deleteObjectiveConfirm'))) {
+                                                                            try {
+                                                                                const { error } = await supabase
+                                                                                    .from('objectives')
+                                                                                    .delete()
+                                                                                    .eq('id', objective.id)
+
+                                                                                if (error) throw error
+                                                                                loadData()
+                                                                            } catch (error) {
+                                                                                console.error('Error deleting objective:', error)
+                                                                                alert(t('okr.deleteObjectiveError'))
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => handleAddKR(objective.id)}
+                                                                >
+                                                                    <Plus className="w-3 h-3 mr-1.5" />
+                                                                    {t('okr.newKR')}
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* KRs Table */}
+                                                        {objectiveKRs.length > 0 ? (
+                                                            <KRTable
+                                                                keyResults={objectiveKRs}
+                                                                onUpdateConfidence={updateConfidence}
+                                                                onUpdateValue={updateValue}
+                                                                onEdit={handleEditKR}
+                                                                onDelete={async (krId) => {
+                                                                    try {
+                                                                        // Hard delete now that we have cascade enabled and permission
+                                                                        const { error } = await supabase
+                                                                            .from('key_results')
+                                                                            .delete()
+                                                                            .eq('id', krId)
+
+                                                                        if (error) throw error
+                                                                        handleKRSaved()
+                                                                    } catch (error) {
+                                                                        console.error('Error deleting KR:', error)
+                                                                        alert(t('okr.deleteKRError'))
+                                                                    }
+                                                                }}
+                                                                renderExpandedRow={(kr) => (
+                                                                    <ActionPlanList krId={kr.id} />
+                                                                )}
+                                                            />
+                                                        ) : (
+                                                            <div className="text-center py-6 bg-[var(--color-surface-subtle)]/30 rounded-lg border border-dashed border-[var(--color-border)]">
+                                                                <p className="text-sm text-[var(--color-text-muted)] mb-2">
+                                                                    {t('okr.noKRs')}
+                                                                </p>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleAddKR(objective.id)}
+                                                                >
+                                                                    {t('okr.addFirstKR')}
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 text-[var(--color-text-muted)]">
+                                            <p>{t('okr.noObjectives')}</p>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 className="mt-4"
-                                                onClick={() => handleAddKR(objective.id)}
+                                                onClick={() => setIsCreatingObjective(true)}
                                             >
-                                                <Plus className="w-4 h-4" />
-                                                Adicionar KR
+                                                <Target className="w-4 h-4 mr-2" />
+                                                {t('okr.defineFirstObjective')}
                                             </Button>
-                                        )}
-                                    </div>
-                                )}
-                            </PillarSection>
-                        )
-                    })}
+                                        </div>
+                                    )}
+                                </PillarSection>
+                            )
+                        })}
                 </div>
             )}
 
             {pillars.length === 0 && !loading && (
                 <div className="text-center py-16">
                     <p className="text-[var(--color-text-muted)] mb-4">
-                        Nenhum pilar cadastrado. Execute o script seed.sql no Supabase para popular os dados.
+                        {t('okr.noPillars')}
                     </p>
                 </div>
             )}
@@ -473,6 +589,15 @@ export function OKRsPage() {
                 keyResult={selectedKR}
                 objectives={objectivesWithRelations}
                 defaultObjectiveId={defaultObjectiveId}
+            />
+
+            <CreateObjectiveModalV2
+                open={isCreatingObjective}
+                onOpenChange={setIsCreatingObjective}
+                onSave={handleKRSaved}
+                pillars={pillars}
+                units={selectedUnit ? [{ id: selectedUnit, name: selectedUnitData?.name || '', code: '' }] : []} // Pass current unit
+                defaultPillarId={filterPillar || undefined} // Pre-select pillar if filtered
             />
         </div>
     )

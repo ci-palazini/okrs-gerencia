@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, Save, Target, Plus } from 'lucide-react'
 import { Button } from '../ui/Button'
@@ -57,6 +58,7 @@ export function EditKRModalV2({
     objectives,
     defaultObjectiveId
 }: EditKRModalV2Props) {
+    const { t } = useTranslation()
     const { user } = useAuth()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -88,7 +90,7 @@ export function EditKRModalV2({
                 })
             } else {
                 setFormData({
-                    code: '',
+                    code: '', // Will be calculated below
                     title: '',
                     owner_name: '',
                     source: '',
@@ -101,6 +103,49 @@ export function EditKRModalV2({
         }
     }, [open, keyResult, defaultObjectiveId, objectives])
 
+    // Auto-generate KR Code Logic
+    useEffect(() => {
+        async function generateKRCode() {
+            // Only generate for new KRs when modal is open and objective is selected
+            if (isEditing || !open || !formData.objective_id) return
+
+            try {
+                // Find parent objective code
+                const parentObj = objectives.find(o => o.id === formData.objective_id)
+                const parentCode = parentObj?.code || '1'
+
+                // Find ALL KRs for this objective to calculate next number
+                const { data } = await supabase
+                    .from('key_results')
+                    .select('code')
+                    .eq('objective_id', formData.objective_id)
+
+                let nextSuffix = 1
+                if (data && data.length > 0) {
+                    // Extract numbers from all existing KR codes
+                    // Codes can be: "1.1", "RENT-1.2", "2.3", etc.
+                    const suffixes = data.map(kr => {
+                        const code = kr.code
+                        // Try to extract the last number after a dot
+                        const dotMatch = code.match(/\.(\d+)$/)
+                        if (dotMatch) return parseInt(dotMatch[1])
+                        // Fallback: try to parse the whole code as number
+                        const num = parseInt(code)
+                        return isNaN(num) ? 0 : num
+                    })
+                    const maxSuffix = Math.max(...suffixes, 0)
+                    nextSuffix = maxSuffix + 1
+                }
+
+                setFormData(prev => ({ ...prev, code: `${parentCode}.${nextSuffix}` }))
+            } catch (err) {
+                console.error('Error generating KR code:', err)
+            }
+        }
+
+        generateKRCode()
+    }, [formData.objective_id, open, isEditing, objectives])
+
     function handleMetricTypeChange(metricType: string) {
         const metric = metricTypes.find(m => m.value === metricType)
         setFormData(prev => ({
@@ -112,7 +157,7 @@ export function EditKRModalV2({
 
     async function handleSave() {
         if (!user || !formData.objective_id || !formData.code.trim() || !formData.title.trim()) {
-            setError('Preencha todos os campos obrigatórios')
+            setError(t('modals.createKR.errorRequired'))
             return
         }
 
@@ -148,6 +193,14 @@ export function EditKRModalV2({
                 })
             } else {
                 // Create new KR
+                // Calculate order_index based on existing KRs count
+                const { data: existingKRs } = await supabase
+                    .from('key_results')
+                    .select('id')
+                    .eq('objective_id', formData.objective_id)
+
+                const nextOrderIndex = (existingKRs?.length || 0) + 1
+
                 const { data: newKR, error: insertError } = await supabase
                     .from('key_results')
                     .insert({
@@ -158,7 +211,7 @@ export function EditKRModalV2({
                         metric_type: formData.metric_type,
                         unit: formData.unit,
                         objective_id: formData.objective_id,
-                        order_index: 99, // Will be sorted later
+                        order_index: nextOrderIndex,
                         is_active: true
                     })
                     .select()
@@ -195,7 +248,7 @@ export function EditKRModalV2({
             onSave()
             onOpenChange(false)
         } catch (err: any) {
-            setError(err.message || 'Erro ao salvar')
+            setError(err.message || t('modals.createKR.errorSave'))
         } finally {
             setLoading(false)
         }
@@ -220,10 +273,10 @@ export function EditKRModalV2({
                             </div>
                             <div>
                                 <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
-                                    {isEditing ? 'Editar Key Result' : 'Novo Key Result'}
+                                    {isEditing ? t('modals.createKR.titleEdit') : t('modals.createKR.titleNew')}
                                 </Dialog.Title>
                                 <Dialog.Description className="text-sm text-[var(--color-text-muted)]">
-                                    {isEditing ? 'Altere os dados do KR' : 'Adicione um novo KR ao objetivo'}
+                                    {isEditing ? t('modals.createKR.subtitleEdit') : t('modals.createKR.subtitleNew')}
                                 </Dialog.Description>
                             </div>
                         </div>
@@ -239,14 +292,14 @@ export function EditKRModalV2({
                         {/* Objective Selection */}
                         <div>
                             <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                Objetivo Vinculado *
+                                {t('modals.createKR.linkedObjective')} *
                             </label>
                             <select
                                 value={formData.objective_id}
                                 onChange={(e) => setFormData(prev => ({ ...prev, objective_id: e.target.value }))}
                                 className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                             >
-                                <option value="">Selecione um objetivo</option>
+                                <option value="">{t('modals.createKR.selectObjective')}</option>
                                 {objectives.map((obj) => (
                                     <option key={obj.id} value={obj.id}>
                                         [{obj.business_unit?.name}] {obj.pillar?.name} - {obj.code}
@@ -270,7 +323,7 @@ export function EditKRModalV2({
                         <div className="grid grid-cols-4 gap-4">
                             <div className="col-span-1">
                                 <Input
-                                    label="Código *"
+                                    label={`${t('modals.createKR.code')} *`}
                                     value={formData.code}
                                     onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
                                     placeholder="1.1"
@@ -278,10 +331,10 @@ export function EditKRModalV2({
                             </div>
                             <div className="col-span-3">
                                 <Input
-                                    label="Título *"
+                                    label={`${t('modals.createKR.titleLabel')} *`}
                                     value={formData.title}
                                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                                    placeholder="Ex: Redução de Lead Time"
+                                    placeholder={t('modals.createKR.titlePlaceholder')}
                                 />
                             </div>
                         </div>
@@ -289,23 +342,23 @@ export function EditKRModalV2({
                         {/* Owner & Source */}
                         <div className="grid grid-cols-2 gap-4">
                             <Input
-                                label="Responsável"
+                                label={t('modals.createKR.owner')}
                                 value={formData.owner_name || ''}
                                 onChange={(e) => setFormData(prev => ({ ...prev, owner_name: e.target.value }))}
-                                placeholder="Nome do responsável"
+                                placeholder={t('modals.createKR.ownerPlaceholder')}
                             />
                             <Input
-                                label="Fonte"
+                                label={t('modals.createKR.source')}
                                 value={formData.source || ''}
                                 onChange={(e) => setFormData(prev => ({ ...prev, source: e.target.value }))}
-                                placeholder="SAP, Finance, etc."
+                                placeholder={t('modals.createKR.sourcePlaceholder')}
                             />
                         </div>
 
                         {/* Metric Type */}
                         <div>
                             <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                Tipo de Métrica
+                                {t('modals.createKR.metricType')}
                             </label>
                             <div className="grid grid-cols-4 gap-2">
                                 {metricTypes.map((metric) => (
@@ -318,7 +371,7 @@ export function EditKRModalV2({
                                             : 'bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]'
                                             }`}
                                     >
-                                        {metric.label}
+                                        {t(`modals.createKR.metrics.${metric.value}`)}
                                     </button>
                                 ))}
                             </div>
@@ -326,10 +379,10 @@ export function EditKRModalV2({
 
                         {/* Unit (custom if needed) */}
                         <Input
-                            label="Unidade"
+                            label={t('modals.createKR.unit')}
                             value={formData.unit}
                             onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                            placeholder="%, R$, dias, etc."
+                            placeholder={t('modals.createKR.unitPlaceholder')}
                         />
 
                         {error && (
@@ -342,11 +395,11 @@ export function EditKRModalV2({
                     {/* Footer */}
                     <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
                         <Button variant="ghost" onClick={() => onOpenChange(false)}>
-                            Cancelar
+                            {t('modals.createKR.cancel')}
                         </Button>
                         <Button variant="primary" onClick={handleSave} loading={loading}>
                             <Save className="w-4 h-4" />
-                            {isEditing ? 'Salvar Alterações' : 'Criar Key Result'}
+                            {isEditing ? t('modals.createKR.saveEdit') : t('modals.createKR.saveNew')}
                         </Button>
                     </div>
                 </Dialog.Content>

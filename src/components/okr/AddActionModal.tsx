@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Popover from '@radix-ui/react-popover'
 import { X, Save, ListTodo, Calendar, ChevronDown, Check } from 'lucide-react'
@@ -26,9 +27,18 @@ interface AddActionModalProps {
     onOpenChange: (open: boolean) => void
     onSave: () => void
     preSelectedKRId?: string
+    actionToEdit?: {
+        id: string
+        title: string
+        description: string | null
+        due_date: string | null
+        key_result_id: string
+        status: string // Needed for audit log
+    } | null
 }
 
-export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: AddActionModalProps) {
+export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, actionToEdit }: AddActionModalProps) {
+    const { t } = useTranslation()
     const { user } = useAuth()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -44,11 +54,21 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
     useEffect(() => {
         if (open) {
             loadKeyResults()
-            if (preSelectedKRId) {
-                setSelectedKRId(preSelectedKRId)
+            if (actionToEdit) {
+                // Edit mode: populate form
+                setTitle(actionToEdit.title)
+                setDescription(actionToEdit.description || '')
+                setSelectedKRId(actionToEdit.key_result_id)
+                setDueDate(actionToEdit.due_date || '')
+            } else {
+                // Create mode: reset or set defaults
+                setTitle('')
+                setDescription('')
+                setSelectedKRId(preSelectedKRId || '')
+                setDueDate('')
             }
         }
-    }, [open, preSelectedKRId])
+    }, [open, preSelectedKRId, actionToEdit])
 
     async function loadKeyResults() {
         try {
@@ -72,7 +92,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
 
     async function handleSave() {
         if (!user || !selectedKRId || !title.trim()) {
-            setError('Preencha todos os campos obrigatórios')
+            setError(t('modals.action.errorRequired'))
             return
         }
 
@@ -80,31 +100,63 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
         setError(null)
 
         try {
-            const { data, error: insertError } = await supabase
-                .from('actions')
-                .insert({
-                    title: title.trim(),
-                    description: description.trim() || null,
-                    key_result_id: selectedKRId,
-                    due_date: dueDate || null,
-                    status: 'pending',
-                    owner_name: user.user_metadata?.full_name || user.email
+            if (actionToEdit) {
+                // UPDATE
+                const { data, error: updateError } = await supabase
+                    .from('actions')
+                    .update({
+                        title: title.trim(),
+                        description: description.trim() || null,
+                        key_result_id: selectedKRId,
+                        due_date: dueDate || null,
+                    })
+                    .eq('id', actionToEdit.id)
+                    .select()
+                    .single()
+
+                if (updateError) throw updateError
+
+                // CREATE AUDIT LOG
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email || '', // fallback
+                    action: 'update',
+                    entity_type: 'actions',
+                    entity_id: data.id,
+                    entity_name: data.title,
+                    old_value: actionToEdit,
+                    new_value: data
                 })
-                .select()
-                .single()
 
-            if (insertError) throw insertError
+            } else {
+                // CREATE
+                const { data, error: insertError } = await supabase
+                    .from('actions')
+                    .insert({
+                        title: title.trim(),
+                        description: description.trim() || null,
+                        key_result_id: selectedKRId,
+                        due_date: dueDate || null,
+                        status: 'pending',
+                        owner_name: user.user_metadata?.full_name || user.email
+                    })
+                    .select()
+                    .single()
 
-            // Create audit log
-            await supabase.from('audit_logs').insert({
-                user_id: user.id,
-                action: 'create',
-                entity_type: 'actions',
-                entity_id: data.id,
-                entity_name: data.title,
-                old_value: null,
-                new_value: data
-            })
+                if (insertError) throw insertError
+
+                // CREATE AUDIT LOG
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email || '', // fallback
+                    action: 'create',
+                    entity_type: 'actions',
+                    entity_id: data.id,
+                    entity_name: data.title,
+                    old_value: null,
+                    new_value: data
+                })
+            }
 
             // Reset form
             setTitle('')
@@ -115,7 +167,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
             onSave()
             onOpenChange(false)
         } catch (err: any) {
-            setError(err.message || 'Erro ao salvar')
+            setError(err.message || t('modals.action.errorSave'))
         } finally {
             setLoading(false)
         }
@@ -134,10 +186,10 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
                             </div>
                             <div>
                                 <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
-                                    Nova Ação
+                                    {actionToEdit ? t('modals.action.titleEdit') : t('modals.action.titleNew')}
                                 </Dialog.Title>
                                 <Dialog.Description className="text-sm text-[var(--color-text-muted)]">
-                                    Adicione uma iniciativa vinculada a um KR
+                                    {actionToEdit ? t('modals.action.subtitleEdit') : t('modals.action.subtitleNew')}
                                 </Dialog.Description>
                             </div>
                         </div>
@@ -152,21 +204,21 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
                     <div className="p-6 space-y-5">
                         {/* Title */}
                         <Input
-                            label="Título da Ação *"
+                            label={`${t('modals.action.titleLabel')} *`}
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Ex: Implementar sistema de gestão visual"
+                            placeholder={t('modals.action.titlePlaceholder')}
                         />
 
                         {/* Description */}
                         <div>
                             <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                Descrição
+                                {t('modals.action.description')}
                             </label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Detalhes adicionais sobre a ação..."
+                                placeholder={t('modals.action.descriptionPlaceholder')}
                                 rows={3}
                                 className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
                             />
@@ -175,7 +227,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
                         {/* Key Result Selection */}
                         <div>
                             <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                Key Result Vinculado *
+                                {t('modals.action.linkedKR')} *
                             </label>
                             <Popover.Root open={openSelect} onOpenChange={setOpenSelect} modal>
                                 <Popover.Trigger asChild>
@@ -190,10 +242,10 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
                                             {selectedKRId
                                                 ? (() => {
                                                     const kr = keyResults.find(k => k.id === selectedKRId)
-                                                    if (!kr) return 'Selecione um KR'
+                                                    if (!kr) return t('modals.action.selectKR')
                                                     return `[${kr.objective?.business_unit?.name || 'N/A'}] ${kr.code} - ${kr.title}`
                                                 })()
-                                                : 'Selecione um KR'}
+                                                : t('modals.action.selectKR')}
                                         </span>
                                         <ChevronDown className="w-4 h-4 opacity-50 flex-shrink-0" />
                                     </button>
@@ -235,7 +287,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
                                             })}
                                             {keyResults.length === 0 && (
                                                 <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
-                                                    Nenhum KR encontrado
+                                                    {t('modals.action.noKRFound')}
                                                 </div>
                                             )}
                                         </div>
@@ -247,7 +299,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
                         {/* Due Date */}
                         <Input
                             type="date"
-                            label="Data Limite"
+                            label={t('modals.action.dueDate')}
                             value={dueDate}
                             onChange={(e) => setDueDate(e.target.value)}
                             icon={<Calendar className="w-5 h-5" />}
@@ -263,11 +315,11 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId }: 
                     {/* Footer */}
                     <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
                         <Button variant="ghost" onClick={() => onOpenChange(false)}>
-                            Cancelar
+                            {t('modals.action.cancel')}
                         </Button>
                         <Button variant="primary" onClick={handleSave} loading={loading}>
                             <Save className="w-4 h-4" />
-                            Criar Ação
+                            {actionToEdit ? t('modals.action.saveEdit') : t('modals.action.saveNew')}
                         </Button>
                     </div>
                 </Dialog.Content>

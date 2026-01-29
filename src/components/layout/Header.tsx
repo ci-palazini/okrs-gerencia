@@ -1,12 +1,17 @@
 import { useAuth } from '../../hooks/useAuth'
-import { LogOut, User } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
+import { UnitToggle } from '../ui/UnitToggle'
+import { LogOut, User, Languages } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 
 export function Header() {
+    const { t, i18n } = useTranslation()
     const { user, signOut } = useAuth()
+    const { units, selectedUnit, setSelectedUnit } = useBusinessUnit()
 
     // Get name from user metadata or email
-    const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário'
+    const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('header.user')
 
     return (
         <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-6 bg-[var(--color-background)]/80 backdrop-blur-xl border-b border-[var(--color-border)]">
@@ -17,8 +22,45 @@ export function Header() {
                 </h1>
             </div>
 
-            {/* Right side - User menu */}
+            {/* Right side - User menu and Unit Selector */}
             <div className="flex items-center gap-4">
+                <UnitToggle
+                    units={units}
+                    selectedUnit={selectedUnit}
+                    onSelect={setSelectedUnit}
+                />
+
+                {/* Language Switcher */}
+                <DropdownMenu.Root>
+                    <DropdownMenu.Trigger asChild>
+                        <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors">
+                            <Languages className="w-5 h-5" />
+                            <span className="text-sm font-medium uppercase">{i18n.resolvedLanguage || 'pt'}</span>
+                        </button>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Portal>
+                        <DropdownMenu.Content
+                            className="min-w-[120px] p-1 rounded-xl bg-[var(--color-surface-elevated)] border border-[var(--color-border)] shadow-xl animate-in fade-in-0 zoom-in-95"
+                            sideOffset={8}
+                            align="end"
+                        >
+                            <DropdownMenu.Item
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                onClick={() => i18n.changeLanguage('pt')}
+                            >
+                                <span className="w-6 text-center">🇧🇷</span>
+                                Português
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                onClick={() => i18n.changeLanguage('es')}
+                            >
+                                <span className="w-6 text-center">🇦🇷</span>
+                                Español
+                            </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                    </DropdownMenu.Portal>
+                </DropdownMenu.Root>
 
                 {/* User Dropdown */}
                 <DropdownMenu.Root>
@@ -48,7 +90,7 @@ export function Header() {
                                 className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
                             >
                                 <User className="w-4 h-4" />
-                                Meu Perfil
+                                {t('header.myProfile')}
                             </DropdownMenu.Item>
 
                             <DropdownMenu.Separator className="h-px my-2 bg-[var(--color-border)]" />
@@ -58,7 +100,7 @@ export function Header() {
                                 onClick={() => signOut()}
                             >
                                 <LogOut className="w-4 h-4" />
-                                Sair
+                                {t('auth.logout')}
                             </DropdownMenu.Item>
                         </DropdownMenu.Content>
                     </DropdownMenu.Portal>
