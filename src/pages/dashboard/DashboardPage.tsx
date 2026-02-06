@@ -72,13 +72,20 @@ export function DashboardPage() {
         setLoading(true)
         try {
             // Fetch pillars
-            const { data: pillarsData } = await supabase
-                .from('pillars')
-                .select('*')
-                .eq('is_active', true)
-                .order('order_index')
+            // Fetch pillars and associations
+            const [pillarsRes, pivotRes] = await Promise.all([
+                supabase.from('pillars').select('*').eq('is_active', true).order('order_index'),
+                supabase.from('pillar_business_units').select('*')
+            ])
 
-            const pillars = pillarsData || []
+            let pillarsData = pillarsRes.data || []
+            const pivotData = pivotRes.data || []
+
+            // Filter pillars relevant to this unit
+            const pillars = pillarsData.filter(p => {
+                const isMapped = pivotData.some((r: any) => r.pillar_id === p.id && r.business_unit_id === selectedUnit)
+                return isMapped
+            })
 
             // Fetch objectives for selected unit
             const { data: objectivesData } = await supabase

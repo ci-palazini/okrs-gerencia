@@ -32,7 +32,7 @@ interface Pillar {
     icon: string
     color: string
     order_index: number
-    business_unit_id: string | null
+    business_unit_ids?: string[]
 }
 
 interface KeyResult {
@@ -139,13 +139,25 @@ export function OKRsPage() {
         setLoading(true)
         try {
             // 1. Load pillars
-            const { data: pillarsData } = await supabase
-                .from('pillars')
-                .select('*')
-                .eq('is_active', true)
-                .order('order_index')
+            // 1. Load pillars and associations
+            const [pillarsRes, pivotRes] = await Promise.all([
+                supabase.from('pillars').select('*').eq('is_active', true).order('order_index'),
+                supabase.from('pillar_business_units').select('*')
+            ])
 
-            if (pillarsData) setPillars(pillarsData)
+            let pillarsData = pillarsRes.data || []
+            const pivotData = pivotRes.data || []
+
+            if (pillarsData.length > 0 && pivotData.length > 0) {
+                pillarsData = pillarsData.map(p => ({
+                    ...p,
+                    business_unit_ids: pivotData
+                        .filter((r: any) => r.pillar_id === p.id)
+                        .map((r: any) => r.business_unit_id)
+                }))
+            }
+
+            setPillars(pillarsData)
 
             // 2. Load Objectives for selected unit
             let objectivesQuery = supabase
@@ -416,7 +428,21 @@ export function OKRsPage() {
             ) : (
                 <div className="space-y-8">
                     {pillars
-                        .filter(pillar => !pillar.business_unit_id || pillar.business_unit_id === selectedUnit)
+                        .filter(pillar => {
+                            // Filter by selected unit (if pillar has specific assignments)
+                            // If pillar.business_unit_ids is empty/undefined -> It's NOT global anymore (migration logic). 
+                            // Wait, in my migration: "Global" became "All Units".
+                            // So business_unit_ids should NOT be empty for active pillars if they are global.
+                            // But if it IS empty, it means it's assigned to NO ONE? Or Global?
+                            // Let's assume: if business_unit_ids is present and length > 0, check if includes selectedUnit.
+                            // If missing or empty? In new logic, explicit assignment is preferred.
+                            // But `Sidebar` logic was: `isMapped = pivotData.some(...)`.
+                            // So here: `pillar.business_unit_ids?.includes(selectedUnit)`
+
+                            // Safety check
+                            const ids = pillar.business_unit_ids || []
+                            return ids.includes(selectedUnit)
+                        })
                         .filter(pillar => !filterPillar || pillar.id === filterPillar)
                         .map((pillar) => {
                             const pillarObjectives = objectives.filter(o => o.pillar_id === pillar.id)

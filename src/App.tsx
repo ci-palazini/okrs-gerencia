@@ -15,6 +15,7 @@ import { HelpPage } from './pages/help/HelpPage'
 import { IdeasPage } from './pages/ideas/IdeasPage'
 import { GenericPillarPage } from './pages/pillar/GenericPillarPage'
 import { UserManagementPage } from './pages/Admin/UserManagementPage'
+import { ProfilePage } from './pages/profile/ProfilePage'
 import './index.css'
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
                 <Route path="/admin/users" element={<UserManagementPage />} />
                 <Route path="/admin/users/create" element={<CreateUserPage />} />
                 <Route path="/help" element={<HelpPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
 
                 {/* Rota dinâmica para todos os pilares */}
                 <Route path="/pillar/:pillarId" element={<GenericPillarPage />} />

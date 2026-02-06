@@ -27,7 +27,8 @@ export interface Pillar {
     color: string
     order_index: number
     is_active: boolean
-    business_unit_id: string | null
+    business_unit_ids?: string[]
+    // business_unit_id removed in migration 011
     created_at?: string
     updated_at?: string
 }

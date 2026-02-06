@@ -110,6 +110,23 @@ export interface Database {
                     updated_at?: string
                 }
             }
+            pillar_business_units: {
+                Row: {
+                    pillar_id: string
+                    business_unit_id: string
+                    created_at: string
+                }
+                Insert: {
+                    pillar_id: string
+                    business_unit_id: string
+                    created_at?: string
+                }
+                Update: {
+                    pillar_id?: string
+                    business_unit_id?: string
+                    created_at?: string
+                }
+            }
             objectives: {
                 Row: {
                     id: string

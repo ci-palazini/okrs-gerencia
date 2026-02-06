@@ -43,26 +43,40 @@ export function Sidebar() {
 
     async function loadPillars() {
         try {
-            const { data } = await supabase
-                .from('pillars')
-                .select('*')
-                .eq('is_active', true)
-                .order('order_index')
+            const [pillarsRes, pivotRes] = await Promise.all([
+                supabase
+                    .from('pillars')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('order_index'),
+                supabase
+                    .from('pillar_business_units')
+                    .select('*')
+            ])
 
-            if (data) {
-                // Filter: Global (null) OR Matching Unit
-                // AND Exclude Corporate GSC pillars (Safety, People, Opex) - Usually these are GSC specific.
-                // Depending on user rule: "GSC Corporate Objectives... don't need to be hidden"
-                // If user wants them in sidebar, we include them.
-                // But GSC objectives usually have their own "Objectives Corp" page. 
-                // Showing "Safety" (GSC) alongside "Safety" (Local)?
-                // Wait, "Segurança" (SEG) is local. "Safety" (SAFETY) is GSC.
-                // Including all for now, as per "contextual" request.
+            const pillarsData = pillarsRes.data
+            const pivotData = pivotRes.data
 
-                const filtered = data.filter(p => !p.business_unit_id || p.business_unit_id === selectedUnit)
+            if (pillarsData && pivotData) {
+                // Determine visibility
+                // A pillar is visible if:
+                // 1. It is mapped to the selected unit in pivot table
+                // 2. OR it is mapped to ALL units (Global) - conceptually "Global" is just "Mapped to All", but practically we check if it's mapped to THIS unit.
+                // Wait, if it IS mapped to this unit, it's visible. Period.
+
+                // So we just need to check if there is an entry in pivot table for (pillar_id, selectedUnit)
+
+                // However, "Global" legacy logic meant (business_unit_id IS NULL).
+                // Migration 011 converted NULL to "Mapped to All".
+                // So checking for existence in pivot is correct.
+
+                const visiblePillars = pillarsData.filter(p => {
+                    const isMapped = pivotData.some((r: any) => r.pillar_id === p.id && r.business_unit_id === selectedUnit)
+                    return isMapped
+                })
 
                 // Map to nav items
-                const navItems = filtered.map(p => ({
+                const navItems = visiblePillars.map(p => ({
                     id: p.id,
                     name: p.name,
                     // Usar sempre a rota dinâmica

@@ -21,7 +21,7 @@ interface Pillar {
     name: string
     color: string
     icon: string
-    business_unit_id: string | null
+    business_unit_ids?: string[]
 }
 
 interface Objective {
@@ -118,16 +118,27 @@ export function ObjectivesCorporatePage() {
         setLoading(true)
         try {
             // Get all pillars
-            const { data: pillarsResult } = await supabase
-                .from('pillars')
-                .select('*')
-                .eq('is_active', true)
-                .order('order_index')
+            // Get all pillars and associations
+            const [pillarsRes, pivotRes] = await Promise.all([
+                supabase.from('pillars').select('*').eq('is_active', true).order('order_index'),
+                supabase.from('pillar_business_units').select('*')
+            ])
 
-            if (!pillarsResult || pillarsResult.length === 0) {
+            let pillarsResult = pillarsRes.data || []
+            const pivotData = pivotRes.data || []
+
+            if (pillarsResult.length === 0) {
                 setLoading(false)
                 return
             }
+
+            // Attach relations
+            pillarsResult = pillarsResult.map(p => ({
+                ...p,
+                business_unit_ids: pivotData
+                    .filter((r: any) => r.pillar_id === p.id)
+                    .map((r: any) => r.business_unit_id)
+            }))
 
             // Get objectives for this unit
             const { data: objectivesData } = await supabase
@@ -168,7 +179,7 @@ export function ObjectivesCorporatePage() {
             }
 
             // Group objectives by pillar with their KRs
-            const relevantPillars = pillarsResult.filter(p => !p.business_unit_id || p.business_unit_id === selectedUnit)
+            const relevantPillars = pillarsResult.filter(p => p.business_unit_ids?.includes(selectedUnit))
 
             const pillarsWithData: PillarWithObjectives[] = relevantPillars.map(pillar => {
                 const pillarObjectives = objectivesData.filter(o => o.pillar_id === pillar.id)

@@ -4,11 +4,13 @@ import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 import { UnitToggle } from '../ui/UnitToggle'
 import { LogOut, User, Languages } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { useNavigate } from 'react-router-dom'
 
 export function Header() {
     const { t, i18n } = useTranslation()
     const { user, signOut } = useAuth()
     const { units, selectedUnit, setSelectedUnit } = useBusinessUnit()
+    const navigate = useNavigate()
 
     // Get name from user metadata or email
     const displayName = user?.full_name || user?.email?.split('@')[0] || t('header.user')
@@ -88,6 +90,7 @@ export function Header() {
                         >
                             <DropdownMenu.Item
                                 className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                onClick={() => navigate('/profile')}
                             >
                                 <User className="w-4 h-4" />
                                 {t('header.myProfile')}
