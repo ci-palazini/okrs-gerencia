@@ -4,7 +4,7 @@ import { BusinessUnitProvider } from './contexts/BusinessUnitContext'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoginPage } from './pages/auth/LoginPage'
-import { RegisterPage } from './pages/auth/RegisterPage'
+import { CreateUserPage } from './pages/Admin/CreateUserPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { OKRsPage } from './pages/okrs/OKRsPage'
 import { ActionsPage } from './pages/actions/ActionsPage'
@@ -26,7 +26,6 @@ function App() {
             <Routes>
               {/* Auth routes */}
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
 
               {/* Protected routes */}
               <Route element={<MainLayout />}>
@@ -38,6 +37,7 @@ function App() {
                 <Route path="/audit" element={<AuditLogPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/admin/users" element={<UserManagementPage />} />
+                <Route path="/admin/users/create" element={<CreateUserPage />} />
                 <Route path="/help" element={<HelpPage />} />
 
                 {/* Rota dinâmica para todos os pilares */}

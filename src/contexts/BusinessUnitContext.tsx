@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 
 interface BusinessUnit {
     id: string
@@ -19,6 +20,7 @@ interface BusinessUnitContextType {
 const BusinessUnitContext = createContext<BusinessUnitContextType | undefined>(undefined)
 
 export function BusinessUnitProvider({ children }: { children: ReactNode }) {
+    const { user } = useAuth()
     const [units, setUnits] = useState<BusinessUnit[]>([])
     const [selectedUnit, setSelectedUnit] = useState<string>('')
     const [isLoading, setIsLoading] = useState(true)
@@ -27,8 +29,13 @@ export function BusinessUnitProvider({ children }: { children: ReactNode }) {
     const selectedUnitData = units.find(u => u.id === selectedUnit) || null
 
     useEffect(() => {
-        loadUnits()
-    }, [])
+        if (user) {
+            loadUnits()
+        } else {
+            setUnits([])
+            setSelectedUnit('')
+        }
+    }, [user])
 
     async function loadUnits() {
         setIsLoading(true)

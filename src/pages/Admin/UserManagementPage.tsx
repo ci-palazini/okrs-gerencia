@@ -3,11 +3,14 @@ import { supabase } from '../../lib/supabase'
 import type { UserWithUnits, BusinessUnit } from '../../types'
 import { UserEditModal } from '../../components/Admin/UserEditModal'
 import { Badge } from '../../components/ui/Badge'
-import { Pencil, Loader2, ShieldCheck, User as UserIcon } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
+import { Pencil, Loader2, ShieldCheck, User as UserIcon, UserPlus } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 
 export function UserManagementPage() {
     const { user: currentUser } = useAuth()
+    const navigate = useNavigate()
     const [users, setUsers] = useState<UserWithUnits[]>([])
     const [units, setUnits] = useState<BusinessUnit[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -104,8 +107,14 @@ export function UserManagementPage() {
                     <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Gerenciamento de Usuários</h1>
                     <p className="text-[var(--color-text-muted)] mt-1">Configure permissões de acesso e atribuições de empresas</p>
                 </div>
-                <div className="bg-[var(--color-surface-elevated)] px-4 py-2 rounded-lg border border-[var(--color-border)]">
-                    <span className="text-sm font-medium text-[var(--color-text-secondary)]">Total: {users.length} usuários</span>
+                <div className="flex items-center gap-4">
+                    <div className="bg-[var(--color-surface-elevated)] px-4 py-2 rounded-lg border border-[var(--color-border)]">
+                        <span className="text-sm font-medium text-[var(--color-text-secondary)]">Total: {users.length} usuários</span>
+                    </div>
+                    <Button onClick={() => navigate('/admin/users/create')}>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Novo Usuário
+                    </Button>
                 </div>
             </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,8 +12,14 @@ export function LoginPage() {
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
-    const { signIn } = useAuth()
+    const { signIn, user } = useAuth()
     const navigate = useNavigate()
+
+    useEffect(() => {
+        if (user) {
+            navigate('/', { replace: true })
+        }
+    }, [user, navigate])
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -28,9 +34,8 @@ export function LoginPage() {
         if (error) {
             setError(error.message)
             setLoading(false)
-        } else {
-            navigate('/', { replace: true })
         }
+        // No need to manually navigate here, the useEffect will handle it when user state updates
     }
 
     return (
@@ -141,12 +146,7 @@ export function LoginPage() {
                         </Button>
                     </form>
 
-                    <p className="text-center text-[var(--color-text-secondary)] mt-8">
-                        {t('auth.noAccount')}{' '}
-                        <Link to="/register" className="text-[var(--color-primary)] hover:underline font-medium">
-                            {t('auth.createAccount')}
-                        </Link>
-                    </p>
+                    {/* Removed registration option */}
                 </div>
             </div>
         </div>
