@@ -115,6 +115,19 @@ export interface User {
     updated_at?: string
 }
 
+export interface UserBusinessUnit {
+    user_id: string
+    business_unit_id: string
+    created_at: string
+}
+
+export interface UserWithUnits extends User {
+    user_business_units: {
+        business_unit_id: string
+        business_units: BusinessUnit
+    }[]
+}
+
 // =====================================================
 // TIPOS COM RELAÇÕES
 // =====================================================

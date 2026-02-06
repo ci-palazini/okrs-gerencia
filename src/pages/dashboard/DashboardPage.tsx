@@ -8,6 +8,9 @@ import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { UnitToggle } from '../../components/ui/UnitToggle'
 import { supabase } from '../../lib/supabase'
+import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
+import { useQuarter } from '../../hooks/useQuarter'
+import { QuarterSelector } from '../../components/ui/QuarterSelector'
 
 interface BusinessUnit {
     id: string
@@ -43,9 +46,9 @@ interface KeyResultDisplay {
 
 export function DashboardPage() {
     const { t } = useTranslation()
-    const [loading, setLoading] = useState(true)
-    const [units, setUnits] = useState<BusinessUnit[]>([])
-    const [selectedUnit, setSelectedUnit] = useState<string>('')
+    const { selectedUnit, units } = useBusinessUnit()
+    const [loading, setLoading] = useState(false)
+
     const [stats, setStats] = useState<DashboardStats>({
         totalPillars: 0,
         totalKRs: 0,
@@ -55,35 +58,15 @@ export function DashboardPage() {
     })
     const [pillarsProgress, setPillarsProgress] = useState<PillarProgress[]>([])
     const [topKRs, setTopKRs] = useState<KeyResultDisplay[]>([])
-    const [currentQuarter] = useState(1)
-
-    useEffect(() => {
-        loadInitialData()
-    }, [])
+    const { quarter: currentQuarter, setQuarter: setCurrentQuarter, year } = useQuarter()
 
     useEffect(() => {
         if (selectedUnit) {
             loadDashboardData()
         }
-    }, [selectedUnit])
+    }, [selectedUnit, currentQuarter])
 
-    async function loadInitialData() {
-        try {
-            const { data: unitsData } = await supabase
-                .from('business_units')
-                .select('*')
-                .eq('is_active', true)
-                .neq('code', 'GSC')
-                .order('order_index')
 
-            if (unitsData && unitsData.length > 0) {
-                setUnits(unitsData)
-                setSelectedUnit(unitsData[0].id)
-            }
-        } catch (error) {
-            console.error('Error loading initial data:', error)
-        }
-    }
 
     async function loadDashboardData() {
         setLoading(true)
@@ -102,7 +85,7 @@ export function DashboardPage() {
                 .from('objectives')
                 .select('id, pillar_id')
                 .eq('business_unit_id', selectedUnit)
-                .eq('year', 2026)
+                .eq('year', year)
 
             const objectives = objectivesData || []
             const objectiveIds = objectives.map(o => o.id)
@@ -128,7 +111,7 @@ export function DashboardPage() {
                     .select('*')
                     .in('key_result_id', krIds)
                     .eq('quarter', currentQuarter)
-                    .eq('year', 2026)
+                    .eq('year', year)
 
                 quarterlyData = qData || []
             }
@@ -232,17 +215,17 @@ export function DashboardPage() {
                 <div>
                     <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('dashboard.title')}</h1>
                     <p className="text-[var(--color-text-secondary)] mt-1">
-                        {t('dashboard.overview', { year: 2026, unit: selectedUnitName })}
+                        {t('dashboard.overview', { year: year, unit: selectedUnitName })}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <UnitToggle
-                        units={units}
-                        selectedUnit={selectedUnit}
-                        onSelect={setSelectedUnit}
+
+                    <QuarterSelector
+                        quarter={currentQuarter}
+                        onSelect={setCurrentQuarter}
                     />
                     <Badge variant="info" size="md">
-                        Q{currentQuarter} 2026
+                        {year}
                     </Badge>
                     <Button
                         variant="ghost"

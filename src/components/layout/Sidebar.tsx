@@ -13,12 +13,14 @@ import {
     Building2,
     Lightbulb,
     Plus,
-    Edit3
+    Edit3,
+    Users
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
+import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 
 
@@ -28,6 +30,7 @@ export function Sidebar() {
     const { sidebarCollapsed, toggleSidebar } = useSettings()
     const { selectedUnit } = useBusinessUnit() // Use global context
     const location = useLocation()
+    const { user } = useAuth()
     const collapsed = sidebarCollapsed
 
     const [dynamicPillars, setDynamicPillars] = useState<any[]>([])
@@ -246,6 +249,27 @@ export function Sidebar() {
 
             {/* Bottom Navigation - Help & Settings */}
             <nav className="flex flex-col gap-1 p-3 border-t border-[var(--color-border)]">
+                {/* Admin Link */}
+                {user?.role === 'admin' && (
+                    <NavLink
+                        to="/admin/users"
+                        className={({ isActive }) => cn(
+                            'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group',
+                            isActive
+                                ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+                            collapsed && 'justify-center px-3'
+                        )}
+                        title="Gerenciar Usuários"
+                    >
+                        <Users className={cn(
+                            'w-5 h-5 transition-transform duration-200 group-hover:scale-110',
+                            location.pathname === '/admin/users' && 'drop-shadow-[0_0_8px_var(--color-primary)]'
+                        )} />
+                        {!collapsed && <span className="font-medium">Usuários</span>}
+                    </NavLink>
+                )}
+
                 {[
                     { name: t('sidebar.help'), href: '/help', icon: HelpCircle },
                     { name: t('sidebar.settings'), href: '/settings', icon: Settings },

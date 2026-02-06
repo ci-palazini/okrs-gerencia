@@ -13,6 +13,8 @@ import { ActionPlanList } from '../../components/okr/ActionPlanList'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
+import { useQuarter } from '../../hooks/useQuarter'
+import { QuarterSelector } from '../../components/ui/QuarterSelector'
 import { cn } from '../../lib/utils'
 import type { ConfidenceLevel } from '../../components/ui/ConfidenceIndicator'
 
@@ -111,7 +113,7 @@ export function OKRsPage() {
     const [objectivesWithRelations, setObjectivesWithRelations] = useState<ObjectiveWithRelations[]>([])
     const [keyResults, setKeyResults] = useState<KeyResult[]>([])
     const [quarterlyData, setQuarterlyData] = useState<QuarterlyData[]>([])
-    const [currentQuarter] = useState(1) // Q1 2026
+    const { quarter: currentQuarter, setQuarter: setCurrentQuarter, year } = useQuarter()
 
     // Modal state
     const [krModalOpen, setKrModalOpen] = useState(false)
@@ -127,7 +129,7 @@ export function OKRsPage() {
         if (selectedUnit) {
             loadData()
         }
-    }, [selectedUnit, filterPillar])
+    }, [selectedUnit, filterPillar, currentQuarter])
 
     useEffect(() => {
         setFilterPillar(searchParams.get('pillar'))
@@ -155,7 +157,7 @@ export function OKRsPage() {
                 `)
                 .eq('is_active', true)
                 .eq('business_unit_id', selectedUnit)
-                .eq('year', 2026)
+                .eq('year', year)
 
             if (filterPillar) {
                 objectivesQuery = objectivesQuery.eq('pillar_id', filterPillar)
@@ -183,7 +185,7 @@ export function OKRsPage() {
                     business_unit:business_units(id, name)
                 `)
                 .eq('business_unit_id', selectedUnit)
-                .eq('year', 2026)
+                .eq('year', year)
                 .eq('is_active', true)
 
             setObjectivesWithRelations((objectivesWithRel || []) as unknown as ObjectiveWithRelations[])
@@ -208,7 +210,7 @@ export function OKRsPage() {
                         .select('*')
                         .in('key_result_id', krIds)
                         .eq('quarter', currentQuarter)
-                        .eq('year', 2026)
+                        .eq('year', year)
 
                     setQuarterlyData(qData || [])
                 } else {
@@ -388,8 +390,12 @@ export function OKRsPage() {
                         <Plus className="w-4 h-4 mr-2" />
                         {t('okr.newObjective')}
                     </Button>
+                    <QuarterSelector
+                        quarter={currentQuarter}
+                        onSelect={setCurrentQuarter}
+                    />
                     <Badge variant="info" size="md">
-                        Q{currentQuarter} 2026
+                        {year}
                     </Badge>
                     <Button
                         variant="ghost"
