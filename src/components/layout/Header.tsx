@@ -11,7 +11,7 @@ export function Header() {
     const { units, selectedUnit, setSelectedUnit } = useBusinessUnit()
 
     // Get name from user metadata or email
-    const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('header.user')
+    const displayName = user?.full_name || user?.email?.split('@')[0] || t('header.user')
 
     return (
         <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-6 bg-[var(--color-background)]/80 backdrop-blur-xl border-b border-[var(--color-border)]">

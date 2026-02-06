@@ -138,7 +138,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                         key_result_id: selectedKRId,
                         due_date: dueDate || null,
                         status: 'pending',
-                        owner_name: user.user_metadata?.full_name || user.email
+                        owner_name: user.full_name || user.email
                     })
                     .select()
                     .single()
