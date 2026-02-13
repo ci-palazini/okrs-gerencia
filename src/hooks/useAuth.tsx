@@ -27,6 +27,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     user_business_units (
                         business_unit_id,
                         business_units ( name, code )
+                    ),
+                    department_members (
+                        department_id,
+                        role,
+                        departments ( name )
                     )
                 `)
                 .eq('id', authUser.id)

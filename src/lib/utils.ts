@@ -61,3 +61,11 @@ export function getStatusColor(progress: number): 'success' | 'warning' | 'dange
     if (progress >= 40) return 'warning'
     return 'danger'
 }
+
+/**
+ * Format username from email (get part before @)
+ */
+export function formatUsername(email: string | null | undefined): string {
+    if (!email) return ''
+    return email.split('@')[0]
+}

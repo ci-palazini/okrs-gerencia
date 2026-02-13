@@ -1,4 +1,5 @@
 import { useAuth } from '../../hooks/useAuth'
+import { formatUsername } from '../../lib/utils'
 import { useTranslation } from 'react-i18next'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 import { UnitToggle } from '../ui/UnitToggle'
@@ -13,7 +14,7 @@ export function Header() {
     const navigate = useNavigate()
 
     // Get name from user metadata or email
-    const displayName = user?.full_name || user?.email?.split('@')[0] || t('header.user')
+    const displayName = user?.full_name || formatUsername(user?.email) || t('header.user')
 
     return (
         <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-6 bg-[var(--color-background)]/80 backdrop-blur-xl border-b border-[var(--color-border)]">
@@ -76,7 +77,7 @@ export function Header() {
                                     {displayName}
                                 </p>
                                 <p className="text-xs text-[var(--color-text-muted)]">
-                                    {user?.email}
+                                    {formatUsername(user?.email)}
                                 </p>
                             </div>
                         </button>

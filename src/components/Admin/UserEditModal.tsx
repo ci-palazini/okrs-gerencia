@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { X, Check } from 'lucide-react'
 import { Button } from '../ui/Button'
 import type { BusinessUnit, UserWithUnits } from '../../types'
+import { formatUsername } from '../../lib/utils'
 
 interface UserEditModalProps {
     isOpen: boolean
@@ -74,7 +75,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                             )}
                             <div>
                                 <h3 className="font-semibold text-[var(--color-text-primary)]">{user.full_name}</h3>
-                                <p className="text-sm text-[var(--color-text-muted)]">{user.email}</p>
+                                <p className="text-sm text-[var(--color-text-muted)]">{formatUsername(user.email)}</p>
                             </div>
                         </div>
 

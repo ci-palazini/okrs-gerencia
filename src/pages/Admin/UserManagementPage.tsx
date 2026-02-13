@@ -1,12 +1,141 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { UserWithUnits, BusinessUnit } from '../../types'
 import { UserEditModal } from '../../components/Admin/UserEditModal'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import { Pencil, Loader2, ShieldCheck, User as UserIcon, UserPlus } from 'lucide-react'
+import { Pencil, Loader2, ShieldCheck, User as UserIcon, UserPlus, Building2, ChevronDown, ChevronRight, Users } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
+import { formatUsername } from '../../lib/utils'
+
+interface UserGroup {
+    id: string
+    label: string
+    code?: string
+    icon: 'admin' | 'company' | 'none'
+    users: UserWithUnits[]
+}
+
+function UserRow({ user, onEdit }: { user: UserWithUnits; onEdit: (u: UserWithUnits) => void }) {
+    return (
+        <tr className="group hover:bg-[var(--color-surface-hover)] transition-colors">
+            <td className="p-4">
+                <div className="flex items-center gap-3">
+                    {user.avatar_url ? (
+                        <img src={user.avatar_url} alt="" className="w-10 h-10 rounded-full" />
+                    ) : (
+                        <div className="w-10 h-10 rounded-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-secondary)] font-bold">
+                            {user.full_name.charAt(0)}
+                        </div>
+                    )}
+                    <div>
+                        <div className="font-semibold text-[var(--color-text-primary)]">{user.full_name}</div>
+                        <div className="text-sm text-[var(--color-text-muted)]">{formatUsername(user.email)}</div>
+                    </div>
+                </div>
+            </td>
+            <td className="p-4">
+                {user.role === 'admin' ? (
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+                        <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                        Admin
+                    </Badge>
+                ) : (
+                    <Badge variant="outline" className="bg-slate-500/10 text-slate-600 border-slate-500/20">
+                        <UserIcon className="w-3.5 h-3.5 mr-1" />
+                        Usuário
+                    </Badge>
+                )}
+            </td>
+            <td className="p-4">
+                {user.role === 'admin' ? (
+                    <span className="text-sm text-[var(--color-text-muted)] italic">Acesso total (Admin)</span>
+                ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                        {user.user_business_units && user.user_business_units.length > 0 ? (
+                            user.user_business_units.map((ubu: any) => (
+                                <span
+                                    key={ubu.business_unit_id}
+                                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-secondary)]"
+                                >
+                                    {ubu.business_units?.code || 'UNK'}
+                                </span>
+                            ))
+                        ) : (
+                            <span className="text-sm text-red-400">Sem acesso</span>
+                        )}
+                    </div>
+                )}
+            </td>
+            <td className="p-4 text-right">
+                <button
+                    onClick={() => onEdit(user)}
+                    className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all"
+                    title="Editar permissões"
+                >
+                    <Pencil className="w-4 h-4" />
+                </button>
+            </td>
+        </tr>
+    )
+}
+
+function UserGroupSection({ group, onEdit }: { group: UserGroup; onEdit: (u: UserWithUnits) => void }) {
+    const [isOpen, setIsOpen] = useState(true)
+
+    const iconElement = group.icon === 'admin' ? (
+        <ShieldCheck className="w-5 h-5 text-amber-500" />
+    ) : group.icon === 'company' ? (
+        <Building2 className="w-5 h-5 text-[var(--color-primary)]" />
+    ) : (
+        <Users className="w-5 h-5 text-[var(--color-text-muted)]" />
+    )
+
+    return (
+        <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] overflow-hidden shadow-sm">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center gap-3 px-5 py-4 bg-[var(--color-surface-elevated)] hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer text-left"
+            >
+                {isOpen ? (
+                    <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)] flex-shrink-0" />
+                ) : (
+                    <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] flex-shrink-0" />
+                )}
+                {iconElement}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="font-semibold text-[var(--color-text-primary)] text-base">{group.label}</span>
+                    {group.code && (
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20">
+                            {group.code}
+                        </span>
+                    )}
+                </div>
+                <span className="text-sm text-[var(--color-text-muted)] flex-shrink-0">
+                    {group.users.length} {group.users.length === 1 ? 'usuário' : 'usuários'}
+                </span>
+            </button>
+            {isOpen && (
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="border-b border-[var(--color-border)]">
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Usuário</th>
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Função</th>
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Acesso às Empresas</th>
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)] text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-border)]">
+                        {group.users.map(user => (
+                            <UserRow key={user.id} user={user} onEdit={onEdit} />
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </div>
+    )
+}
 
 export function UserManagementPage() {
     const { user: currentUser } = useAuth()
@@ -33,8 +162,6 @@ export function UserManagementPage() {
             if (unitsData) setUnits(unitsData)
 
             // Fetch Users with their units
-            // Note: Typescript might complain about join structure if not casted, 
-            // as standard query returns arrays.
             const { data: usersData, error } = await supabase
                 .from('users')
                 .select(`
@@ -55,6 +182,53 @@ export function UserManagementPage() {
         }
     }
 
+    // Group users by business unit
+    const userGroups = useMemo<UserGroup[]>(() => {
+        const groups: UserGroup[] = []
+
+        // 1. Admins section
+        const admins = users.filter(u => u.role === 'admin')
+        if (admins.length > 0) {
+            groups.push({
+                id: '__admins__',
+                label: 'Administradores',
+                icon: 'admin',
+                users: admins,
+            })
+        }
+
+        // 2. One section per business unit (ordered by order_index from DB)
+        for (const unit of units) {
+            const unitUsers = users.filter(
+                u => u.role !== 'admin' && u.user_business_units?.some(ubu => ubu.business_unit_id === unit.id)
+            )
+            if (unitUsers.length > 0) {
+                groups.push({
+                    id: unit.id,
+                    label: unit.name,
+                    code: unit.code,
+                    icon: 'company',
+                    users: unitUsers,
+                })
+            }
+        }
+
+        // 3. Users without any assignment (non-admin)
+        const unassigned = users.filter(
+            u => u.role !== 'admin' && (!u.user_business_units || u.user_business_units.length === 0)
+        )
+        if (unassigned.length > 0) {
+            groups.push({
+                id: '__unassigned__',
+                label: 'Sem Empresa Atribuída',
+                icon: 'none',
+                users: unassigned,
+            })
+        }
+
+        return groups
+    }, [users, units])
+
     const handleSaveUser = async (userId: string, role: 'admin' | 'user', unitIds: string[]) => {
         try {
             // 1. Update role
@@ -66,13 +240,11 @@ export function UserManagementPage() {
             if (roleError) throw roleError
 
             // 2. Update assignments
-            // Delete existing
             await supabase
                 .from('user_business_units')
                 .delete()
                 .eq('user_id', userId)
 
-            // Insert new (if any)
             if (unitIds.length > 0) {
                 const { error: insertError } = await supabase
                     .from('user_business_units')
@@ -82,7 +254,6 @@ export function UserManagementPage() {
                 if (insertError) throw insertError
             }
 
-            // Reload data
             loadData()
         } catch (error) {
             console.error('Error saving user:', error)
@@ -123,80 +294,19 @@ export function UserManagementPage() {
                     <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary)]" />
                 </div>
             ) : (
-                <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] overflow-hidden shadow-sm">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-[var(--color-surface-elevated)] border-b border-[var(--color-border)]">
-                                <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Usuário</th>
-                                <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Função</th>
-                                <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Acesso às Empresas</th>
-                                <th className="p-4 text-sm font-medium text-[var(--color-text-muted)] text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--color-border)]">
-                            {users.map(user => (
-                                <tr key={user.id} className="group hover:bg-[var(--color-surface-hover)] transition-colors">
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            {user.avatar_url ? (
-                                                <img src={user.avatar_url} alt="" className="w-10 h-10 rounded-full" />
-                                            ) : (
-                                                <div className="w-10 h-10 rounded-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-secondary)] font-bold">
-                                                    {user.full_name.charAt(0)}
-                                                </div>
-                                            )}
-                                            <div>
-                                                <div className="font-semibold text-[var(--color-text-primary)]">{user.full_name}</div>
-                                                <div className="text-sm text-[var(--color-text-muted)]">{user.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        {user.role === 'admin' ? (
-                                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                                <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                                                Admin
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline" className="bg-slate-500/10 text-slate-600 border-slate-500/20">
-                                                <UserIcon className="w-3.5 h-3.5 mr-1" />
-                                                Usuário
-                                            </Badge>
-                                        )}
-                                    </td>
-                                    <td className="p-4">
-                                        {user.role === 'admin' ? (
-                                            <span className="text-sm text-[var(--color-text-muted)] italic">Acesso total (Admin)</span>
-                                        ) : (
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {user.user_business_units && user.user_business_units.length > 0 ? (
-                                                    user.user_business_units.map((ubu: any) => (
-                                                        <span
-                                                            key={ubu.business_unit_id}
-                                                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-secondary)]"
-                                                        >
-                                                            {ubu.business_units?.code || 'UNK'}
-                                                        </span>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-sm text-red-400">Sem acesso</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        <button
-                                            onClick={() => setEditingUser(user)}
-                                            className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all"
-                                            title="Editar permissões"
-                                        >
-                                            <Pencil className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="space-y-4">
+                    {userGroups.map(group => (
+                        <UserGroupSection
+                            key={group.id}
+                            group={group}
+                            onEdit={setEditingUser}
+                        />
+                    ))}
+                    {userGroups.length === 0 && (
+                        <div className="text-center py-12 text-[var(--color-text-muted)]">
+                            Nenhum usuário encontrado.
+                        </div>
+                    )}
                 </div>
             )}
 

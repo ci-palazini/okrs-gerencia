@@ -301,6 +301,53 @@ export interface Database {
                     created_at?: string
                 }
             }
+            departments: {
+                Row: {
+                    id: string
+                    name: string
+                    description: string | null
+                    is_active: boolean
+                    order_index: number
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    name: string
+                    description?: string | null
+                    is_active?: boolean
+                    order_index?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    name?: string
+                    description?: string | null
+                    is_active?: boolean
+                    order_index?: number
+                    updated_at?: string
+                }
+            }
+            department_members: {
+                Row: {
+                    department_id: string
+                    user_id: string
+                    role: 'manager' | 'member'
+                    created_at: string
+                }
+                Insert: {
+                    department_id: string
+                    user_id: string
+                    role?: 'manager' | 'member'
+                    created_at?: string
+                }
+                Update: {
+                    department_id?: string
+                    user_id?: string
+                    role?: 'manager' | 'member'
+                    created_at?: string
+                }
+            }
             audit_logs: {
                 Row: {
                     id: string
@@ -343,3 +390,5 @@ export type KeyResult = Database['public']['Tables']['key_results']['Row']
 export type QuarterlyData = Database['public']['Tables']['kr_quarterly_data']['Row']
 export type Action = Database['public']['Tables']['actions']['Row']
 export type AuditLog = Database['public']['Tables']['audit_logs']['Row']
+export type Department = Database['public']['Tables']['departments']['Row']
+export type DepartmentMember = Database['public']['Tables']['department_members']['Row']

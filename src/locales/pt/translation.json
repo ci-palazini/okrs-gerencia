@@ -45,9 +45,7 @@
         "okrs": "OKR's",
         "managePillars": "Gerenciar Pilares",
         "actions": "Ações",
-        "ideas": "Propostas",
         "audit": "Auditoria",
-        "help": "Ajuda",
         "settings": "Configurações"
     },
     "dashboard": {
@@ -237,143 +235,6 @@
             "kr_quarterly_data": "Dados Trimestrais"
         }
     },
-    "help": {
-        "title": "Central de Ajuda",
-        "subtitle": "Guia de transição do Excel para a plataforma",
-        "searchPlaceholder": "Buscar ajuda...",
-        "excelMap": {
-            "title": "Do Excel para a Plataforma",
-            "description": "Encontre onde cada aba do Excel está na nova plataforma",
-            "excel": "No Excel:",
-            "platform": "Na Plataforma:",
-            "items": {
-                "corporate": {
-                    "excel": "Objetivos Corporativos",
-                    "platform": "Dashboard + Objetivos"
-                },
-                "okrs": {
-                    "excel": "OKRs",
-                    "platform": "OKRs (filtrar por unidade)"
-                },
-                "profitability": {
-                    "excel": "Rentabilidade",
-                    "platform": "Rentabilidade"
-                },
-                "actions": {
-                    "excel": "Ações SXS / Ações Hiter",
-                    "platform": "Ações (filtrar por unidade)"
-                },
-                "quarterly": {
-                    "excel": "Acompanhamento Trimestral",
-                    "platform": "Dashboard (indicador Q1 2026)"
-                },
-                "history": {
-                    "excel": "Histórico de Alterações (não havia)",
-                    "platform": "Auditoria"
-                }
-            }
-        },
-        "colors": {
-            "title": "Cores de Progresso",
-            "green": "Verde (70-100%)",
-            "greenDesc": "No caminho certo",
-            "yellow": "Amarelo (40-69%)",
-            "yellowDesc": "Atenção necessária",
-            "red": "Vermelho (0-39%)",
-            "redDesc": "Crítico"
-        },
-        "actionStatus": {
-            "title": "Status das Ações",
-            "pending": "Pendente",
-            "pendingDesc": "Ainda não iniciado",
-            "inProgress": "Em Progresso",
-            "inProgressDesc": "Trabalho em andamento",
-            "done": "Concluído",
-            "blocked": "Bloqueado",
-            "blockedDesc": "Impedido, precisa de ação"
-        },
-        "faq": {
-            "title": "Perguntas Frequentes",
-            "description": "Respostas para as dúvidas mais comuns",
-            "categories": {
-                "dashboard": "Dashboard",
-                "objectives": "Objetivos",
-                "actions": "Ações",
-                "general": "Geral"
-            },
-            "questions": {
-                "generalProgress": {
-                    "q": "Onde vejo o progresso geral?",
-                    "a": "No Dashboard, o card \"Progresso Geral\" mostra um círculo com a porcentagem média de todos os Key Results."
-                },
-                "lateKRs": {
-                    "q": "Como sei quais KRs estão atrasados?",
-                    "a": "Na seção \"Key Results que Precisam de Atenção\" do Dashboard, os KRs são ordenados do menor para maior progresso."
-                },
-                "editKR": {
-                    "q": "Como edito o valor de um KR?",
-                    "a": "Você pode editar valores (Baseline, Real, Target) clicando diretamente na célula da tabela. Para editar título ou outras propriedades, clique no ícone de editar (<0></0>)."
-                },
-                "krColors": {
-                    "q": "O que significam as cores dos KRs?",
-                    "a": "Verde (70-100%): No caminho certo. Amarelo (40-69%): Atenção necessária. Vermelho (0-39%): Crítico, precisa de ação urgente."
-                },
-                "filterUnits": {
-                    "q": "Como filtro por SXS ou Hiter?",
-                    "a": "Use o dropdown \"Todas Unidades\" no topo direito das páginas Dashboard e Objetivos para filtrar por unidade de negócio."
-                },
-                "createAction": {
-                    "q": "Como crio uma nova ação?",
-                    "a": "Vá em Ações → Clique em \"+ Nova Ação\" → Preencha título, descrição, KR vinculado, prioridade e data limite → Clique em \"Criar Ação\"."
-                },
-                "changeActionStatus": {
-                    "q": "Como mudo o status de uma ação?",
-                    "a": "Passe o mouse sobre a ação → Clique nos 3 pontinhos (⋮) → Escolha o novo status: Em Progresso, Concluído ou Bloqueado."
-                },
-                "priorityColors": {
-                    "q": "O que significam as cores de prioridade?",
-                    "a": "Vermelho: Alta prioridade. Amarelo: Média prioridade. Cinza: Baixa prioridade."
-                },
-                "autoSave": {
-                    "q": "Os dados são salvos automaticamente?",
-                    "a": "Sim! Todas as alterações são salvas no banco de dados imediatamente e registradas na página de Auditoria."
-                },
-                "audit": {
-                    "q": "Onde vejo as alterações feitas?",
-                    "a": "No menu lateral, clique em \"Auditoria\" para ver todo o histórico de mudanças feitas no sistema."
-                }
-            }
-        },
-        "support": {
-            "title": "Precisa de mais ajuda?",
-            "subtitle": "Entre em contato com a equipe de Melhoria Contínua"
-        }
-    },
-    "ideas": {
-        "title": "Propostas da Equipe",
-        "subtitle": "Acompanhe as propostas e iniciativas de melhoria de cada membro.",
-        "newIdea": "Nova Proposta",
-        "addIdea": "Adicionar Proposta",
-        "emptyState": {
-            "title": "Nenhuma proposta ainda",
-            "description": "Clique em \"Nova Proposta\" para criar o primeiro cartão."
-        },
-        "card": {
-            "edit": "Editar proposta",
-            "delete": "Excluir proposta",
-            "deleteConfirm": "Tem certeza que deseja excluir esta proposta?"
-        },
-        "modal": {
-            "titleNew": "Nova Proposta",
-            "titleEdit": "Editar Proposta",
-            "titleLabel": "Título da Proposta",
-            "titlePlaceholder": "Ex: Melhoria no processo X...",
-            "descriptionLabel": "Descrição (Opcional)",
-            "descriptionPlaceholder": "Detalhes...",
-            "saveNew": "Criar Proposta",
-            "saveEdit": "Salvar Alterações"
-        }
-    },
     "pillar": {
         "page": {
             "saving": "Salvando...",
@@ -497,5 +358,42 @@
                 }
             }
         }
+    },
+    "departments": {
+        "title": "Departamentos",
+        "subtitle": "Organize gerentes e equipes por departamento",
+        "newDepartment": "Novo Departamento",
+        "editDepartment": "Editar Departamento",
+        "name": "Nome",
+        "namePlaceholder": "Ex: Engenharia, Comercial...",
+        "description": "Descrição",
+        "descriptionPlaceholder": "Descrição opcional...",
+        "manager": "Gerente",
+        "managerLabel": "Gerente",
+        "teamMembers": "Membros do Time",
+        "noMembers": "Nenhum membro vinculado. Clique em editar para adicionar.",
+        "memberSingular": "membro",
+        "memberPlural": "membros",
+        "countSingular": "departamento",
+        "countPlural": "departamentos",
+        "emptyTitle": "Nenhum departamento cadastrado",
+        "emptyDesc": "Crie departamentos para organizar gerentes e equipes.",
+        "createFirst": "Criar Primeiro Departamento",
+        "create": "Criar Departamento",
+        "saveChanges": "Salvar Alterações",
+        "saving": "Salvando...",
+        "deleteConfirm": "Tem certeza que deseja excluir o departamento \"{{name}}\"? Todos os membros serão desvinculados.",
+        "restricted": "Acesso Restrito",
+        "adminOnly": "Apenas administradores podem acessar esta página.",
+        "userInOtherDept": "Usuário já pertence a outro departamento",
+        "otherDept": "outro dept."
+    },
+    "myTeam": {
+        "title": "Meu Time",
+        "restricted": "Acesso Restrito",
+        "managerOnly": "Apenas gerentes de departamento têm acesso a esta página.",
+        "notFound": "Departamento não encontrado",
+        "you": "Você",
+        "noMembers": "Ainda não há membros neste time."
     }
 }

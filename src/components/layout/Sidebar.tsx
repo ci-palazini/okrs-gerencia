@@ -9,12 +9,13 @@ import {
     ChevronLeft,
     ChevronRight,
     History,
-    HelpCircle,
     Building2,
     Lightbulb,
     Plus,
     Edit3,
-    Users
+    Users,
+    FolderTree,
+    Megaphone
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { cn } from '../../lib/utils'
@@ -228,7 +229,6 @@ export function Sidebar() {
                 {/* Other standard links that are not pillars but specific pages */}
                 {[
                     { name: t('sidebar.actions'), href: '/actions', icon: ListTodo },
-                    { name: t('sidebar.ideas'), href: '/ideas', icon: Lightbulb },
                     { name: t('sidebar.audit'), href: '/audit', icon: History },
                 ].map((item) => {
                     const isActive = location.pathname === item.href
@@ -265,8 +265,48 @@ export function Sidebar() {
             <nav className="flex flex-col gap-1 p-3 border-t border-[var(--color-border)]">
                 {/* Admin Link */}
                 {user?.role === 'admin' && (
+                    <>
+                        <NavLink
+                            to="/admin/users"
+                            className={({ isActive }) => cn(
+                                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group',
+                                isActive
+                                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+                                collapsed && 'justify-center px-3'
+                            )}
+                            title="Gerenciar Usuários"
+                        >
+                            <Users className={cn(
+                                'w-5 h-5 transition-transform duration-200 group-hover:scale-110',
+                                location.pathname === '/admin/users' && 'drop-shadow-[0_0_8px_var(--color-primary)]'
+                            )} />
+                            {!collapsed && <span className="font-medium">Usuários</span>}
+                        </NavLink>
+                        <NavLink
+                            to="/admin/departments"
+                            className={({ isActive }) => cn(
+                                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group',
+                                isActive
+                                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+                                collapsed && 'justify-center px-3'
+                            )}
+                            title={t('departments.title', 'Departamentos')}
+                        >
+                            <FolderTree className={cn(
+                                'w-5 h-5 transition-transform duration-200 group-hover:scale-110',
+                                location.pathname === '/admin/departments' && 'drop-shadow-[0_0_8px_var(--color-primary)]'
+                            )} />
+                            {!collapsed && <span className="font-medium">{t('departments.title', 'Departamentos')}</span>}
+                        </NavLink>
+                    </>
+                )}
+
+                {/* Manager Link */}
+                {user?.department_members?.some(m => m.role === 'manager') && (
                     <NavLink
-                        to="/admin/users"
+                        to="/my-team"
                         className={({ isActive }) => cn(
                             'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group',
                             isActive
@@ -274,18 +314,17 @@ export function Sidebar() {
                                 : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
                             collapsed && 'justify-center px-3'
                         )}
-                        title="Gerenciar Usuários"
+                        title={t('myTeam.title', 'Meu Time')}
                     >
-                        <Users className={cn(
+                        <Megaphone className={cn(
                             'w-5 h-5 transition-transform duration-200 group-hover:scale-110',
-                            location.pathname === '/admin/users' && 'drop-shadow-[0_0_8px_var(--color-primary)]'
+                            location.pathname === '/my-team' && 'drop-shadow-[0_0_8px_var(--color-primary)]'
                         )} />
-                        {!collapsed && <span className="font-medium">Usuários</span>}
+                        {!collapsed && <span className="font-medium">{t('myTeam.title', 'Meu Time')}</span>}
                     </NavLink>
                 )}
 
                 {[
-                    { name: t('sidebar.help'), href: '/help', icon: HelpCircle },
                     { name: t('sidebar.settings'), href: '/settings', icon: Settings },
                 ].map((item) => {
                     const isActive = location.pathname === item.href

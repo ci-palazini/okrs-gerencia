@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
+import { formatUsername } from '../../lib/utils'
 import { User, Lock, Mail, Shield, Save } from 'lucide-react'
 
 export function ProfilePage() {
@@ -57,17 +58,17 @@ export function ProfilePage() {
                                 {user?.full_name || t('common.user', 'User')}
                             </h2>
                             <p className="text-sm text-[var(--color-text-secondary)]">
-                                {user?.email}
+                                {formatUsername(user?.email)}
                             </p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)]">
-                            <Mail className="w-5 h-5 text-[var(--color-text-muted)]" />
+                            <User className="w-5 h-5 text-[var(--color-text-muted)]" />
                             <div>
-                                <p className="text-xs text-[var(--color-text-muted)] uppercase">Email (platform)</p>
-                                <p className="text-sm font-medium text-[var(--color-text-primary)]">{user?.email}</p>
+                                <p className="text-xs text-[var(--color-text-muted)] uppercase">{t('auth.username', 'Username')}</p>
+                                <p className="text-sm font-medium text-[var(--color-text-primary)]">{formatUsername(user?.email)}</p>
                             </div>
                         </div>
 
@@ -123,8 +124,8 @@ export function ProfilePage() {
 
                         {message && (
                             <div className={`p-3 rounded-lg text-sm ${message.type === 'success'
-                                    ? 'bg-green-500/10 text-green-600 border border-green-500/20'
-                                    : 'bg-red-500/10 text-red-600 border border-red-500/20'
+                                ? 'bg-green-500/10 text-green-600 border border-green-500/20'
+                                : 'bg-red-500/10 text-red-600 border border-red-500/20'
                                 }`}>
                                 {message.text}
                             </div>

@@ -127,6 +127,38 @@ export interface UserWithUnits extends User {
         business_unit_id: string
         business_units: BusinessUnit
     }[]
+    department_members?: {
+        department_id: string
+        role: 'manager' | 'member'
+        departments?: {
+            name: string
+        }
+    }[]
+}
+
+export interface Department {
+    id: string
+    name: string
+    description: string | null
+    is_active: boolean
+    order_index: number
+    created_at?: string
+    updated_at?: string
+}
+
+export interface DepartmentMember {
+    department_id: string
+    user_id: string
+    role: 'manager' | 'member'
+    created_at?: string
+}
+
+export interface DepartmentWithMembers extends Department {
+    department_members: {
+        user_id: string
+        role: 'manager' | 'member'
+        users: UserWithUnits
+    }[]
 }
 
 // =====================================================

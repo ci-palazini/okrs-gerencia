@@ -1,10 +1,12 @@
+
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { History, User, FileEdit, Trash2, Plus } from 'lucide-react'
 import { Card, CardContent } from '../../components/ui/Card'
+import { useAuth } from '../../hooks/useAuth'
 import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
-import { formatDate, cn } from '../../lib/utils'
+import { formatDate, cn, formatUsername } from '../../lib/utils'
 
 interface AuditLogEntry {
     id: string
@@ -167,12 +169,9 @@ export function AuditLogPage() {
 
                                         <div className="flex items-center gap-2 mt-2">
                                             <User className="w-4 h-4 text-[var(--color-text-muted)]" />
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <User className="w-4 h-4 text-[var(--color-text-muted)]" />
-                                                <span className="text-sm text-[var(--color-text-secondary)]">
-                                                    {log.user?.full_name || log.user?.email || log.user_email || t('audit.unknownUser')}
-                                                </span>
-                                            </div>
+                                            <span className="font-medium truncate block max-w-[150px]" title={log.user?.full_name || formatUsername(log.user?.email) || formatUsername(log.user_email) || undefined}>
+                                                {log.user?.full_name || formatUsername(log.user?.email) || formatUsername(log.user_email) || t('audit.unknownUser')}
+                                            </span>
                                         </div>
 
                                         {/* Changed Fields */}
