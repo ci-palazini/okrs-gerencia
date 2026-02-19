@@ -109,18 +109,23 @@ export function DashboardPage() {
                 keyResults = krsData || []
             }
 
-            // Fetch quarterly data for current quarter
+            // Fetch quarterly child KRs for current quarter
             let quarterlyData: any[] = []
             if (keyResults.length > 0) {
                 const krIds = keyResults.map(kr => kr.id)
                 const { data: qData } = await supabase
-                    .from('kr_quarterly_data')
+                    .from('key_results')
                     .select('*')
-                    .in('key_result_id', krIds)
+                    .in('parent_kr_id', krIds)
+                    .eq('scope', 'quarterly')
                     .eq('quarter', currentQuarter)
-                    .eq('year', year)
+                    .eq('is_active', true)
 
-                quarterlyData = qData || []
+                // Map child KRs to look like the old quarterly data shape
+                quarterlyData = (qData || []).map(q => ({
+                    ...q,
+                    key_result_id: q.parent_kr_id
+                }))
             }
 
             // Fetch overdue actions

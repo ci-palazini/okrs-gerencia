@@ -1,5 +1,4 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     LayoutDashboard,
@@ -10,19 +9,18 @@ import {
     ChevronRight,
     History,
     Building2,
-    Lightbulb,
-    Plus,
-    Edit3,
     Users,
     FolderTree,
-    Megaphone
+    Megaphone,
+    TrendingUp,
+    Layers
 } from 'lucide-react'
-import * as LucideIcons from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 import { useAuth } from '../../hooks/useAuth'
-import { supabase } from '../../lib/supabase'
+
+
 
 
 
@@ -33,64 +31,6 @@ export function Sidebar() {
     const location = useLocation()
     const { user } = useAuth()
     const collapsed = sidebarCollapsed
-
-    const [dynamicPillars, setDynamicPillars] = useState<any[]>([])
-
-    useEffect(() => {
-        if (selectedUnit) {
-            loadPillars()
-        }
-    }, [selectedUnit])
-
-    async function loadPillars() {
-        try {
-            const [pillarsRes, pivotRes] = await Promise.all([
-                supabase
-                    .from('pillars')
-                    .select('*')
-                    .eq('is_active', true)
-                    .order('order_index'),
-                supabase
-                    .from('pillar_business_units')
-                    .select('*')
-            ])
-
-            const pillarsData = pillarsRes.data
-            const pivotData = pivotRes.data
-
-            if (pillarsData && pivotData) {
-                // Determine visibility
-                // A pillar is visible if:
-                // 1. It is mapped to the selected unit in pivot table
-                // 2. OR it is mapped to ALL units (Global) - conceptually "Global" is just "Mapped to All", but practically we check if it's mapped to THIS unit.
-                // Wait, if it IS mapped to this unit, it's visible. Period.
-
-                // So we just need to check if there is an entry in pivot table for (pillar_id, selectedUnit)
-
-                // However, "Global" legacy logic meant (business_unit_id IS NULL).
-                // Migration 011 converted NULL to "Mapped to All".
-                // So checking for existence in pivot is correct.
-
-                const visiblePillars = pillarsData.filter(p => {
-                    const isMapped = pivotData.some((r: any) => r.pillar_id === p.id && r.business_unit_id === selectedUnit)
-                    return isMapped
-                })
-
-                // Map to nav items
-                const navItems = visiblePillars.map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    // Usar sempre a rota dinâmica
-                    href: `/pillar/${p.id}`,
-                    icon: p.icon // Pass original icon name (kebab-case)
-                }))
-
-                setDynamicPillars(navItems)
-            }
-        } catch (error) {
-            console.error('Error loading sidebar pillars:', error)
-        }
-    }
 
     return (
         <aside
@@ -135,6 +75,8 @@ export function Sidebar() {
                     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
                     { name: t('sidebar.corporateObjectives'), href: '/objectives-corporate', icon: Building2 },
                     { name: t('sidebar.okrs'), href: '/okrs', icon: Target },
+                    { name: 'Acompanhamento', href: '/kr-tracking', icon: TrendingUp },
+                    { name: 'Pilares', href: '/pillars', icon: Layers },
                 ].map((item) => {
                     const isActive = location.pathname === item.href
                     return (
@@ -163,68 +105,6 @@ export function Sidebar() {
                         </NavLink>
                     )
                 })}
-
-                {/* Divider if pillars exist */}
-                {dynamicPillars.length > 0 && (
-                    <div className="my-2 border-t border-[var(--color-border)] opacity-50" />
-                )}
-
-                {/* Dynamic Pillar Links */}
-                {dynamicPillars.map((pillar) => {
-                    const isActive = location.pathname === pillar.href
-
-                    // Dynamic icon mapping (kebab-case -> PascalCase)
-                    const iconName = pillar.icon
-                        ? pillar.icon.split('-').map((part: string) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
-                        : 'Circle'
-
-                    const IconComponent = (LucideIcons[iconName as keyof typeof LucideIcons] as React.ElementType) || Target
-
-                    return (
-                        <NavLink
-                            key={pillar.id}
-                            to={pillar.href}
-                            className={cn(
-                                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group',
-                                isActive
-                                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
-                                collapsed && 'justify-center px-3'
-                            )}
-                        >
-                            <IconComponent className={cn(
-                                'w-5 h-5 transition-transform duration-200',
-                                isActive && 'drop-shadow-[0_0_8px_var(--color-primary)]',
-                                'group-hover:scale-110'
-                            )} />
-                            {!collapsed && (
-                                <span className="font-medium truncate" title={pillar.name}>{pillar.name}</span>
-                            )}
-                            {isActive && !collapsed && (
-                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
-                            )}
-                        </NavLink>
-                    )
-                })}
-
-                {/* Manage Pillars Shortcut */}
-                <NavLink
-                    to="/settings?tab=pillars"
-                    className={({ isActive }) => cn(
-                        'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group mt-2',
-                        isActive && location.search.includes('tab=pillars')
-                            ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                            : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
-                        collapsed && 'justify-center px-3'
-                    )}
-                    title="Gerenciar Pilares"
-                >
-                    <Edit3 className={cn(
-                        "w-5 h-5 transition-transform duration-200 group-hover:scale-110",
-                        location.pathname === '/settings' && location.search.includes('tab=pillars') && 'drop-shadow-[0_0_8px_var(--color-primary)]'
-                    )} />
-                    {!collapsed && <span className="font-medium">{t('sidebar.managePillars')}</span>}
-                </NavLink>
 
                 {/* Other standard links that are not pillars but specific pages */}
                 {[

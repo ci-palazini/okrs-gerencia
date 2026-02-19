@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Objective, KeyResult, Pillar, Action } from '../types'
+import type { Objective, KeyResult, Pillar, Action, MonthlyData } from '../types'
 
 // Tipos com relações para este hook
 interface ObjectiveWithRelations extends Objective {
@@ -11,6 +11,8 @@ interface ObjectiveWithRelations extends Objective {
 interface KeyResultWithRelations extends KeyResult {
     objective?: Objective
     actions?: Action[]
+    children?: KeyResult[] // quarterly KRs
+    monthly_data?: MonthlyData[]
 }
 
 export function useOKRs() {
@@ -71,7 +73,7 @@ export function useOKRs() {
         }
     }, [])
 
-    const fetchKeyResults = useCallback(async (objectiveId?: string) => {
+    const fetchKeyResults = useCallback(async (objectiveId?: string, scope?: 'annual' | 'quarterly') => {
         setLoading(true)
         setError(null)
         try {
@@ -88,6 +90,10 @@ export function useOKRs() {
                 query = query.eq('objective_id', objectiveId)
             }
 
+            if (scope) {
+                query = query.eq('scope', scope)
+            }
+
             const { data, error } = await query.order('order_index')
 
             if (error) throw error
@@ -95,6 +101,93 @@ export function useOKRs() {
         } catch (err) {
             setError(err as Error)
             return []
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    const fetchChildrenKRs = useCallback(async (parentKrId: string) => {
+        setLoading(true)
+        setError(null)
+        try {
+            const { data, error } = await supabase
+                .from('key_results')
+                .select('*, actions(*)')
+                .eq('parent_kr_id', parentKrId)
+                .eq('is_active', true)
+                .order('quarter')
+
+            if (error) throw error
+            return data as KeyResultWithRelations[]
+        } catch (err) {
+            setError(err as Error)
+            return []
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    const fetchMonthlyData = useCallback(async (keyResultId: string, year: number = 2026) => {
+        setLoading(true)
+        setError(null)
+        try {
+            const { data, error } = await supabase
+                .from('kr_monthly_data')
+                .select('*')
+                .eq('key_result_id', keyResultId)
+                .eq('year', year)
+                .order('month')
+
+            if (error) throw error
+            return data as MonthlyData[]
+        } catch (err) {
+            setError(err as Error)
+            return []
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    const updateMonthlyData = useCallback(async (
+        keyResultId: string,
+        month: number,
+        year: number,
+        actual: number | null,
+        notes: string | null,
+        userId: string
+    ) => {
+        setLoading(true)
+        setError(null)
+        try {
+            const { data, error } = await supabase
+                .from('kr_monthly_data')
+                .upsert({
+                    key_result_id: keyResultId,
+                    month,
+                    year,
+                    actual,
+                    notes
+                }, {
+                    onConflict: 'key_result_id,month,year'
+                })
+                .select()
+                .single()
+
+            if (error) throw error
+
+            // Audit log
+            await supabase.from('audit_logs').insert({
+                user_id: userId,
+                action: 'update',
+                entity_type: 'kr_monthly_data',
+                entity_id: data.id,
+                new_value: { month, year, actual, notes }
+            })
+
+            return data as MonthlyData
+        } catch (err) {
+            setError(err as Error)
+            return null
         } finally {
             setLoading(false)
         }
@@ -151,6 +244,9 @@ export function useOKRs() {
         fetchPillars,
         fetchObjectives,
         fetchKeyResults,
+        fetchChildrenKRs,
+        fetchMonthlyData,
+        updateMonthlyData,
         updateKeyResultProgress
     }
 }

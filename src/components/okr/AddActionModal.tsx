@@ -176,10 +176,10 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
     return (
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
             <Dialog.Portal>
-                <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
-                <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 max-h-[90vh] overflow-y-auto">
+                <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
+                <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 max-h-[90vh] flex flex-col">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
+                    <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)] flex-shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--color-success)]/15">
                                 <ListTodo className="w-5 h-5 text-[var(--color-success)]" />
@@ -201,7 +201,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                     </div>
 
                     {/* Content */}
-                    <div className="p-6 space-y-5">
+                    <div className="p-6 space-y-5 overflow-y-auto flex-1">
                         {/* Title */}
                         <Input
                             label={`${t('modals.action.titleLabel')} *`}
@@ -313,7 +313,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
+                    <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)] flex-shrink-0">
                         <Button variant="ghost" onClick={() => onOpenChange(false)}>
                             {t('modals.action.cancel')}
                         </Button>

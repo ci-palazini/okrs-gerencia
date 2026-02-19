@@ -101,11 +101,15 @@ export function ConfidenceIndicator({
     )
 }
 
-// Simple icon version for tables (replacing emojis)
-export function ConfidenceEmoji({ value }: { value: ConfidenceLevel }) {
-    if (!value) return <Circle className="w-5 h-5 text-[var(--color-text-muted)]" />
+// Icon-based confidence indicator for tables (no emojis)
+export function ConfidenceEmoji({ value, size = 'sm' }: { value: ConfidenceLevel; size?: 'sm' | 'md' | 'lg' }) {
+    if (!value) return <Circle className={cn(sizeConfig[size], 'text-[var(--color-text-muted)]')} />
 
-    // We use a filled circle to represent the status in table view, similar to the previous emoji
     const config = confidenceConfig[value]
-    return <Circle className={cn("w-5 h-5", config.color, config.fillColor)} />
+    const Icon = config.icon
+    return (
+        <div className={cn('inline-flex items-center justify-center rounded-full p-0.5', config.bg)}>
+            <Icon className={cn(sizeConfig[size], config.color)} />
+        </div>
+    )
 }

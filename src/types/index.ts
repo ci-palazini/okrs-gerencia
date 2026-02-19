@@ -46,6 +46,8 @@ export interface Objective {
     updated_at?: string
 }
 
+export type KRScope = 'annual' | 'quarterly'
+
 export interface KeyResult {
     id: string
     code: string
@@ -58,12 +60,36 @@ export interface KeyResult {
     order_index: number
     objective_id: string
     is_active: boolean
+    // Hierarchy fields
+    scope: KRScope
+    parent_kr_id: string | null
+    quarter: number | null // 1-4 for quarterly KRs
+    target_direction: 'maximize' | 'minimize'
+    // Data fields (previously in kr_quarterly_data)
+    baseline: number | null
+    target: number | null
+    actual: number | null
+    progress: number | null
+    confidence: ConfidenceLevel
+    notes?: string | null
     created_at?: string
     updated_at?: string
 }
 
 export type ConfidenceLevel = 'on_track' | 'at_risk' | 'off_track' | null
 
+export interface MonthlyData {
+    id: string
+    key_result_id: string
+    month: number // 1-12
+    year: number
+    actual: number | null
+    notes?: string | null
+    created_at?: string
+    updated_at?: string
+}
+
+// Legacy type kept for compatibility during migration
 export interface QuarterlyData {
     id: string
     key_result_id: string
@@ -165,6 +191,12 @@ export interface DepartmentWithMembers extends Department {
 // TIPOS COM RELAÇÕES
 // =====================================================
 
+export interface KeyResultWithChildren extends KeyResult {
+    children: KeyResult[] // quarterly KRs
+    monthly_data?: MonthlyData[]
+}
+
+// Legacy alias
 export interface KeyResultWithQuarterly extends KeyResult {
     quarterlyData: QuarterlyData[]
 }
@@ -191,3 +223,4 @@ export interface NavItem {
 
 // Re-export ConfidenceLevel para uso em componentes
 export type { ConfidenceLevel as ConfidenceLevelType }
+

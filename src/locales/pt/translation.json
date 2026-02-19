@@ -132,6 +132,8 @@
         "createObjective": {
             "title": "Novo Objetivo",
             "subtitle": "Crie um novo objetivo estratégico",
+            "editTitle": "Editar Objetivo",
+            "editSubtitle": "Atualize os dados do objetivo estratégico",
             "unit": "Unidade",
             "pillar": "Pilar",
             "code": "Código",
@@ -143,6 +145,7 @@
             "year": "Ano",
             "cancel": "Cancelar",
             "save": "Criar Objetivo",
+            "saveEdit": "Salvar Alterações",
             "errorRequired": "Preencha todos os campos obrigatórios",
             "errorSave": "Erro ao salvar"
         },
@@ -201,7 +204,13 @@
             "saveEdit": "Salvar Alterações",
             "cancel": "Cancelar",
             "errorRequired": "Preencha todos os campos obrigatórios",
-            "errorSave": "Erro ao salvar"
+            "errorSave": "Erro ao salvar",
+            "scope": "Escopo",
+            "scopeAnnual": "Anual",
+            "scopeQuarterly": "Trimestral",
+            "parentKR": "KR Anual (Pai)",
+            "selectParentKR": "Selecione o KR anual pai",
+            "quarter": "Trimestre"
         }
     },
     "header": {
@@ -395,5 +404,29 @@
         "notFound": "Departamento não encontrado",
         "you": "Você",
         "noMembers": "Ainda não há membros neste time."
+    },
+    "quarterlyCard": {
+        "indicator": "Indicador",
+        "baseline": "Baseline",
+        "target": "Target",
+        "actual": "Real",
+        "progress": "% Avanço",
+        "confidence": "Confiança",
+        "owner": "Responsável",
+        "source": "Fonte",
+        "minimize": "Minimizar",
+        "maximize": "Maximizar",
+        "editKR": "Editar KR",
+        "annual": "Anual",
+        "quarterly": "Trimestral",
+        "monthlyTracking": "Acompanhamento Mensal",
+        "addQuarterlyKR": "Adicionar KR Trimestral"
+    },
+    "targetDirection": {
+        "label": "Direção do Target",
+        "maximize": "Maximizar",
+        "minimize": "Minimizar",
+        "maximizeHint": "Quanto maior o real, melhor (ex: Faturamento)",
+        "minimizeHint": "Quanto menor o real, melhor (ex: Uso de material)"
     }
 }

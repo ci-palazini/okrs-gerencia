@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Edit3, Trash2, X, ChevronDown } from 'lucide-react'
+import { Edit3, Trash2, X, ChevronDown, CalendarRange } from 'lucide-react'
 import { ProgressBar } from '../ui/ProgressBar'
 import { Badge } from '../ui/Badge'
 import { ConfidenceEmoji } from '../ui/ConfidenceIndicator'
@@ -14,8 +14,11 @@ interface KeyResultRow {
     source: string | null
     metric_type: string
     unit: string
-    progress: number
+    progress: number | null
     confidence: ConfidenceLevel
+    scope?: 'annual' | 'quarterly'
+    quarter?: number | null
+    objective_id?: string
     // Quarterly data
     baseline?: number | null
     target?: number | null
@@ -147,11 +150,18 @@ export function KRTable({
                                         )}
                                     </td>
 
-                                    {/* Code */}
+                                    {/* Code + Scope Badge */}
                                     <td className="px-3 py-3">
-                                        <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-bold text-sm whitespace-nowrap">
-                                            {kr.code}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-bold text-sm whitespace-nowrap">
+                                                {kr.code}
+                                            </span>
+                                            {kr.scope === 'annual' && (
+                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                                                    <CalendarRange className="w-3 h-3" /> Anual
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* Title */}
@@ -271,13 +281,13 @@ export function KRTable({
                                         <div className="flex items-center gap-2">
                                             <div className="flex-1 min-w-16">
                                                 <ProgressBar
-                                                    value={kr.progress}
+                                                    value={kr.progress ?? 0}
                                                     size="sm"
                                                     variant="gradient"
                                                 />
                                             </div>
-                                            <Badge variant={getProgressVariant(kr.progress)} size="sm">
-                                                {kr.progress}%
+                                            <Badge variant={getProgressVariant(kr.progress ?? 0)} size="sm">
+                                                {kr.progress ?? 0}%
                                             </Badge>
                                         </div>
                                     </td>

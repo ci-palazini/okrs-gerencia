@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Save, Target, Plus, Database } from 'lucide-react'
+import { X, Save, Target, Plus, Pencil } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { supabase } from '../../lib/supabase'
@@ -21,6 +21,16 @@ interface Unit {
     code: string
 }
 
+interface ObjectiveData {
+    id: string
+    code: string
+    title: string
+    description: string | null
+    pillar_id: string
+    business_unit_id: string
+    year: number
+}
+
 interface CreateObjectiveModalV2Props {
     open: boolean
     onOpenChange: (open: boolean) => void
@@ -28,6 +38,7 @@ interface CreateObjectiveModalV2Props {
     pillars: Pillar[]
     units: Unit[]
     defaultPillarId?: string
+    objective?: ObjectiveData | null // If provided, modal is in edit mode
 }
 
 export function CreateObjectiveModalV2({
@@ -36,12 +47,15 @@ export function CreateObjectiveModalV2({
     onSave,
     pillars,
     units,
-    defaultPillarId
+    defaultPillarId,
+    objective
 }: CreateObjectiveModalV2Props) {
     const { t } = useTranslation()
     const { user } = useAuth()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    const isEditMode = !!objective?.id
 
     const [formData, setFormData] = useState({
         code: '',
@@ -54,20 +68,34 @@ export function CreateObjectiveModalV2({
 
     useEffect(() => {
         if (open) {
-            setFormData({
-                code: '',
-                title: '',
-                description: '',
-                pillar_id: defaultPillarId || pillars[0]?.id || '',
-                business_unit_id: units.length > 0 ? units[0].id : '',
-                year: 2026
-            })
+            if (isEditMode && objective) {
+                // Pre-populate form with existing objective data
+                setFormData({
+                    code: objective.code,
+                    title: objective.title,
+                    description: objective.description || '',
+                    pillar_id: objective.pillar_id,
+                    business_unit_id: objective.business_unit_id,
+                    year: objective.year
+                })
+            } else {
+                setFormData({
+                    code: '',
+                    title: '',
+                    description: '',
+                    pillar_id: defaultPillarId || pillars[0]?.id || '',
+                    business_unit_id: units.length > 0 ? units[0].id : '',
+                    year: 2026
+                })
+            }
             setError(null)
         }
-    }, [open, defaultPillarId, pillars, units])
+    }, [open, defaultPillarId, pillars, units, objective, isEditMode])
 
-    // Auto-generate code with PILLAR-N format
+    // Auto-generate code with PILLAR-N format (only in create mode)
     useEffect(() => {
+        if (isEditMode) return // Don't auto-generate code when editing
+
         async function generateCode() {
             if (!open || !formData.pillar_id || !formData.business_unit_id) return
 
@@ -87,11 +115,8 @@ export function CreateObjectiveModalV2({
 
                 let nextNumber = 1
                 if (data && data.length > 0) {
-                    // Find the highest number from existing codes
-                    // Codes can be: "RENT-1", "RENT-2", "OBJ-RENT", "1", etc.
                     const numbers = data.map(obj => {
                         const code = obj.code
-                        // Try to extract number from formats like "RENT-1" or just "1"
                         const match = code.match(/-(\d+)$/) || code.match(/^(\d+)$/)
                         return match ? parseInt(match[1]) : 0
                     })
@@ -106,7 +131,7 @@ export function CreateObjectiveModalV2({
         }
 
         generateCode()
-    }, [formData.pillar_id, formData.business_unit_id, formData.year, open, pillars])
+    }, [formData.pillar_id, formData.business_unit_id, formData.year, open, pillars, isEditMode])
 
 
     async function handleSave() {
@@ -119,29 +144,59 @@ export function CreateObjectiveModalV2({
         setError(null)
 
         try {
-            const { error: insertError } = await supabase
-                .from('objectives')
-                .insert({
-                    code: formData.code.trim(),
-                    title: formData.title.trim(),
-                    description: (formData.description || '').trim() || null,
-                    pillar_id: formData.pillar_id,
-                    business_unit_id: formData.business_unit_id,
-                    year: formData.year,
-                    is_active: true
+            if (isEditMode && objective) {
+                // UPDATE existing objective
+                const { error: updateError } = await supabase
+                    .from('objectives')
+                    .update({
+                        code: formData.code.trim(),
+                        title: formData.title.trim(),
+                        description: (formData.description || '').trim() || null,
+                        pillar_id: formData.pillar_id,
+                        business_unit_id: formData.business_unit_id,
+                        year: formData.year
+                    })
+                    .eq('id', objective.id)
+
+                if (updateError) throw updateError
+
+                // Audit log
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email,
+                    action: 'update',
+                    entity_type: 'objectives',
+                    entity_id: objective.id,
+                    entity_name: formData.title,
+                    old_value: { code: objective.code, title: objective.title, description: objective.description },
+                    new_value: { code: formData.code.trim(), title: formData.title.trim(), description: formData.description.trim() || null }
                 })
+            } else {
+                // INSERT new objective
+                const { error: insertError } = await supabase
+                    .from('objectives')
+                    .insert({
+                        code: formData.code.trim(),
+                        title: formData.title.trim(),
+                        description: (formData.description || '').trim() || null,
+                        pillar_id: formData.pillar_id,
+                        business_unit_id: formData.business_unit_id,
+                        year: formData.year,
+                        is_active: true
+                    })
 
-            if (insertError) throw insertError
+                if (insertError) throw insertError
 
-            // Audit log
-            await supabase.from('audit_logs').insert({
-                user_id: user.id,
-                user_email: user.email,
-                action: 'create',
-                entity_type: 'objectives',
-                entity_id: 'new', // We don't have ID unless we select(), but 'new' is fine for audit or we select()
-                entity_name: formData.title
-            })
+                // Audit log
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email,
+                    action: 'create',
+                    entity_type: 'objectives',
+                    entity_id: 'new',
+                    entity_name: formData.title
+                })
+            }
 
             onSave()
             onOpenChange(false)
@@ -155,20 +210,23 @@ export function CreateObjectiveModalV2({
     return (
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
             <Dialog.Portal>
-                <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
-                <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 max-h-[90vh] overflow-y-auto">
+                <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
+                <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 max-h-[90vh] flex flex-col">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
+                    <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)] flex-shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--color-primary)]/15">
-                                <Plus className="w-5 h-5 text-[var(--color-primary)]" />
+                                {isEditMode
+                                    ? <Pencil className="w-5 h-5 text-[var(--color-primary)]" />
+                                    : <Plus className="w-5 h-5 text-[var(--color-primary)]" />
+                                }
                             </div>
                             <div>
                                 <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
-                                    {t('modals.createObjective.title')}
+                                    {isEditMode ? t('modals.createObjective.editTitle') : t('modals.createObjective.title')}
                                 </Dialog.Title>
                                 <Dialog.Description className="text-sm text-[var(--color-text-muted)]">
-                                    {t('modals.createObjective.subtitle')}
+                                    {isEditMode ? t('modals.createObjective.editSubtitle') : t('modals.createObjective.subtitle')}
                                 </Dialog.Description>
                             </div>
                         </div>
@@ -180,7 +238,7 @@ export function CreateObjectiveModalV2({
                     </div>
 
                     {/* Content */}
-                    <div className="p-6 space-y-5">
+                    <div className="p-6 space-y-5 overflow-y-auto flex-1">
                         {/* Unit & Pillar */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -269,13 +327,13 @@ export function CreateObjectiveModalV2({
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
+                    <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)] flex-shrink-0">
                         <Button variant="ghost" onClick={() => onOpenChange(false)}>
                             {t('modals.createObjective.cancel')}
                         </Button>
                         <Button variant="primary" onClick={handleSave} loading={loading}>
                             <Save className="w-4 h-4" />
-                            {t('modals.createObjective.save')}
+                            {isEditMode ? t('modals.createObjective.saveEdit') : t('modals.createObjective.save')}
                         </Button>
                     </div>
                 </Dialog.Content>

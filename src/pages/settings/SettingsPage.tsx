@@ -11,7 +11,6 @@ import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
-import { PillarsTab } from './PillarsTab'
 
 interface DatabaseStats {
     objectives: number
@@ -23,7 +22,7 @@ interface DatabaseStats {
 export function SettingsPage() {
     const { t } = useTranslation()
     const [searchParams, setSearchParams] = useSearchParams()
-    const activeTab = (searchParams.get('tab') as 'general' | 'data' | 'pillars') || 'general'
+    const activeTab = (searchParams.get('tab') as 'general' | 'data') || 'general'
 
     const setActiveTab = (tab: string) => {
         setSearchParams({ tab })
@@ -206,7 +205,6 @@ export function SettingsPage() {
             <div className="flex items-center gap-2 p-1 rounded-xl bg-[var(--color-surface)] w-fit border border-[var(--color-border)]">
                 {[
                     { key: 'general', label: t('settings.page.tabs.general'), icon: Settings },
-                    { key: 'pillars', label: t('settings.page.tabs.pillars'), icon: Palette }, // Reusing Palette icon
                     { key: 'data', label: t('settings.page.tabs.data'), icon: Database },
                 ].map(({ key, label, icon: Icon }) => (
                     <button
@@ -308,10 +306,6 @@ export function SettingsPage() {
             )}
 
 
-
-            {activeTab === 'pillars' && (
-                <PillarsTab />
-            )}
 
             {activeTab === 'data' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
