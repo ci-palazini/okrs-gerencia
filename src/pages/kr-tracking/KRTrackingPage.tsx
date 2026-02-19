@@ -3,7 +3,6 @@ import {
     TrendingUp,
     RefreshCw,
     ChevronDown,
-    ChevronRight,
     TrendingDown,
     Target,
     Filter,
@@ -11,8 +10,8 @@ import {
     Calendar
 } from 'lucide-react'
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, ReferenceLine, Legend, Area, AreaChart
+    Line, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, Legend, Area, AreaChart
 } from 'recharts'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -372,7 +371,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                         {progress !== null ? (
                                                             <div className="flex flex-col items-center gap-1.5">
                                                                 <Badge variant={progressVariant(progress)} size="sm" className="border shadow-none">{progress}%</Badge>
-                                                                <ProgressBar value={progress} size="xs" className="w-14" />
+                                                                <ProgressBar value={progress} size="sm" className="w-14" />
                                                             </div>
                                                         ) : (
                                                             <div className="text-center text-slate-300">—</div>
@@ -452,19 +451,31 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                     domain={['auto', 'auto']}
                                                 />
                                                 <Tooltip
-                                                    contentStyle={{
-                                                        backgroundColor: '#ffffff',
-                                                        border: '1px solid #e2e8f0',
-                                                        borderRadius: '8px',
-                                                        fontSize: '12px',
-                                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                                                        padding: '12px'
-                                                    }}
-                                                    formatter={(value: any, name: string) => [
-                                                        <span className="font-mono font-bold text-slate-800">{value !== null ? fmt(Number(value)) : '—'}</span>,
-                                                        <span className="text-slate-500 uppercase text-[10px] tracking-wider">{name}</span>,
-                                                    ]}
                                                     cursor={{ stroke: pillarColor, strokeWidth: 1.5, strokeDasharray: '4 4' }}
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs">
+                                                                    <div className="font-bold text-slate-700 mb-2">{label}</div>
+                                                                    {payload.map((entry: any, index: number) => (
+                                                                        <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
+                                                                            <div
+                                                                                className="w-2 h-2 rounded-full"
+                                                                                style={{ backgroundColor: entry.color }}
+                                                                            />
+                                                                            <span className="text-slate-500 uppercase tracking-wider font-semibold">
+                                                                                {entry.name}:
+                                                                            </span>
+                                                                            <span className="font-mono font-bold text-slate-800 ml-auto pl-4">
+                                                                                {entry.value !== null ? fmt(Number(entry.value)) : '—'}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )
+                                                        }
+                                                        return null
+                                                    }}
                                                 />
                                                 <Legend
                                                     verticalAlign="top"

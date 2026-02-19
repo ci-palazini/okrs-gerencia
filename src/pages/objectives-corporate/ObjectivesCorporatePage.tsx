@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useTranslation, Trans } from 'react-i18next'
-import { RefreshCw, Target, ChevronDown, ChevronRight, Pencil, Plus, Trash2, BarChart3, Edit3 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { RefreshCw, Target, ChevronDown, ChevronRight, Pencil, Plus } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { KRTable } from '../../components/okr/KRTable'
 import { ActionPlanList } from '../../components/okr/ActionPlanList'
-import { ProgressBar } from '../../components/ui/ProgressBar'
-import { ConfidenceEmoji } from '../../components/ui/ConfidenceIndicator'
 import { CreateObjectiveModalV2 } from '../../components/okr/CreateObjectiveModalV2'
 import { EditKRModalV2 } from '../../components/okr/EditKRModalV2'
 import { supabase } from '../../lib/supabase'
@@ -73,9 +71,7 @@ export function ObjectivesCorporatePage() {
     const [units, setUnits] = useState<BusinessUnit[]>([])
     const [selectedUnit, setSelectedUnit] = useState<string>('')
     const [pillarsData, setPillarsData] = useState<PillarWithObjectives[]>([])
-    const [allKRs, setAllKRs] = useState<KeyResult[]>([])
     const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set())
-    const [currentQuarter] = useState(1) // Q1 2026
 
     // Edit objective state
     const [isEditingObjective, setIsEditingObjective] = useState(false)
@@ -163,24 +159,19 @@ export function ObjectivesCorporatePage() {
 
             if (!objectivesData || objectivesData.length === 0) {
                 setPillarsData(pillarsResult.map(p => ({ ...p, objectives: [] })))
-                setAllKRs([])
                 setLoading(false)
                 return
             }
 
-            // Get all KRs for these objectives (both annual and quarterly)
+            // Get annual KRs only for these objectives
             const objectiveIds = objectivesData.map(o => o.id)
             const { data: krsData } = await supabase
                 .from('key_results')
                 .select('*')
                 .in('objective_id', objectiveIds)
                 .eq('is_active', true)
+                .eq('scope', 'annual')
                 .order('order_index')
-
-            setAllKRs(krsData || [])
-
-            // Filter only annual KRs for the table display
-            const annualKRs = (krsData || []).filter(kr => kr.scope === 'annual')
 
             // Group objectives by pillar with their annual KRs
             const relevantPillars = pillarsResult.filter(p => p.business_unit_ids?.includes(selectedUnit))
@@ -189,7 +180,7 @@ export function ObjectivesCorporatePage() {
                 const pillarObjectives = objectivesData.filter(o => o.pillar_id === pillar.id)
                 const objectivesWithKRs = pillarObjectives.map(obj => ({
                     ...obj,
-                    key_results: annualKRs.filter(kr => kr.objective_id === obj.id)
+                    key_results: (krsData || []).filter(kr => kr.objective_id === obj.id)
                 }))
 
                 return {
@@ -213,7 +204,7 @@ export function ObjectivesCorporatePage() {
 
     async function updateConfidence(krId: string, confidence: ConfidenceLevel) {
         try {
-            const kr = allKRs.find(k => k.id === krId)
+            const kr = pillarsData.flatMap(p => p.objectives.flatMap(o => o.key_results)).find(k => k.id === krId)
 
             const { error } = await supabase
                 .from('key_results')
@@ -221,10 +212,6 @@ export function ObjectivesCorporatePage() {
                 .eq('id', krId)
 
             if (!error) {
-                setAllKRs(prev =>
-                    prev.map(k => k.id === krId ? { ...k, confidence } : k)
-                )
-
                 if (user && kr) {
                     await supabase.from('audit_logs').insert({
                         user_id: user.id,
@@ -247,28 +234,35 @@ export function ObjectivesCorporatePage() {
 
     async function updateValue(krId: string, field: 'baseline' | 'target' | 'actual', value: number | null) {
         try {
-            const kr = allKRs.find(k => k.id === krId)
+            const kr = pillarsData.flatMap(p => p.objectives.flatMap(o => o.key_results)).find(k => k.id === krId)
 
             if (kr) {
-                const updateData: Record<string, any> = {}
-                updateData[field] = value
+                const updateData: Record<string, any> = { [field]: value }
 
-                // Calculate and save progress
-                if (field === 'target' || field === 'actual') {
+                // Calculate and save progress (with baseline support)
+                if (field === 'target' || field === 'actual' || field === 'baseline') {
                     const newTarget = field === 'target' ? value : kr.target
                     const newActual = field === 'actual' ? value : kr.actual
+                    const newBaseline = field === 'baseline' ? value : kr.baseline
+                    const direction = kr.target_direction ?? 'maximize'
 
                     let newProgress: number | null = null
 
-                    if (newTarget !== null && newTarget !== 0 && newActual !== null) {
-                        const direction = kr.target_direction ?? 'maximize'
-
-                        if (direction === 'minimize') {
-                            if (newActual !== 0) {
-                                newProgress = Math.round((newTarget / newActual) * 100)
+                    if (newTarget !== null && newActual !== null) {
+                        if (newBaseline !== null) {
+                            const denominator = direction === 'minimize'
+                                ? newBaseline - newTarget
+                                : newTarget - newBaseline
+                            if (denominator !== 0) {
+                                const numerator = direction === 'minimize'
+                                    ? newBaseline - newActual
+                                    : newActual - newBaseline
+                                newProgress = Math.round((numerator / denominator) * 100)
                             }
-                        } else {
-                            newProgress = Math.round((newActual / newTarget) * 100)
+                        } else if (newTarget !== 0) {
+                            newProgress = direction === 'minimize' && newActual !== 0
+                                ? Math.round((newTarget / newActual) * 100)
+                                : Math.round((newActual / newTarget) * 100)
                         }
                     }
 
@@ -290,7 +284,7 @@ export function ObjectivesCorporatePage() {
                         entity_type: 'key_results',
                         entity_id: krId,
                         entity_name: `${kr.title} - ${field}`,
-                        old_value: { [field]: kr[field] },
+                        old_value: { [field]: kr[field as keyof KeyResult] },
                         new_value: { [field]: value }
                     })
                 }
@@ -356,7 +350,7 @@ export function ObjectivesCorporatePage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <Badge variant="info" size="md">
-                        Q{currentQuarter} 2026
+                        2026
                     </Badge>
                     {saving && (
                         <Badge variant="warning" size="sm">
@@ -498,150 +492,9 @@ export function ObjectivesCorporatePage() {
                                                                 }
                                                             }
                                                         }}
-                                                        renderExpandedRow={(kr) => {
-                                                            const childKRs = allKRs.filter(
-                                                                q => q.parent_kr_id === kr.id && q.scope === 'quarterly'
-                                                            ).sort((a, b) => (a.quarter ?? 0) - (b.quarter ?? 0))
-
-                                                            return (
-                                                                <div className="space-y-4">
-                                                                    {/* Quarterly Children */}
-                                                                    <div>
-                                                                        <div className="flex items-center justify-between mb-3">
-                                                                            <h5 className="text-sm font-semibold text-[var(--color-text-secondary)] flex items-center gap-1.5">
-                                                                                <BarChart3 className="w-4 h-4 text-purple-500" />
-                                                                                {t('quarterlyCard.quarterly')} KRs
-                                                                            </h5>
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                className="text-purple-600 hover:bg-purple-50 text-xs h-7"
-                                                                                onClick={() => {
-                                                                                    setSelectedKR({
-                                                                                        ...kr,
-                                                                                        id: undefined as any,
-                                                                                        scope: 'quarterly',
-                                                                                        parent_kr_id: kr.id,
-                                                                                        quarter: currentQuarter,
-                                                                                        code: `${kr.code}.Q${currentQuarter}`,
-                                                                                        baseline: null,
-                                                                                        target: null,
-                                                                                        actual: null,
-                                                                                        progress: null,
-                                                                                        confidence: null
-                                                                                    } as any)
-                                                                                    setDefaultObjectiveId(kr.objective_id || '')
-                                                                                    setKrModalOpen(true)
-                                                                                }}
-                                                                            >
-                                                                                <Plus className="w-3 h-3 mr-1" />
-                                                                                {t('quarterlyCard.addQuarterlyKR')}
-                                                                            </Button>
-                                                                        </div>
-
-                                                                        {childKRs.length > 0 ? (
-                                                                            <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-surface)]">
-                                                                                <table className="w-full">
-                                                                                    <thead>
-                                                                                        <tr className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider bg-[var(--color-surface-subtle)]">
-                                                                                            <th className="px-3 py-2 text-left w-24">{t('quarterlyCard.indicator')}</th>
-                                                                                            <th className="px-3 py-2 text-center w-20">{t('quarterlyCard.baseline')}</th>
-                                                                                            <th className="px-3 py-2 text-center w-20">{t('quarterlyCard.target')}</th>
-                                                                                            <th className="px-3 py-2 text-center w-20">{t('quarterlyCard.actual')}</th>
-                                                                                            <th className="px-3 py-2 w-24">{t('quarterlyCard.progress')}</th>
-                                                                                            <th className="px-3 py-2 text-center w-20">{t('quarterlyCard.confidence')}</th>
-                                                                                            <th className="px-3 py-2 w-16"></th>
-                                                                                        </tr>
-                                                                                    </thead>
-                                                                                    <tbody className="divide-y divide-[var(--color-border-subtle)]">
-                                                                                        {childKRs.map(child => {
-                                                                                            const childProgress = child.progress ?? 0
-                                                                                            const progressVariant = childProgress >= 70 ? 'success' : childProgress >= 40 ? 'warning' : 'danger'
-
-                                                                                            const formatVal = (v: number | null) => {
-                                                                                                if (v === null) return '-'
-                                                                                                if (kr.metric_type === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
-                                                                                                if (kr.metric_type === 'percentage') return `${v}%`
-                                                                                                return `${v}${kr.unit ? ` ${kr.unit}` : ''}`
-                                                                                            }
-
-                                                                                            return (
-                                                                                                <tr key={child.id} className="group/child hover:bg-[var(--color-surface-hover)] transition-colors">
-                                                                                                    <td className="px-3 py-2">
-                                                                                                        <div className="flex items-center gap-1.5">
-                                                                                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-purple-50 text-purple-600 border border-purple-200">
-                                                                                                                Q{child.quarter}
-                                                                                                            </span>
-                                                                                                            <span className="text-xs text-[var(--color-text-secondary)] truncate max-w-[120px]">
-                                                                                                                {child.title}
-                                                                                                            </span>
-                                                                                                        </div>
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-center text-xs text-[var(--color-text-secondary)]">
-                                                                                                        {formatVal(child.baseline)}
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-center text-xs text-[var(--color-success)]">
-                                                                                                        {formatVal(child.target)}
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-center text-xs font-medium text-[var(--color-primary)]">
-                                                                                                        {formatVal(child.actual)}
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2">
-                                                                                                        <div className="flex items-center gap-1.5">
-                                                                                                            <ProgressBar value={childProgress} size="sm" variant="gradient" />
-                                                                                                            <Badge variant={progressVariant} size="sm">{childProgress}%</Badge>
-                                                                                                        </div>
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-center">
-                                                                                                        <ConfidenceEmoji value={child.confidence} />
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-right">
-                                                                                                        <div className="flex items-center gap-0.5 opacity-0 group-hover/child:opacity-100 transition-opacity">
-                                                                                                            <button
-                                                                                                                onClick={() => handleEditKR(child)}
-                                                                                                                className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
-                                                                                                                title={t('common.edit')}
-                                                                                                            >
-                                                                                                                <Edit3 className="w-3 h-3" />
-                                                                                                            </button>
-                                                                                                            <button
-                                                                                                                onClick={async () => {
-                                                                                                                    if (window.confirm(t('okr.deleteKRConfirm'))) {
-                                                                                                                        try {
-                                                                                                                            await supabase.from('key_results').delete().eq('id', child.id)
-                                                                                                                            loadObjectivesData()
-                                                                                                                        } catch (e) {
-                                                                                                                            console.error(e)
-                                                                                                                        }
-                                                                                                                    }
-                                                                                                                }}
-                                                                                                                className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
-                                                                                                                title={t('common.delete')}
-                                                                                                            >
-                                                                                                                <Trash2 className="w-3 h-3" />
-                                                                                                            </button>
-                                                                                                        </div>
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            )
-                                                                                        })}
-                                                                                    </tbody>
-                                                                                </table>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="text-center py-4 rounded-xl border border-dashed border-purple-200 bg-purple-50/30">
-                                                                                <p className="text-xs text-[var(--color-text-muted)]">
-                                                                                    {t('okr.noKRs')}
-                                                                                </p>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Action Plan */}
-                                                                    <ActionPlanList krId={kr.id} />
-                                                                </div>
-                                                            )
-                                                        }}
+                                                        renderExpandedRow={(kr) => (
+                                                            <ActionPlanList krId={kr.id} />
+                                                        )}
                                                     />
                                                 ) : (
                                                     <div className="text-center py-6 bg-[var(--color-surface-subtle)]/30 rounded-lg border border-dashed border-[var(--color-border)]">
@@ -671,10 +524,7 @@ export function ObjectivesCorporatePage() {
                         {t('objectives.corporate.emptyState.title')}
                     </p>
                     <p className="text-sm text-[var(--color-text-muted)] mt-2">
-                        <Trans
-                            i18nKey="objectives.corporate.emptyState.description"
-                            components={{ 1: <code className="px-2 py-1 rounded bg-[var(--color-surface-hover)] text-[var(--color-primary)]" /> }}
-                        />
+                        {t('objectives.corporate.emptyState.description')}
                     </p>
                 </div>
             )}
