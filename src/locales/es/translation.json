@@ -187,7 +187,10 @@
             "saveNew": "Crear Acción",
             "saveEdit": "Guardar Cambios",
             "errorRequired": "Complete todos los campos obligatorios",
-            "errorSave": "Error al guardar"
+            "errorSave": "Error al guardar",
+            "assignee": "Responsable",
+            "selectAssignee": "Seleccionar responsable...",
+            "noUsersForUnit": "Sin usuarios en esta empresa"
         },
         "editKR": {
             "title": "Actualizar Key Result",

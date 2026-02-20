@@ -282,6 +282,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                     description: selectedAction.description,
                     due_date: selectedAction.due_date,
                     key_result_id: krId, // Assuming action belongs to this KR
+                    owner_name: selectedAction.owner_name || null,
                     status: selectedAction.status
                 } : null}
             />

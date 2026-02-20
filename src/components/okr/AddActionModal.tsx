@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Popover from '@radix-ui/react-popover'
-import { X, Save, ListTodo, Calendar, ChevronDown, Check } from 'lucide-react'
+import { X, Save, ListTodo, Calendar, ChevronDown, Check, User } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Badge } from '../ui/Badge'
@@ -16,10 +16,17 @@ interface KeyResultOption {
     title: string
     objective: {
         title: string
+        business_unit_id: string | null
         business_unit: {
+            id: string
             name: string
         } | null
     } | null
+}
+
+interface UnitUser {
+    id: string
+    full_name: string
 }
 
 interface AddActionModalProps {
@@ -33,6 +40,7 @@ interface AddActionModalProps {
         description: string | null
         due_date: string | null
         key_result_id: string
+        owner_name: string | null
         status: string // Needed for audit log
     } | null
 }
@@ -43,32 +51,44 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [keyResults, setKeyResults] = useState<KeyResultOption[]>([])
+    const [unitUsers, setUnitUsers] = useState<UnitUser[]>([])
 
     // Form state
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [selectedKRId, setSelectedKRId] = useState(preSelectedKRId || '')
     const [dueDate, setDueDate] = useState('')
+    const [ownerName, setOwnerName] = useState('')
     const [openSelect, setOpenSelect] = useState(false)
+    const [openAssignee, setOpenAssignee] = useState(false)
 
     useEffect(() => {
         if (open) {
             loadKeyResults()
             if (actionToEdit) {
-                // Edit mode: populate form
                 setTitle(actionToEdit.title)
                 setDescription(actionToEdit.description || '')
                 setSelectedKRId(actionToEdit.key_result_id)
                 setDueDate(actionToEdit.due_date || '')
+                setOwnerName(actionToEdit.owner_name || '')
             } else {
-                // Create mode: reset or set defaults
                 setTitle('')
                 setDescription('')
                 setSelectedKRId(preSelectedKRId || '')
                 setDueDate('')
+                setOwnerName(user?.full_name || user?.email || '')
             }
         }
     }, [open, preSelectedKRId, actionToEdit])
+
+    // When selected KR changes, load users for that business unit
+    useEffect(() => {
+        if (!selectedKRId) { setUnitUsers([]); return }
+        const kr = keyResults.find(k => k.id === selectedKRId)
+        const unitId = kr?.objective?.business_unit?.id ?? null
+        if (!unitId) { setUnitUsers([]); return }
+        loadUnitUsers(unitId)
+    }, [selectedKRId, keyResults])
 
     async function loadKeyResults() {
         try {
@@ -78,7 +98,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                     id,
                     code,
                     title,
-                    objective:objectives(title, business_unit:business_units(name))
+                    objective:objectives(title, business_unit_id, business_unit:business_units(id, name))
                 `)
                 .eq('is_active', true)
                 .order('code')
@@ -87,6 +107,25 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
             setKeyResults((data || []) as unknown as KeyResultOption[])
         } catch (err) {
             console.error('Error loading KRs:', err)
+        }
+    }
+
+    async function loadUnitUsers(unitId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('user_business_units')
+                .select('users(id, full_name)')
+                .eq('business_unit_id', unitId)
+
+            if (error) throw error
+            const users = (data || [])
+                .map((row: any) => row.users)
+                .filter(Boolean)
+                .sort((a: UnitUser, b: UnitUser) => a.full_name.localeCompare(b.full_name))
+            setUnitUsers(users)
+        } catch (err) {
+            console.error('Error loading unit users:', err)
+            setUnitUsers([])
         }
     }
 
@@ -109,6 +148,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                         description: description.trim() || null,
                         key_result_id: selectedKRId,
                         due_date: dueDate || null,
+                        owner_name: ownerName.trim() || null,
                     })
                     .eq('id', actionToEdit.id)
                     .select()
@@ -116,10 +156,9 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
 
                 if (updateError) throw updateError
 
-                // CREATE AUDIT LOG
                 await supabase.from('audit_logs').insert({
                     user_id: user.id,
-                    user_email: user.email || '', // fallback
+                    user_email: user.email || '',
                     action: 'update',
                     entity_type: 'actions',
                     entity_id: data.id,
@@ -138,17 +177,16 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                         key_result_id: selectedKRId,
                         due_date: dueDate || null,
                         status: 'pending',
-                        owner_name: user.full_name || user.email
+                        owner_name: ownerName.trim() || user.full_name || user.email
                     })
                     .select()
                     .single()
 
                 if (insertError) throw insertError
 
-                // CREATE AUDIT LOG
                 await supabase.from('audit_logs').insert({
                     user_id: user.id,
-                    user_email: user.email || '', // fallback
+                    user_email: user.email || '',
                     action: 'create',
                     entity_type: 'actions',
                     entity_id: data.id,
@@ -158,11 +196,11 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                 })
             }
 
-            // Reset form
             setTitle('')
             setDescription('')
             setSelectedKRId('')
             setDueDate('')
+            setOwnerName('')
 
             onSave()
             onOpenChange(false)
@@ -173,19 +211,21 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
         }
     }
 
+    const selectedKR = keyResults.find(k => k.id === selectedKRId)
+
     return (
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
             <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
-                <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 max-h-[90vh] flex flex-col">
+                <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 max-h-[90vh] flex flex-col">
                     {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)] flex-shrink-0">
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--color-success)]/15">
-                                <ListTodo className="w-5 h-5 text-[var(--color-success)]" />
+                            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--color-success)]/15">
+                                <ListTodo className="w-6 h-6 text-[var(--color-success)]" />
                             </div>
                             <div>
-                                <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
+                                <Dialog.Title className="text-xl font-semibold text-[var(--color-text-primary)]">
                                     {actionToEdit ? t('modals.action.titleEdit') : t('modals.action.titleNew')}
                                 </Dialog.Title>
                                 <Dialog.Description className="text-sm text-[var(--color-text-muted)]">
@@ -239,12 +279,8 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                                         )}
                                     >
                                         <span className="block truncate whitespace-normal text-sm leading-tight">
-                                            {selectedKRId
-                                                ? (() => {
-                                                    const kr = keyResults.find(k => k.id === selectedKRId)
-                                                    if (!kr) return t('modals.action.selectKR')
-                                                    return `[${kr.objective?.business_unit?.name || 'N/A'}] ${kr.code} - ${kr.title}`
-                                                })()
+                                            {selectedKR
+                                                ? `[${selectedKR.objective?.business_unit?.name || 'N/A'}] ${selectedKR.code} - ${selectedKR.title}`
                                                 : t('modals.action.selectKR')}
                                         </span>
                                         <ChevronDown className="w-4 h-4 opacity-50 flex-shrink-0" />
@@ -279,9 +315,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                                                             <span className="mx-1 text-[var(--color-text-muted)]">•</span>
                                                             <span>{kr.code} - {kr.title}</span>
                                                         </div>
-                                                        {isSelected && (
-                                                            <Check className="w-4 h-4 mt-0.5" />
-                                                        )}
+                                                        {isSelected && <Check className="w-4 h-4 mt-0.5" />}
                                                     </button>
                                                 )
                                             })}
@@ -296,14 +330,83 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                             </Popover.Root>
                         </div>
 
-                        {/* Due Date */}
-                        <Input
-                            type="date"
-                            label={t('modals.action.dueDate')}
-                            value={dueDate}
-                            onChange={(e) => setDueDate(e.target.value)}
-                            icon={<Calendar className="w-5 h-5" />}
-                        />
+                        {/* Bottom row: Assignee + Due Date */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Assignee */}
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                    <span className="flex items-center gap-1.5">
+                                        <User className="w-4 h-4" />
+                                        {t('modals.action.assignee')}
+                                    </span>
+                                </label>
+                                <Popover.Root open={openAssignee} onOpenChange={setOpenAssignee} modal>
+                                    <Popover.Trigger asChild>
+                                        <button
+                                            type="button"
+                                            disabled={!selectedKRId}
+                                            className={cn(
+                                                "w-full min-h-[44px] px-4 py-2 text-left rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] flex items-center justify-between gap-2 transition-colors",
+                                                (!selectedKRId || !ownerName) && "text-[var(--color-text-muted)]",
+                                                !selectedKRId && "opacity-50 cursor-not-allowed"
+                                            )}
+                                        >
+                                            <span className="block truncate text-sm">
+                                                {ownerName || t('modals.action.selectAssignee')}
+                                            </span>
+                                            <ChevronDown className="w-4 h-4 opacity-50 flex-shrink-0" />
+                                        </button>
+                                    </Popover.Trigger>
+                                    <Popover.Portal>
+                                        <Popover.Content
+                                            className="w-[var(--radix-popover-trigger-width)] max-h-[240px] overflow-y-auto p-1 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl z-[9999] animate-in fade-in-0 zoom-in-95 pointer-events-auto"
+                                            sideOffset={5}
+                                            align="start"
+                                        >
+                                            <div className="space-y-1">
+                                                {unitUsers.length === 0 ? (
+                                                    <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
+                                                        {t('modals.action.noUsersForUnit')}
+                                                    </div>
+                                                ) : (
+                                                    unitUsers.map((u) => (
+                                                        <button
+                                                            key={u.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setOwnerName(u.full_name)
+                                                                setOpenAssignee(false)
+                                                            }}
+                                                            className={cn(
+                                                                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
+                                                                ownerName === u.full_name
+                                                                    ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
+                                                                    : "hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]"
+                                                            )}
+                                                        >
+                                                            <div className="w-7 h-7 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)] font-bold text-xs flex-shrink-0">
+                                                                {u.full_name.charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <span className="flex-1">{u.full_name}</span>
+                                                            {ownerName === u.full_name && <Check className="w-4 h-4" />}
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </Popover.Content>
+                                    </Popover.Portal>
+                                </Popover.Root>
+                            </div>
+
+                            {/* Due Date */}
+                            <Input
+                                type="date"
+                                label={t('modals.action.dueDate')}
+                                value={dueDate}
+                                onChange={(e) => setDueDate(e.target.value)}
+                                icon={<Calendar className="w-5 h-5" />}
+                            />
+                        </div>
 
                         {error && (
                             <div className="p-3 rounded-lg bg-[var(--color-danger-muted)] text-[var(--color-danger)] text-sm">

@@ -466,6 +466,7 @@ export function ActionsPage() {
                     description: actionToEdit.description,
                     due_date: actionToEdit.due_date,
                     key_result_id: actionToEdit.key_result_id || '',
+                    owner_name: actionToEdit.owner_name || null,
                     status: actionToEdit.status
                 } : null}
             />
