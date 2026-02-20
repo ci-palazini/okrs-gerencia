@@ -174,6 +174,7 @@ export interface Database {
                     source: string | null
                     metric_type: 'percentage' | 'number' | 'currency' | 'days'
                     unit: string
+                    currency_type: string | null
                     order_index: number
                     is_active: boolean
                     created_at: string
@@ -189,6 +190,7 @@ export interface Database {
                     source?: string | null
                     metric_type?: 'percentage' | 'number' | 'currency' | 'days'
                     unit?: string
+                    currency_type?: string | null
                     order_index?: number
                     is_active?: boolean
                     created_at?: string
@@ -203,6 +205,7 @@ export interface Database {
                     source?: string | null
                     metric_type?: 'percentage' | 'number' | 'currency' | 'days'
                     unit?: string
+                    currency_type?: string | null
                     order_index?: number
                     is_active?: boolean
                     updated_at?: string

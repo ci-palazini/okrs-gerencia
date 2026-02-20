@@ -57,6 +57,7 @@ export interface KeyResult {
     source: string | null
     metric_type: 'percentage' | 'number' | 'currency' | 'days'
     unit: string
+    currency_type?: string | null
     order_index: number
     objective_id: string
     is_active: boolean

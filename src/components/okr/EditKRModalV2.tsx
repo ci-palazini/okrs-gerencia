@@ -7,6 +7,7 @@ import { Input } from '../ui/Input'
 import { Badge } from '../ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { CURRENCY_CONFIG, type CurrencyType } from '../../lib/utils'
 
 interface Objective {
     id: string
@@ -37,6 +38,7 @@ interface KeyResultFormData {
     owner_name: string | null
     metric_type: 'percentage' | 'number' | 'currency' | 'days'
     unit: string
+    currency_type: CurrencyType
     objective_id: string
     target_direction: 'maximize' | 'minimize'
     scope: 'annual' | 'quarterly'
@@ -63,6 +65,13 @@ const metricTypes = [
     { value: 'days', label: 'Dias', unit: 'dias' }
 ]
 
+const currencyOptions: { value: CurrencyType; symbol: string; label: string }[] = [
+    { value: 'BRL', symbol: 'R$', label: 'Real' },
+    { value: 'USD', symbol: '$', label: 'USD' },
+    { value: 'ARS', symbol: '$', label: 'ARS' },
+    { value: 'GBP', symbol: '£', label: 'GBP' },
+]
+
 export function EditKRModalV2({
     open,
     onOpenChange,
@@ -85,6 +94,7 @@ export function EditKRModalV2({
         owner_name: '',
         metric_type: 'percentage',
         unit: '%',
+        currency_type: 'BRL',
         objective_id: defaultObjectiveId || '',
         target_direction: 'maximize',
         scope: forceParentKrId ? 'quarterly' : 'annual',
@@ -104,6 +114,7 @@ export function EditKRModalV2({
                     owner_name: keyResult.owner_name || '',
                     metric_type: keyResult.metric_type,
                     unit: keyResult.unit,
+                    currency_type: (keyResult.currency_type as CurrencyType) || 'BRL',
                     objective_id: keyResult.objective_id,
                     target_direction: keyResult.target_direction ?? 'maximize',
                     scope: keyResult.scope || 'annual',
@@ -117,6 +128,7 @@ export function EditKRModalV2({
                     owner_name: '',
                     metric_type: 'percentage',
                     unit: '%',
+                    currency_type: 'BRL',
                     objective_id: defaultObjectiveId || objectives[0]?.id || '',
                     target_direction: 'maximize',
                     scope: forceParentKrId ? 'quarterly' : 'annual',
@@ -199,10 +211,22 @@ export function EditKRModalV2({
 
     function handleMetricTypeChange(metricType: string) {
         const metric = metricTypes.find(m => m.value === metricType)
+        const newUnit = metricType === 'currency'
+            ? CURRENCY_CONFIG[formData.currency_type]?.symbol || 'R$'
+            : (metric?.unit || '')
         setFormData(prev => ({
             ...prev,
             metric_type: metricType as any,
-            unit: metric?.unit || ''
+            unit: newUnit
+        }))
+    }
+
+    function handleCurrencyTypeChange(currencyType: CurrencyType) {
+        const config = CURRENCY_CONFIG[currencyType]
+        setFormData(prev => ({
+            ...prev,
+            currency_type: currencyType,
+            unit: config.symbol
         }))
     }
 
@@ -240,6 +264,7 @@ export function EditKRModalV2({
                         owner_name: (formData.owner_name || '').trim() || null,
                         metric_type: formData.metric_type,
                         unit: formData.unit,
+                        currency_type: formData.metric_type === 'currency' ? formData.currency_type : null,
                         objective_id: formData.objective_id,
                         target_direction: formData.target_direction,
                         scope: formData.scope,
@@ -295,6 +320,7 @@ export function EditKRModalV2({
                         owner_name: (formData.owner_name || '').trim() || null,
                         metric_type: formData.metric_type,
                         unit: formData.unit,
+                        currency_type: formData.metric_type === 'currency' ? formData.currency_type : null,
                         objective_id: formData.objective_id,
                         target_direction: formData.target_direction,
                         scope: formData.scope,
@@ -555,13 +581,40 @@ export function EditKRModalV2({
                             </div>
                         </div>
 
-                        {/* Unit (custom if needed) */}
-                        <Input
-                            label={t('modals.createKR.unit')}
-                            value={formData.unit}
-                            onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                            placeholder={t('modals.createKR.unitPlaceholder')}
-                        />
+                        {/* Currency Type Selector - only visible when metric_type is currency */}
+                        {formData.metric_type === 'currency' && (
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                    Tipo de Moeda
+                                </label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {currencyOptions.map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => handleCurrencyTypeChange(opt.value)}
+                                            className={`py-2.5 px-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-0.5 ${formData.currency_type === opt.value
+                                                ? 'bg-[var(--color-primary)] text-white'
+                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]'
+                                                }`}
+                                        >
+                                            <span className="text-base font-bold">{opt.symbol}</span>
+                                            <span className="text-[10px] opacity-80">{opt.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Unit (hidden when currency type handles it) */}
+                        {formData.metric_type !== 'currency' && (
+                            <Input
+                                label={t('modals.createKR.unit')}
+                                value={formData.unit}
+                                onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                                placeholder={t('modals.createKR.unitPlaceholder')}
+                            />
+                        )}
 
                         {error && (
                             <div className="p-3 rounded-lg bg-[var(--color-danger-muted)] text-[var(--color-danger)] text-sm">

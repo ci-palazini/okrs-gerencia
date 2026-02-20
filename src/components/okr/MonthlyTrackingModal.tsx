@@ -6,6 +6,7 @@ import { Button } from '../ui/Button'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import type { MonthlyData } from '../../types'
+import { getCurrencySymbol } from '../../lib/utils'
 
 interface MonthlyTrackingModalProps {
     open: boolean
@@ -14,6 +15,7 @@ interface MonthlyTrackingModalProps {
     keyResultTitle: string
     keyResultUnit: string
     keyResultMetricType: string
+    keyResultCurrencyType?: string | null
     scope: 'annual' | 'quarterly'
     quarter?: number | null // If quarterly, which quarter (1-4)
     year?: number
@@ -49,6 +51,7 @@ export function MonthlyTrackingModal({
     keyResultTitle,
     keyResultUnit,
     keyResultMetricType,
+    keyResultCurrencyType,
     scope,
     quarter,
     year = 2026
@@ -138,7 +141,7 @@ export function MonthlyTrackingModal({
     }
 
     function formatUnit() {
-        if (keyResultMetricType === 'currency') return 'R$'
+        if (keyResultMetricType === 'currency') return getCurrencySymbol(keyResultCurrencyType)
         return keyResultUnit || ''
     }
 

@@ -16,7 +16,7 @@ import {
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ProgressBar } from '../../components/ui/ProgressBar'
-import { cn } from '../../lib/utils'
+import { cn, formatKRCurrency } from '../../lib/utils'
 import { useKRTracking } from '../../hooks/useKRTracking'
 import type { AnnualKRForTracking, KRTrackingEntry } from '../../hooks/useKRTracking'
 
@@ -24,10 +24,9 @@ import type { AnnualKRForTracking, KRTrackingEntry } from '../../hooks/useKRTrac
 // HELPERS
 // =====================================================
 
-function fmtVal(v: number | null | undefined, metricType: string, unit: string): string {
+function fmtVal(v: number | null | undefined, metricType: string, unit: string, currencyType?: string | null): string {
     if (v === null || v === undefined) return '—'
-    if (metricType === 'currency')
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+    if (metricType === 'currency') return formatKRCurrency(v, currencyType)
     if (metricType === 'percentage') return `${v}%`
     return `${v}${unit ? ` ${unit}` : ''}`
 }
@@ -167,7 +166,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
     const [notesVal, setNotesVal] = useState('')
 
     const pillarColor = kr.objective?.pillar?.color || '#6366f1'
-    const fmt = (v: number | null) => fmtVal(v, kr.metric_type, kr.unit)
+    const fmt = (v: number | null) => fmtVal(v, kr.metric_type, kr.unit, kr.currency_type)
 
     const chartData = [1, 2, 3, 4].map(q => {
         const entry = getEntry(kr.id, q)

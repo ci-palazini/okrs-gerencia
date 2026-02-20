@@ -13,6 +13,7 @@ export interface AnnualKRForTracking {
     title: string
     metric_type: string
     unit: string
+    currency_type?: string | null
     target: number | null
     baseline: number | null
     target_direction: 'maximize' | 'minimize'
@@ -61,7 +62,7 @@ export function useKRTracking() {
             const { data: krsData, error: krsError } = await supabase
                 .from('key_results')
                 .select(`
-                    id, code, title, metric_type, unit, target, baseline, target_direction, objective_id,
+                    id, code, title, metric_type, unit, currency_type, target, baseline, target_direction, objective_id,
                     objective:objectives!inner(
                         id, code, title, pillar_id, business_unit_id,
                         pillar:pillars(id, name, color)

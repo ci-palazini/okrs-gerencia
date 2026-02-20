@@ -4,7 +4,7 @@ import { ProgressBar } from '../ui/ProgressBar'
 import { Badge } from '../ui/Badge'
 import { ConfidenceEmoji } from '../ui/ConfidenceIndicator'
 import type { ConfidenceLevel } from '../ui/ConfidenceIndicator'
-import { cn } from '../../lib/utils'
+import { cn, formatKRCurrency } from '../../lib/utils'
 
 interface KeyResultRow {
     id: string
@@ -14,6 +14,7 @@ interface KeyResultRow {
     source: string | null
     metric_type: string
     unit: string
+    currency_type?: string | null
     progress: number | null
     confidence: ConfidenceLevel
     scope?: 'annual' | 'quarterly'
@@ -67,15 +68,11 @@ export function KRTable({
         return 'danger'
     }
 
-    const formatValue = (value: number | null | undefined, metricType: string, unit: string): string => {
+    const formatValue = (value: number | null | undefined, metricType: string, unit: string, currencyType?: string | null): string => {
         if (value === null || value === undefined) return '-'
 
         if (metricType === 'currency') {
-            return new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-                maximumFractionDigits: 0
-            }).format(value)
+            return formatKRCurrency(value, currencyType)
         }
 
         if (metricType === 'percentage') {
@@ -207,7 +204,7 @@ export function KRTable({
                                                         )}
                                                         disabled={!onUpdateValue}
                                                     >
-                                                        {formatValue(kr.baseline, kr.metric_type, kr.unit)}
+                                                        {formatValue(kr.baseline, kr.metric_type, kr.unit, kr.currency_type)}
                                                     </button>
                                                 )}
                                             </td>
@@ -238,7 +235,7 @@ export function KRTable({
                                                         )}
                                                         disabled={!onUpdateValue}
                                                     >
-                                                        {formatValue(kr.actual, kr.metric_type, kr.unit)}
+                                                        {formatValue(kr.actual, kr.metric_type, kr.unit, kr.currency_type)}
                                                     </button>
                                                 )}
                                             </td>
@@ -269,7 +266,7 @@ export function KRTable({
                                                         )}
                                                         disabled={!onUpdateValue}
                                                     >
-                                                        {formatValue(kr.target, kr.metric_type, kr.unit)}
+                                                        {formatValue(kr.target, kr.metric_type, kr.unit, kr.currency_type)}
                                                     </button>
                                                 )}
                                             </td>

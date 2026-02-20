@@ -9,7 +9,7 @@ import { ProgressBar } from '../ui/ProgressBar'
 import { ConfidenceEmoji } from '../ui/ConfidenceIndicator'
 import type { ConfidenceLevel } from '../ui/ConfidenceIndicator'
 import { ActionPlanList } from './ActionPlanList'
-import { cn } from '../../lib/utils'
+import { cn, formatKRCurrency } from '../../lib/utils'
 
 // =====================================================
 // TYPES
@@ -27,6 +27,7 @@ export interface QuarterlyKRData {
     confidence: ConfidenceLevel
     metric_type: string
     unit: string
+    currency_type?: string | null
     objective_id: string
     owner_name: string | null
     source: string | null
@@ -50,9 +51,9 @@ export interface QuarterlyTimelineProps {
 // HELPERS
 // =====================================================
 
-function fmtVal(v: number | null, metricType: string, unit: string): string {
+function fmtVal(v: number | null, metricType: string, unit: string, currencyType?: string | null): string {
     if (v === null || v === undefined) return '—'
-    if (metricType === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+    if (metricType === 'currency') return formatKRCurrency(v, currencyType)
     if (metricType === 'percentage') return `${v}%`
     return `${v}${unit ? ` ${unit}` : ''}`
 }
@@ -149,7 +150,7 @@ export function QuarterlyTimeline({
                 onClick={() => startEdit(kr.id, field, value)}
                 title={t('common.edit')}
             >
-                {fmtVal(value, kr.metric_type || annualKR.metric_type, kr.unit || annualKR.unit)}
+                {fmtVal(value, kr.metric_type || annualKR.metric_type, kr.unit || annualKR.unit, kr.currency_type ?? annualKR.currency_type)}
             </span>
         )
     }
@@ -168,13 +169,13 @@ export function QuarterlyTimeline({
                     <div className="text-center">
                         <span className="text-[10px] text-[var(--color-text-muted)] block">Baseline</span>
                         <span className="text-sm font-medium text-[var(--color-text-secondary)]">
-                            {fmtVal(annualKR.baseline, annualKR.metric_type, annualKR.unit)}
+                            {fmtVal(annualKR.baseline, annualKR.metric_type, annualKR.unit, annualKR.currency_type)}
                         </span>
                     </div>
                     <div className="text-center">
                         <span className="text-[10px] text-[var(--color-text-muted)] block">Target</span>
                         <span className="text-sm font-bold text-[var(--color-success)]">
-                            {fmtVal(annualKR.target, annualKR.metric_type, annualKR.unit)}
+                            {fmtVal(annualKR.target, annualKR.metric_type, annualKR.unit, annualKR.currency_type)}
                         </span>
                     </div>
                     {isMinimize && (

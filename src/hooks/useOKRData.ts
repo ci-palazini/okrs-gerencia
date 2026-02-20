@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 import { useBusinessUnit } from '../contexts/BusinessUnitContext'
 import { useQuarter } from './useQuarter'
 import type { ConfidenceLevel } from '../types'
+import { formatKRCurrency } from '../lib/utils'
 
 // =====================================================
 // TYPES
@@ -38,6 +39,7 @@ export interface KeyResult {
     source: string | null
     metric_type: 'percentage' | 'number' | 'currency' | 'days'
     unit: string
+    currency_type?: string | null
     objective_id: string
     target_direction: 'maximize' | 'minimize'
     scope: 'annual' | 'quarterly'
@@ -197,9 +199,9 @@ export function useOKRData(filterPillar?: string | null) {
     }, [pillars, selectedUnit])
 
     /** Format a value based on metric type */
-    const formatValue = useCallback((v: number | null, metricType: string, unit: string): string => {
+    const formatValue = useCallback((v: number | null, metricType: string, unit: string, currencyType?: string | null): string => {
         if (v === null) return '-'
-        if (metricType === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+        if (metricType === 'currency') return formatKRCurrency(v, currencyType)
         if (metricType === 'percentage') return `${v}%`
         return `${v}${unit ? ` ${unit}` : ''}`
     }, [])

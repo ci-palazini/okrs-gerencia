@@ -23,6 +23,18 @@ export function formatNumber(value: number, locale = 'pt-BR'): string {
 }
 
 /**
+ * Supported currency types for KRs
+ */
+export type CurrencyType = 'BRL' | 'USD' | 'ARS' | 'GBP'
+
+export const CURRENCY_CONFIG: Record<CurrencyType, { symbol: string; locale: string; label: string }> = {
+    BRL: { symbol: 'R$', locale: 'pt-BR', label: 'Real' },
+    USD: { symbol: '$', locale: 'en-US', label: 'USD' },
+    ARS: { symbol: '$', locale: 'es-AR', label: 'ARS' },
+    GBP: { symbol: '£', locale: 'en-GB', label: 'GBP' },
+}
+
+/**
  * Format currency
  */
 export function formatCurrency(value: number, currency = 'BRL', locale = 'pt-BR'): string {
@@ -30,6 +42,27 @@ export function formatCurrency(value: number, currency = 'BRL', locale = 'pt-BR'
         style: 'currency',
         currency,
     }).format(value)
+}
+
+/**
+ * Format a KR currency value using the stored currency_type
+ */
+export function formatKRCurrency(value: number, currencyType: string | null | undefined = 'BRL'): string {
+    const key = (currencyType || 'BRL') as CurrencyType
+    const config = CURRENCY_CONFIG[key] ?? CURRENCY_CONFIG['BRL']
+    return new Intl.NumberFormat(config.locale, {
+        style: 'currency',
+        currency: key,
+        maximumFractionDigits: 0,
+    }).format(value)
+}
+
+/**
+ * Get the currency symbol for a given currency_type
+ */
+export function getCurrencySymbol(currencyType: string | null | undefined = 'BRL'): string {
+    const key = (currencyType || 'BRL') as CurrencyType
+    return (CURRENCY_CONFIG[key] ?? CURRENCY_CONFIG['BRL']).symbol
 }
 
 /**
