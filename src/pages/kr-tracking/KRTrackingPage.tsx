@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
     TrendingUp,
     RefreshCw,
@@ -161,6 +162,7 @@ interface KRCardProps {
 }
 
 function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProps) {
+    const { t } = useTranslation()
     const [expanded, setExpanded] = useState(false)
     const [editingNotes, setEditingNotes] = useState<number | null>(null)
     const [notesVal, setNotesVal] = useState('')
@@ -224,11 +226,11 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                             </span>
                             {kr.target_direction === 'minimize' ? (
                                 <span className="flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-                                    <TrendingDown size={12} /> Minimizar
+                                    <TrendingDown size={12} /> {t('krTracking.minimize')}
                                 </span>
                             ) : (
                                 <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                                    <TrendingUp size={12} /> Maximizar
+                                    <TrendingUp size={12} /> {t('krTracking.maximize')}
                                 </span>
                             )}
                         </div>
@@ -244,7 +246,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                     {overallProgress !== null && (
                         <div className="flex flex-col items-end min-w-[120px]">
                             <div className="flex items-center gap-2 mb-1.5">
-                                <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wide">Avanço</span>
+                                <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wide">{t('krTracking.progress')}</span>
                                 <Badge variant={progressVariant(overallProgress)} size="sm" className="font-bold border shadow-none">{overallProgress}%</Badge>
                             </div>
                             <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
@@ -263,17 +265,17 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
 
                     <div className="hidden sm:flex items-center gap-6 border-l border-slate-200 pl-6">
                         <div className="flex flex-col items-start px-2">
-                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Baseline</span>
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">{t('quarterlyCard.baseline')}</span>
                             <span className="text-xl font-medium text-slate-700 font-mono tracking-tight">{fmt(kr.baseline)}</span>
                         </div>
                         <div className="flex flex-col items-start px-2">
-                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Target</span>
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">{t('quarterlyCard.target')}</span>
                             <span className="text-xl font-bold text-slate-900 font-mono tracking-tight">{fmt(kr.target)}</span>
                         </div>
                         {lastActual !== null && (
                             <div className="flex flex-col items-start px-2 relative">
                                 <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                <span className="text-[10px] uppercase tracking-wider text-indigo-600 font-bold mb-0.5">Atual</span>
+                                <span className="text-[10px] uppercase tracking-wider text-indigo-600 font-bold mb-0.5">{t('krTracking.current')}</span>
                                 <span className="text-xl font-bold text-indigo-700 font-mono tracking-tight">{fmt(lastActual)}</span>
                             </div>
                         )}
@@ -290,7 +292,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                         <div className="xl:col-span-7 space-y-4">
                             <div className="flex items-center justify-between">
                                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Target className="w-4 h-4" /> Detalhamento Trimestral
+                                    <Target className="w-4 h-4" /> {t('krTracking.quarterlyDetail')}
                                 </h4>
                             </div>
 
@@ -298,12 +300,12 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                 <table className="w-full text-sm text-left">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200">
-                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider w-16 text-center">Período</th>
-                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider text-center">Baseline</th>
-                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider text-center">Target</th>
-                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider text-center bg-indigo-50/30">Realizado</th>
-                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider text-center w-24">Status</th>
-                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Notas</th>
+                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider w-16 text-center">{t('krTracking.period')}</th>
+                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider text-center">{t('quarterlyCard.baseline')}</th>
+                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider text-center bg-indigo-50/30">{t('quarterlyCard.actual')}</th>
+                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider text-center">{t('quarterlyCard.target')}</th>
+                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider text-center w-24">{t('quarterlyCard.progress')}</th>
+                                            <th className="py-3 px-4 font-semibold text-slate-500 text-[11px] uppercase tracking-wider">{t('krTracking.notes')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -334,7 +336,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                             )}>
                                                                 Q{q}
                                                             </div>
-                                                            {isCurrent && <span className="text-[9px] font-bold text-indigo-600 mt-1 uppercase tracking-wide">Atual</span>}
+                                                            {isCurrent && <span className="text-[9px] font-bold text-indigo-600 mt-1 uppercase tracking-wide">{t('krTracking.current')}</span>}
                                                         </div>
                                                     </td>
                                                     <td className="py-3 px-4 text-center">
@@ -343,15 +345,6 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                             onSave={v => upsertTracking(kr.id, q, { baseline: v })}
                                                             formatFn={fmt}
                                                             colorClass="text-slate-600 font-mono"
-                                                        />
-                                                    </td>
-                                                    <td className="py-3 px-4 text-center">
-                                                        <EditableNumericCell
-                                                            value={target}
-                                                            onSave={v => upsertTracking(kr.id, q, { target: v })}
-                                                            formatFn={fmt}
-                                                            colorClass="text-slate-900 font-semibold font-mono"
-                                                            bgColorClass="hover:bg-emerald-50 hover:border-emerald-200"
                                                         />
                                                     </td>
                                                     <td className="py-3 px-4 text-center relative bg-indigo-50/20 shadow-[inset_1px_0_0_0_rgba(99,102,241,0.05)]">
@@ -364,6 +357,15 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                             colorClass="text-indigo-700 font-bold font-mono text-base"
                                                             placeholder="—"
                                                             bgColorClass="hover:bg-white hover:shadow-md hover:ring-1 hover:ring-indigo-100"
+                                                        />
+                                                    </td>
+                                                    <td className="py-3 px-4 text-center">
+                                                        <EditableNumericCell
+                                                            value={target}
+                                                            onSave={v => upsertTracking(kr.id, q, { target: v })}
+                                                            formatFn={fmt}
+                                                            colorClass="text-slate-900 font-semibold font-mono"
+                                                            bgColorClass="hover:bg-emerald-50 hover:border-emerald-200"
                                                         />
                                                     </td>
                                                     <td className="py-3 px-4">
@@ -390,7 +392,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                                     }}
                                                                     onBlur={() => saveNotes(q)}
                                                                     className="w-full px-3 py-1.5 text-xs rounded-md border border-indigo-500 bg-white shadow-lg outline-none text-slate-700"
-                                                                    placeholder="Escreva uma observação..."
+                                                                    placeholder={t('krTracking.notesPlaceholder')}
                                                                 />
                                                                 <div className="absolute right-2 top-1.5 text-[10px] text-slate-400 pointer-events-none opacity-0 group-focus-within/input:opacity-100 transition-opacity">Enter ↵</div>
                                                             </div>
@@ -404,7 +406,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                                         : 'text-slate-400 italic hover:text-slate-600 hover:bg-white hover:border-slate-200 hover:shadow-sm'
                                                                 )}
                                                             >
-                                                                {notes || 'Adicionar nota...'}
+                                                                {notes || t('krTracking.addNote')}
                                                             </button>
                                                         )}
                                                     </td>
@@ -419,7 +421,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                         {/* ── Right: Chart ── */}
                         <div className="xl:col-span-5 flex flex-col gap-4">
                             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4" /> Evolução
+                                <TrendingUp className="w-4 h-4" /> {t('krTracking.evolution')}
                             </h4>
 
                             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm ring-1 ring-slate-200/50 h-full min-h-[300px] flex flex-col relative overflow-hidden">
@@ -487,7 +489,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                 <Line
                                                     type="monotone"
                                                     dataKey="target"
-                                                    name="Target"
+                                                    name={t('quarterlyCard.target')}
                                                     stroke="#10b981" // emerald-500
                                                     strokeWidth={2}
                                                     strokeDasharray="4 4"
@@ -498,7 +500,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                                 <Area
                                                     type="monotone"
                                                     dataKey="actual"
-                                                    name="Realizado"
+                                                    name={t('krTracking.actual')}
                                                     stroke={pillarColor}
                                                     strokeWidth={3}
                                                     fill={`url(#grad-${kr.id})`}
@@ -516,8 +518,8 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
                                             <TrendingUp className="w-8 h-8 text-slate-200" />
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-sm font-medium text-slate-400">Sem dados suficientes</p>
-                                            <p className="text-xs text-slate-300 mt-1">Preencha os valores na tabela para ver o gráfico.</p>
+                                            <p className="text-sm font-medium text-slate-400">{t('krTracking.noData')}</p>
+                                            <p className="text-xs text-slate-300 mt-1">{t('krTracking.noDataDesc')}</p>
                                         </div>
                                     </div>
                                 )}
@@ -536,6 +538,7 @@ function KRCard({ kr, getEntry, upsertTracking, currentQuarterHint }: KRCardProp
 // =====================================================
 
 export function KRTrackingPage() {
+    const { t } = useTranslation()
     const { annualKRs, loading, year, loadData, upsertTracking, getEntry } = useKRTracking()
     const currentMonth = new Date().getMonth() + 1
     const currentQuarterHint = Math.ceil(currentMonth / 3)
@@ -579,18 +582,18 @@ export function KRTrackingPage() {
                             <TrendingUp className="w-6 h-6 text-white" />
                         </div>
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                            Resultados Trimestrais
+                            {t('krTracking.title')}
                         </h1>
                     </div>
                     <p className="text-slate-500 text-base max-w-2xl leading-relaxed pl-1">
-                        Acompanhamento estratégico dos indicadores-chave de desempenho para o ano fiscal de <span className="font-semibold text-indigo-700">{year}</span>.
+                        {t('krTracking.subtitlePrefix')} <span className="font-semibold text-indigo-700">{year}</span>.
                     </p>
                 </div>
 
                 <div className="flex items-center gap-4">
                     <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-slate-200 shadow-sm">
                         <Calendar className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm font-medium text-slate-600">Exercício {year}</span>
+                        <span className="text-sm font-medium text-slate-600">{t('krTracking.exercise', { year })}</span>
                     </div>
                     <Button
                         variant="outline"
@@ -598,7 +601,7 @@ export function KRTrackingPage() {
                         onClick={loadData}
                         disabled={loading}
                         className="rounded-full h-10 w-10 p-0 hover:bg-indigo-50 hover:text-indigo-600 border-slate-200"
-                        title="Atualizar dados"
+                        title={t('krTracking.refreshData')}
                     >
                         <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
                     </Button>
@@ -609,7 +612,7 @@ export function KRTrackingPage() {
             <div className="sticky top-4 z-30 flex flex-wrap items-center gap-4 p-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200 shadow-lg shadow-slate-200/50 transition-all">
                 <div className="flex items-center gap-2 text-slate-400 pl-2 mr-2">
                     <Filter className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Filtros</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">{t('krTracking.filters')}</span>
                 </div>
 
                 <div className="relative group">
@@ -618,7 +621,7 @@ export function KRTrackingPage() {
                         onChange={e => { setFilterPillar(e.target.value); setFilterObjective('all') }}
                         className="appearance-none h-10 pl-4 pr-10 rounded-xl text-sm font-medium bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-[180px] cursor-pointer hover:bg-slate-100 transition-colors"
                     >
-                        <option value="all">Todos os Pilares</option>
+                        <option value="all">{t('krTracking.allPillars')}</option>
                         {pillars.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
@@ -632,7 +635,7 @@ export function KRTrackingPage() {
                         onChange={e => setFilterObjective(e.target.value)}
                         className="appearance-none h-10 pl-4 pr-10 rounded-xl text-sm font-medium bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-[240px] max-w-[400px] truncate cursor-pointer hover:bg-slate-100 transition-colors"
                     >
-                        <option value="all">Todos os Objetivos</option>
+                        <option value="all">{t('krTracking.allObjectives')}</option>
                         {objectives.map(o => (
                             <option key={o.id} value={o.id}>{o.code} — {o.title}</option>
                         ))}
@@ -646,12 +649,12 @@ export function KRTrackingPage() {
                         className="flex items-center gap-1.5 ml-auto px-4 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
                     >
                         <X className="w-3.5 h-3.5" />
-                        Limpar
+                        {t('krTracking.clear')}
                     </button>
                 )}
 
                 <div className="ml-auto pl-6 border-l border-slate-200 pr-2">
-                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-0.5">Total</span>
+                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-0.5">{t('krTracking.total')}</span>
                     <span className="text-sm font-bold text-slate-900">
                         {filteredKRs.length} <span className="text-slate-500 font-normal">KRs</span>
                     </span>
@@ -665,19 +668,19 @@ export function KRTrackingPage() {
                         <div className="w-16 h-16 border-4 border-slate-100 rounded-full" />
                         <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute inset-0" />
                     </div>
-                    <p className="text-sm text-slate-400 font-medium animate-pulse">Sincronizando dados...</p>
+                    <p className="text-sm text-slate-400 font-medium animate-pulse">{t('krTracking.syncing')}</p>
                 </div>
             ) : filteredKRs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-32 text-slate-400 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
                     <div className="p-6 bg-white rounded-full mb-6 shadow-sm ring-1 ring-slate-100">
                         <Filter className="w-10 h-10 text-slate-300" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Nenhum resultado encontrado</h3>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">{t('krTracking.noResults')}</h3>
                     <p className="text-sm max-w-md text-center text-slate-500 mb-8">
-                        Não encontramos nenhum KR correspondente aos filtros selecionados.
+                        {t('krTracking.noResultsDesc')}
                     </p>
                     <Button variant="outline" onClick={() => { setFilterPillar('all'); setFilterObjective('all') }}>
-                        Limpar Filtros
+                        {t('krTracking.clearFilters')}
                     </Button>
                 </div>
             ) : (

@@ -27,7 +27,9 @@
         "doLogin": "Iniciar sesión",
         "landingTitle": "Control de Objetivos y Resultados",
         "landingSubtitle": "Gestión integrada y mejora continua.",
-        "groupCompanies": "Empresas del Grupo"
+        "groupCompanies": "Empresas del Grupo",
+        "forgotPassword": "¿Olvidó su contraseña? Contacte a uno de los administradores:",
+        "resetSubject": "Solicitud de restablecimiento de contraseña - OKR Dashboard"
     },
     "common": {
         "save": "Guardar",
@@ -36,7 +38,16 @@
         "edit": "Editar",
         "create": "Crear",
         "back": "Volver",
-        "confirm": "Confirmar"
+        "confirm": "Confirmar",
+        "user": "Usuario",
+        "description": "Descripción",
+        "noDescription": "Sin descripción proporcionada.",
+        "unassigned": "Sin asignar",
+        "noDate": "Sin fecha definida",
+        "createdAt": "Creado el",
+        "completedAt": "Completado el",
+        "saving": "Guardando...",
+        "saveChanges": "Guardar Cambios"
     },
     "sidebar": {
         "managementControl": "Control de Gestión",
@@ -46,7 +57,10 @@
         "managePillars": "Gestionar Pilares",
         "actions": "Acciones",
         "audit": "Auditoría",
-        "settings": "Configuración"
+        "settings": "Configuración",
+        "tracking": "Seguimiento",
+        "pillars": "Pilares",
+        "users": "Usuarios"
     },
     "dashboard": {
         "title": "Dashboard",
@@ -126,7 +140,14 @@
         "noActions": "Ninguna acción encontrada",
         "noActionsFilter": "No hay acciones con el estado \"{{status}}\".",
         "noActionsDesc": "Registre acciones vinculadas a los Key Results para realizar el seguimiento de las iniciativas.",
-        "createFirst": "Crear Primera Acción"
+        "createFirst": "Crear Primera Acción",
+        "otherActions": "Otras Acciones",
+        "actionPlans": "Planes de Acción",
+        "markAsPending": "Marcar como Pendiente",
+        "markAsInProgress": "Marcar como En Progreso",
+        "noActionsLinked": "Ninguna acción vinculada",
+        "editAction": "Editar Acción",
+        "viewActions": "Ver acciones"
     },
     "modals": {
         "createObjective": {
@@ -250,6 +271,7 @@
             "error": "Error",
             "tip": "Consejo:",
             "tipContent": "Haga clic en los valores de Baseline, Meta o Real para editar directamente. El % de Avance se calcula automáticamente. Use los indicadores de confianza para señalar el estado de cada KR.",
+            "subtitle": "Gestione los pilares estratégicos de la organización",
             "emptyState": {
                 "title": "Ningún Key Result encontrado para el pilar {{pillar}} en la unidad {{unit}}.",
                 "description": "Registre OBJETIVOS y KEY RESULTS en la página de OKRs para verlos aquí."
@@ -359,7 +381,8 @@
                     "descriptionPlaceholder": "Descripción del pilar...",
                     "cancel": "Cancelar",
                     "save": "Guardar",
-                    "createError": "Error al guardar el pilar. Verifique los datos."
+                    "createError": "Error al guardar el pilar. Verifique los datos.",
+                    "selectedCount": "{{count}} seleccionado(s)"
                 },
                 "delete": {
                     "confirm": "ATENCIÓN: Esto eliminará permanentemente el pilar y TODOS sus Objetivos y Key Results. ¿Está seguro?",
@@ -420,7 +443,9 @@
         "annual": "Anual",
         "quarterly": "Trimestral",
         "monthlyTracking": "Seguimiento Mensual",
-        "addQuarterlyKR": "Agregar KR Trimestral"
+        "addQuarterlyKR": "Agregar KR Trimestral",
+        "deleteKR": "Eliminar KR",
+        "noKRsFound": "Ningún Key Result encontrado"
     },
     "targetDirection": {
         "label": "Dirección del Objetivo",
@@ -428,5 +453,85 @@
         "minimize": "Minimizar",
         "maximizeHint": "Cuanto mayor el real, mejor (ej: Facturación)",
         "minimizeHint": "Cuanto menor el real, mejor (ej: Uso de material)"
+    },
+    "monthly": {
+        "title": "Seguimiento Mensual",
+        "month": "Mes",
+        "actual": "Real",
+        "notes": "Observaciones",
+        "notesPlaceholder": "Escriba una observación..."
+    },
+    "profile": {
+        "passwordMismatch": "Las contraseñas no coinciden",
+        "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+        "passwordUpdated": "¡Contraseña actualizada con éxito!",
+        "security": "Seguridad",
+        "newPassword": "Nueva Contraseña",
+        "confirmPassword": "Confirmar Contraseña"
+    },
+    "users": {
+        "role": "Función",
+        "title": "Gestión de Usuarios",
+        "subtitle": "Configure permisos de acceso y asignaciones de empresas",
+        "totalCount": "Total: {{count}} usuario(s)",
+        "newUser": "Nuevo Usuario",
+        "notFound": "Ningún usuario encontrado.",
+        "accessLevel": "Nivel de Acceso",
+        "companies": "Acceso a las Empresas",
+        "adminGroup": "Administradores",
+        "unassigned": "Sin Empresa Asignada",
+        "noAccess": "Sin acceso",
+        "fullAccess": "Acceso total (Admin)",
+        "editPermissions": "Editar permisos",
+        "saveFailed": "No fue posible guardar los cambios. Verifique si tiene permiso.",
+        "singular": "usuario",
+        "plural": "usuarios",
+        "editUser": "Editar Usuario",
+        "linkedCompanies": "Empresas Vinculadas",
+        "superfluousForAdmin": "(Superfluo para Admin)",
+        "adminFullAccess": "Los administradores tienen acceso total a todas las empresas y configuraciones.",
+        "resetPassword": "Restablecer Contraseña",
+        "newPasswordPlaceholder": "Nueva contraseña (mín. 6 caracteres)",
+        "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+        "passwordReset": "¡Contraseña restablecida con éxito!",
+        "resetting": "Restableciendo...",
+        "reset": "Restablecer",
+        "userRole": "Usuario",
+        "administrator": "Administrador",
+        "createTitle": "Crear Nuevo Usuario",
+        "createSubtitle": "Agregue un nuevo usuario a la plataforma",
+        "createButton": "Crear Usuario",
+        "usernamePlaceholder": "nombre.apellido"
+    },
+    "krTracking": {
+        "title": "Resultados Trimestrales",
+        "subtitlePrefix": "Seguimiento estratégico de los indicadores clave de rendimiento para el año fiscal",
+        "exercise": "Ejercicio {{year}}",
+        "refreshData": "Actualizar datos",
+        "filters": "Filtros",
+        "allPillars": "Todos los Pilares",
+        "allObjectives": "Todos los Objetivos",
+        "clear": "Limpiar",
+        "clearFilters": "Limpiar Filtros",
+        "total": "Total",
+        "syncing": "Sincronizando datos...",
+        "noResults": "Ningún resultado encontrado",
+        "noResultsDesc": "No encontramos ningún KR que corresponda a los filtros seleccionados.",
+        "progress": "Avance",
+        "annualGoal": "Meta Anual",
+        "quarterlyDetail": "Detalle Trimestral",
+        "period": "Período",
+        "actual": "Realizado",
+        "status": "Estado",
+        "notes": "Notas",
+        "current": "Actual",
+        "addNote": "Agregar nota...",
+        "notesPlaceholder": "Escriba una observación...",
+        "evolution": "Evolución",
+        "noData": "Sin datos suficientes",
+        "noDataDesc": "Complete los valores en la tabla para ver el gráfico.",
+        "noKRsForQuarter": "Ningún KR definido para este trimestre",
+        "minimize": "Minimizar",
+        "maximize": "Maximizar"
     }
 }

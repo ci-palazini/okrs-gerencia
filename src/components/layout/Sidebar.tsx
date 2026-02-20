@@ -75,8 +75,8 @@ export function Sidebar() {
                     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
                     { name: t('sidebar.corporateObjectives'), href: '/objectives-corporate', icon: Building2 },
                     { name: t('sidebar.okrs'), href: '/okrs', icon: Target },
-                    { name: 'Acompanhamento', href: '/kr-tracking', icon: TrendingUp },
-                    { name: 'Pilares', href: '/pillars', icon: Layers },
+                    { name: t('sidebar.tracking'), href: '/kr-tracking', icon: TrendingUp },
+                    { name: t('sidebar.pillars'), href: '/pillars', icon: Layers },
                 ].map((item) => {
                     const isActive = location.pathname === item.href
                     return (
@@ -155,13 +155,13 @@ export function Sidebar() {
                                     : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
                                 collapsed && 'justify-center px-3'
                             )}
-                            title="Gerenciar Usuários"
+                            title={t('users.title')}
                         >
                             <Users className={cn(
                                 'w-5 h-5 transition-transform duration-200 group-hover:scale-110',
                                 location.pathname === '/admin/users' && 'drop-shadow-[0_0_8px_var(--color-primary)]'
                             )} />
-                            {!collapsed && <span className="font-medium">Usuários</span>}
+                            {!collapsed && <span className="font-medium">{t('sidebar.users')}</span>}
                         </NavLink>
                         <NavLink
                             to="/admin/departments"

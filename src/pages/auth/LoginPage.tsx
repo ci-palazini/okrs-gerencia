@@ -152,7 +152,7 @@ export function LoginPage() {
                     {failedAttempts >= 3 && (
                         <div className="mt-6 p-4 rounded-xl bg-[var(--color-surface-elevated)] border border-[var(--color-border)] animate-in fade-in slide-in-from-bottom-2">
                             <p className="text-sm font-medium text-[var(--color-text-primary)] mb-3">
-                                Esqueceu sua senha? Entre em contato com um dos administradores:
+                                {t('auth.forgotPassword')}
                             </p>
                             <div className="space-y-2">
                                 {[
@@ -162,7 +162,7 @@ export function LoginPage() {
                                 ].map(({ email, label }) => (
                                     <a
                                         key={email}
-                                        href={`mailto:${email}?subject=Solicitação de reset de senha - OKR Dashboard`}
+                                        href={`mailto:${email}?subject=${t('auth.resetSubject')}`}
                                         className="flex items-center gap-2 text-sm text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors group"
                                     >
                                         <Mail className="w-4 h-4 shrink-0" />

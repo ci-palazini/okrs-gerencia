@@ -162,18 +162,18 @@ export function QuarterlyTimeline({
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <Target className="w-4 h-4 text-[var(--color-primary)]" />
                     <span className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wide">
-                        Meta Anual
+                        {t('krTracking.annualGoal')}
                     </span>
                 </div>
                 <div className="flex items-center gap-6 flex-1">
                     <div className="text-center">
-                        <span className="text-[10px] text-[var(--color-text-muted)] block">Baseline</span>
+                        <span className="text-[10px] text-[var(--color-text-muted)] block">{t('quarterlyCard.baseline')}</span>
                         <span className="text-sm font-medium text-[var(--color-text-secondary)]">
                             {fmtVal(annualKR.baseline, annualKR.metric_type, annualKR.unit, annualKR.currency_type)}
                         </span>
                     </div>
                     <div className="text-center">
-                        <span className="text-[10px] text-[var(--color-text-muted)] block">Target</span>
+                        <span className="text-[10px] text-[var(--color-text-muted)] block">{t('quarterlyCard.target')}</span>
                         <span className="text-sm font-bold text-[var(--color-success)]">
                             {fmtVal(annualKR.target, annualKR.metric_type, annualKR.unit, annualKR.currency_type)}
                         </span>
@@ -181,7 +181,7 @@ export function QuarterlyTimeline({
                     {isMinimize && (
                         <div className="flex items-center gap-1 text-[10px] text-orange-500">
                             <TrendingDown className="w-3 h-3" />
-                            Minimizar
+                            {t('targetDirection.minimize')}
                         </div>
                     )}
                 </div>
@@ -233,7 +233,7 @@ export function QuarterlyTimeline({
                                 </Badge>
                                 {isCurrent && (
                                     <span className="text-[9px] font-semibold text-[var(--color-primary)] uppercase tracking-wider">
-                                        Atual
+                                        {t('objectives.current')}
                                     </span>
                                 )}
                                 {hasKRs && (
@@ -252,149 +252,186 @@ export function QuarterlyTimeline({
                                 )}
                             >
                                 <Plus className="w-3 h-3" />
-                                Novo KR
+                                {t('okr.newKR')}
                             </button>
                         </div>
 
                         {/* KR Rows */}
                         {hasKRs ? (
-                            <div className="divide-y divide-[var(--color-border-subtle)]">
-                                {krs.map(kr => {
-                                    const prog = kr.progress ?? 0
-                                    const isActionsOpen = expandedActionKR === kr.id
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="text-left text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider border-b border-[var(--color-border-subtle)]">
+                                            <th className="px-3 py-2 w-6"></th>{/* expand */}
+                                            <th className="px-3 py-2 w-24">KR</th>
+                                            <th className="px-3 py-2">{t('common.description')}</th>
+                                            <th className="px-3 py-2 w-28">{t('quarterlyCard.owner')}</th>
+                                            <th className="px-3 py-2 w-20 text-center">{t('quarterlyCard.baseline')}</th>
+                                            <th className="px-3 py-2 w-20 text-center">{t('quarterlyCard.actual')}</th>
+                                            <th className="px-3 py-2 w-20 text-center">{t('quarterlyCard.target')}</th>
+                                            <th className="px-3 py-2 w-28">{t('quarterlyCard.progress')}</th>
+                                            <th className="px-3 py-2 w-20 text-center">{t('quarterlyCard.confidence')}</th>
+                                            <th className="px-3 py-2 w-16"></th>{/* actions */}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                                        {krs.map(kr => {
+                                            const prog = kr.progress ?? 0
+                                            const isActionsOpen = expandedActionKR === kr.id
 
-                                    return (
-                                        <div key={kr.id}>
-                                            {/* KR Row */}
-                                            <div className="group/kr hover:bg-[var(--color-surface-hover)] transition-colors">
-                                                <div className="flex items-center gap-3 px-4 py-2.5">
-                                                    {/* Expand toggle for actions */}
-                                                    <button
-                                                        onClick={() => setExpandedActionKR(isActionsOpen ? null : kr.id)}
-                                                        className={cn(
-                                                            'p-0.5 rounded transition-all duration-200',
-                                                            isActionsOpen
-                                                                ? 'text-[var(--color-primary)]'
-                                                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]'
-                                                        )}
-                                                        title="Ver ações"
-                                                    >
-                                                        {isActionsOpen
-                                                            ? <ChevronDown className="w-3.5 h-3.5" />
-                                                            : <ChevronRight className="w-3.5 h-3.5" />
-                                                        }
-                                                    </button>
+                                            return (
+                                                <>
+                                                    <tr key={kr.id} className="group/kr hover:bg-[var(--color-surface-hover)] transition-colors">
+                                                        {/* Expand toggle */}
+                                                        <td className="px-3 py-2.5">
+                                                            <button
+                                                                onClick={() => setExpandedActionKR(isActionsOpen ? null : kr.id)}
+                                                                className={cn(
+                                                                    'p-0.5 rounded transition-all duration-200',
+                                                                    isActionsOpen
+                                                                        ? 'text-[var(--color-primary)]'
+                                                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]'
+                                                                )}
+                                                                title={t('actions.viewActions')}
+                                                            >
+                                                                {isActionsOpen
+                                                                    ? <ChevronDown className="w-3.5 h-3.5" />
+                                                                    : <ChevronRight className="w-3.5 h-3.5" />
+                                                                }
+                                                            </button>
+                                                        </td>
 
-                                                    {/* Code + Title */}
-                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                        <span className="text-[10px] font-mono font-bold text-[var(--color-text-muted)] flex-shrink-0">
-                                                            {kr.code}
-                                                        </span>
-                                                        <span className="text-xs text-[var(--color-text-primary)] truncate">
-                                                            {kr.title}
-                                                        </span>
-                                                    </div>
+                                                        {/* Code */}
+                                                        <td className="px-3 py-2.5">
+                                                            <span className="text-[10px] font-mono font-bold text-[var(--color-text-muted)]">
+                                                                {kr.code}
+                                                            </span>
+                                                        </td>
 
-                                                    {/* Values */}
-                                                    <div className="flex items-center gap-4 flex-shrink-0">
-                                                        <div className="text-center w-16">
-                                                            <span className="text-[9px] text-[var(--color-text-muted)] block leading-none mb-0.5">Base</span>
+                                                        {/* Title */}
+                                                        <td className="px-3 py-2.5">
+                                                            <span className="text-xs text-[var(--color-text-primary)]">
+                                                                {kr.title}
+                                                            </span>
+                                                        </td>
+
+                                                        {/* Owner */}
+                                                        <td className="px-3 py-2.5">
+                                                            <span className="text-xs text-[var(--color-text-secondary)]">
+                                                                {kr.owner_name || '-'}
+                                                            </span>
+                                                        </td>
+
+                                                        {/* Baseline */}
+                                                        <td className="px-3 py-2.5 text-center">
                                                             {renderEditableCell(kr, 'baseline', kr.baseline)}
-                                                        </div>
-                                                        <div className="text-center w-16">
-                                                            <span className="text-[9px] text-[var(--color-text-muted)] block leading-none mb-0.5">Meta</span>
-                                                            {renderEditableCell(kr, 'target', kr.target)}
-                                                        </div>
-                                                        <div className="text-center w-16">
-                                                            <span className="text-[9px] text-[var(--color-text-muted)] block leading-none mb-0.5">Real</span>
+                                                        </td>
+
+                                                        {/* Real/Actual */}
+                                                        <td className="px-3 py-2.5 text-center">
                                                             {renderEditableCell(kr, 'actual', kr.actual)}
-                                                        </div>
-                                                    </div>
+                                                        </td>
 
-                                                    {/* Progress */}
-                                                    <div className="flex items-center gap-1.5 flex-shrink-0 w-28">
-                                                        <ProgressBar value={prog} size="sm" variant="gradient" />
-                                                        <Badge variant={progressVariant(prog)} size="sm">
-                                                            {prog}%
-                                                        </Badge>
-                                                    </div>
+                                                        {/* Target */}
+                                                        <td className="px-3 py-2.5 text-center">
+                                                            {renderEditableCell(kr, 'target', kr.target)}
+                                                        </td>
 
-                                                    {/* Confidence */}
-                                                    <div className="flex items-center flex-shrink-0">
-                                                        {editingConfidence === kr.id ? (
-                                                            <div className="flex items-center gap-1">
-                                                                {(['on_track', 'at_risk', 'off_track'] as ConfidenceLevel[]).map(level => (
+                                                        {/* Progress */}
+                                                        <td className="px-3 py-2.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="flex-1 min-w-12">
+                                                                    <ProgressBar value={prog} size="sm" variant="gradient" />
+                                                                </div>
+                                                                <Badge variant={progressVariant(prog)} size="sm">
+                                                                    {prog}%
+                                                                </Badge>
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Confidence */}
+                                                        <td className="px-3 py-2.5 text-center">
+                                                            {editingConfidence === kr.id ? (
+                                                                <div className="flex items-center justify-center gap-1">
+                                                                    {(['on_track', 'at_risk', 'off_track'] as ConfidenceLevel[]).map(level => (
+                                                                        <button
+                                                                            key={level}
+                                                                            onClick={() => {
+                                                                                onUpdateConfidence?.(kr.id, level)
+                                                                                setEditingConfidence(null)
+                                                                            }}
+                                                                            className="text-base hover:scale-125 transition-transform"
+                                                                        >
+                                                                            <ConfidenceEmoji value={level} />
+                                                                        </button>
+                                                                    ))}
                                                                     <button
-                                                                        key={level}
-                                                                        onClick={() => {
-                                                                            onUpdateConfidence?.(kr.id, level)
-                                                                            setEditingConfidence(null)
-                                                                        }}
-                                                                        className="text-base hover:scale-125 transition-transform"
+                                                                        onClick={() => setEditingConfidence(null)}
+                                                                        className="ml-1 p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
                                                                     >
-                                                                        <ConfidenceEmoji value={level} />
+                                                                        <X className="w-3 h-3" />
                                                                     </button>
-                                                                ))}
+                                                                </div>
+                                                            ) : (
                                                                 <button
-                                                                    onClick={() => setEditingConfidence(null)}
-                                                                    className="ml-1 p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+                                                                    onClick={() => onUpdateConfidence && setEditingConfidence(kr.id)}
+                                                                    className={cn(
+                                                                        'transition-transform',
+                                                                        onUpdateConfidence && 'hover:scale-125 cursor-pointer'
+                                                                    )}
+                                                                    disabled={!onUpdateConfidence}
                                                                 >
-                                                                    <X className="w-3 h-3" />
+                                                                    <ConfidenceEmoji value={kr.confidence} />
+                                                                </button>
+                                                            )}
+                                                        </td>
+
+                                                        {/* Actions (edit/delete) */}
+                                                        <td className="px-3 py-2.5 text-right">
+                                                            <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover/kr:opacity-100 transition-opacity">
+                                                                <button
+                                                                    onClick={() => onEditKR(kr)}
+                                                                    className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
+                                                                    title={t('common.edit')}
+                                                                >
+                                                                    <Edit3 className="w-3 h-3" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (window.confirm(t('okr.deleteKRConfirm'))) {
+                                                                            onDeleteKR(kr.id)
+                                                                        }
+                                                                    }}
+                                                                    className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
+                                                                    title={t('common.delete')}
+                                                                >
+                                                                    <Trash2 className="w-3 h-3" />
                                                                 </button>
                                                             </div>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => onUpdateConfidence && setEditingConfidence(kr.id)}
-                                                                className={cn(
-                                                                    'transition-transform',
-                                                                    onUpdateConfidence && 'hover:scale-125 cursor-pointer'
-                                                                )}
-                                                                disabled={!onUpdateConfidence}
-                                                            >
-                                                                <ConfidenceEmoji value={kr.confidence} />
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                        </td>
+                                                    </tr>
 
-                                                    {/* Actions (edit/delete) */}
-                                                    <div className="flex items-center gap-0.5 opacity-0 group-hover/kr:opacity-100 transition-opacity flex-shrink-0">
-                                                        <button
-                                                            onClick={() => onEditKR(kr)}
-                                                            className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
-                                                            title={t('common.edit')}
-                                                        >
-                                                            <Edit3 className="w-3 h-3" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                if (window.confirm(t('okr.deleteKRConfirm'))) {
-                                                                    onDeleteKR(kr.id)
-                                                                }
-                                                            }}
-                                                            className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
-                                                            title={t('common.delete')}
-                                                        >
-                                                            <Trash2 className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Expanded: Action Plans */}
-                                            {isActionsOpen && (
-                                                <div className="px-6 py-4 bg-[var(--color-surface-subtle)]/60 border-t border-[var(--color-border-subtle)]">
-                                                    <ActionPlanList krId={kr.id} />
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
+                                                    {/* Expanded: Action Plans */}
+                                                    {isActionsOpen && (
+                                                        <tr>
+                                                            <td colSpan={10} className="p-0 bg-[var(--color-surface-subtle)]/60 border-b border-[var(--color-border-subtle)]">
+                                                                <div className="px-6 py-4">
+                                                                    <ActionPlanList krId={kr.id} />
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         ) : (
                             /* Empty quarter */
                             <div className="px-4 py-4 text-center">
                                 <p className="text-[11px] text-[var(--color-text-muted)]">
-                                    Nenhum KR definido para este trimestre
+                                    {t('krTracking.noKRsForQuarter')}
                                 </p>
                             </div>
                         )}

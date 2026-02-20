@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Edit3, Trash2, X, ChevronDown, CalendarRange } from 'lucide-react'
 import { ProgressBar } from '../ui/ProgressBar'
 import { Badge } from '../ui/Badge'
@@ -51,6 +52,7 @@ export function KRTable({
     const [editingCell, setEditingCell] = useState<string | null>(null)
     const [editValue, setEditValue] = useState<string>('')
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+    const { t } = useTranslation()
 
     const toggleExpand = (krId: string) => {
         const newExpanded = new Set(expandedIds)
@@ -106,17 +108,17 @@ export function KRTable({
                     <tr className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
                         <th className="px-3 py-3 w-8"></th> {/* Expand toggle column */}
                         <th className="px-3 py-3 w-28">KR</th>
-                        <th className="px-3 py-3">Descrição</th>
-                        <th className="px-3 py-3 w-28">Responsável</th>
+                        <th className="px-3 py-3">{t('common.description')}</th>
+                        <th className="px-3 py-3 w-28">{t('quarterlyCard.owner')}</th>
                         {showDataColumns && (
                             <>
-                                <th className="px-3 py-3 w-20 text-center">Baseline</th>
-                                <th className="px-3 py-3 w-20 text-center">Real</th>
-                                <th className="px-3 py-3 w-20 text-center">Target</th>
+                                <th className="px-3 py-3 w-20 text-center">{t('quarterlyCard.baseline')}</th>
+                                <th className="px-3 py-3 w-20 text-center">{t('quarterlyCard.actual')}</th>
+                                <th className="px-3 py-3 w-20 text-center">{t('quarterlyCard.target')}</th>
                             </>
                         )}
-                        <th className="px-3 py-3 w-28">% Avanço</th>
-                        <th className="px-3 py-3 w-24 text-center">Confiança</th>
+                        <th className="px-3 py-3 w-28">{t('quarterlyCard.progress')}</th>
+                        <th className="px-3 py-3 w-24 text-center">{t('quarterlyCard.confidence')}</th>
                         {(onEdit || onDelete) && <th className="px-3 py-3 w-20 text-right"></th>}
                     </tr>
                 </thead>
@@ -155,7 +157,7 @@ export function KRTable({
                                             </span>
                                             {kr.scope === 'annual' && (
                                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-blue-50 text-blue-600 border border-blue-200">
-                                                    <CalendarRange className="w-3 h-3" /> Anual
+                                                    <CalendarRange className="w-3 h-3" /> {t('quarterlyCard.annual')}
                                                 </span>
                                             )}
                                         </div>
@@ -333,7 +335,7 @@ export function KRTable({
                                                 <button
                                                     onClick={() => onEdit(kr)}
                                                     className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 opacity-0 group-hover:opacity-100 transition-all mr-1"
-                                                    title="Editar KR"
+                                                    title={t('quarterlyCard.editKR')}
                                                 >
                                                     <Edit3 className="w-4 h-4" />
                                                 </button>
@@ -341,12 +343,12 @@ export function KRTable({
                                             {onDelete && (
                                                 <button
                                                     onClick={() => {
-                                                        if (window.confirm('Tem certeza que deseja excluir este Key Result?')) {
+                                                        if (window.confirm(t('okr.deleteKRConfirm'))) {
                                                             onDelete(kr.id)
                                                         }
                                                     }}
                                                     className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 opacity-0 group-hover:opacity-100 transition-all"
-                                                    title="Excluir KR"
+                                                    title={t('quarterlyCard.deleteKR')}
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -371,7 +373,7 @@ export function KRTable({
 
             {keyResults.length === 0 && (
                 <div className="text-center py-8 text-[var(--color-text-muted)]">
-                    Nenhum Key Result encontrado
+                    {t('quarterlyCard.noKRsFound')}
                 </div>
             )}
         </div>

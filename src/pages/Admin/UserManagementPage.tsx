@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import type { UserWithUnits, BusinessUnit } from '../../types'
 import { UserEditModal } from '../../components/Admin/UserEditModal'
@@ -18,6 +19,7 @@ interface UserGroup {
 }
 
 function UserRow({ user, onEdit }: { user: UserWithUnits; onEdit: (u: UserWithUnits) => void }) {
+    const { t } = useTranslation()
     return (
         <tr className="group hover:bg-[var(--color-surface-hover)] transition-colors">
             <td className="p-4">
@@ -39,18 +41,18 @@ function UserRow({ user, onEdit }: { user: UserWithUnits; onEdit: (u: UserWithUn
                 {user.role === 'admin' ? (
                     <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
                         <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                        Admin
+                        {t('users.administrator')}
                     </Badge>
                 ) : (
                     <Badge variant="outline" className="bg-slate-500/10 text-slate-600 border-slate-500/20">
                         <UserIcon className="w-3.5 h-3.5 mr-1" />
-                        Usuário
+                        {t('users.userRole')}
                     </Badge>
                 )}
             </td>
             <td className="p-4">
                 {user.role === 'admin' ? (
-                    <span className="text-sm text-[var(--color-text-muted)] italic">Acesso total (Admin)</span>
+                    <span className="text-sm text-[var(--color-text-muted)] italic">{t('users.fullAccess')}</span>
                 ) : (
                     <div className="flex flex-wrap gap-1.5">
                         {user.user_business_units && user.user_business_units.length > 0 ? (
@@ -63,7 +65,7 @@ function UserRow({ user, onEdit }: { user: UserWithUnits; onEdit: (u: UserWithUn
                                 </span>
                             ))
                         ) : (
-                            <span className="text-sm text-red-400">Sem acesso</span>
+                            <span className="text-sm text-red-400">{t('users.noAccess')}</span>
                         )}
                     </div>
                 )}
@@ -72,7 +74,7 @@ function UserRow({ user, onEdit }: { user: UserWithUnits; onEdit: (u: UserWithUn
                 <button
                     onClick={() => onEdit(user)}
                     className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all"
-                    title="Editar permissões"
+                    title={t('users.editPermissions')}
                 >
                     <Pencil className="w-4 h-4" />
                 </button>
@@ -82,6 +84,7 @@ function UserRow({ user, onEdit }: { user: UserWithUnits; onEdit: (u: UserWithUn
 }
 
 function UserGroupSection({ group, onEdit }: { group: UserGroup; onEdit: (u: UserWithUnits) => void }) {
+    const { t } = useTranslation()
     const [isOpen, setIsOpen] = useState(true)
 
     const iconElement = group.icon === 'admin' ? (
@@ -113,17 +116,17 @@ function UserGroupSection({ group, onEdit }: { group: UserGroup; onEdit: (u: Use
                     )}
                 </div>
                 <span className="text-sm text-[var(--color-text-muted)] flex-shrink-0">
-                    {group.users.length} {group.users.length === 1 ? 'usuário' : 'usuários'}
+                    {group.users.length} {group.users.length === 1 ? t('users.singular') : t('users.plural')}
                 </span>
             </button>
             {isOpen && (
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-[var(--color-border)]">
-                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Usuário</th>
-                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Função</th>
-                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">Acesso às Empresas</th>
-                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)] text-right">Ações</th>
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">{t('common.user')}</th>
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">{t('users.role')}</th>
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">{t('users.companies')}</th>
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)] text-right">{t('sidebar.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border)]">
@@ -138,6 +141,7 @@ function UserGroupSection({ group, onEdit }: { group: UserGroup; onEdit: (u: Use
 }
 
 export function UserManagementPage() {
+    const { t } = useTranslation()
     const { user: currentUser } = useAuth()
     const navigate = useNavigate()
     const [users, setUsers] = useState<UserWithUnits[]>([])
@@ -191,7 +195,7 @@ export function UserManagementPage() {
         if (admins.length > 0) {
             groups.push({
                 id: '__admins__',
-                label: 'Administradores',
+                label: t('users.adminGroup'),
                 icon: 'admin',
                 users: admins,
             })
@@ -220,7 +224,7 @@ export function UserManagementPage() {
         if (unassigned.length > 0) {
             groups.push({
                 id: '__unassigned__',
-                label: 'Sem Empresa Atribuída',
+                label: t('users.unassigned'),
                 icon: 'none',
                 users: unassigned,
             })
@@ -257,7 +261,7 @@ export function UserManagementPage() {
             loadData()
         } catch (error) {
             console.error('Error saving user:', error)
-            alert('Não foi possível salvar as alterações. Verifique se você tem permissão.')
+            alert(t('users.saveFailed'))
         }
     }
 
@@ -265,8 +269,8 @@ export function UserManagementPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-[var(--color-text-muted)]">
                 <ShieldCheck className="w-16 h-16 mb-4 text-[var(--color-text-muted)] opacity-20" />
-                <h2 className="text-xl font-semibold">Acesso Restrito</h2>
-                <p>Apenas administradores podem acessar esta página.</p>
+                <h2 className="text-xl font-semibold">{t('departments.restricted')}</h2>
+                <p>{t('departments.adminOnly')}</p>
             </div>
         )
     }
@@ -275,16 +279,16 @@ export function UserManagementPage() {
         <div className="p-8 max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Gerenciamento de Usuários</h1>
-                    <p className="text-[var(--color-text-muted)] mt-1">Configure permissões de acesso e atribuições de empresas</p>
+                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('users.title')}</h1>
+                    <p className="text-[var(--color-text-muted)] mt-1">{t('users.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="bg-[var(--color-surface-elevated)] px-4 py-2 rounded-lg border border-[var(--color-border)]">
-                        <span className="text-sm font-medium text-[var(--color-text-secondary)]">Total: {users.length} usuários</span>
+                        <span className="text-sm font-medium text-[var(--color-text-secondary)]">{t('users.totalCount', { count: users.length })}</span>
                     </div>
                     <Button onClick={() => navigate('/admin/users/create')}>
                         <UserPlus className="w-4 h-4 mr-2" />
-                        Novo Usuário
+                        {t('users.newUser')}
                     </Button>
                 </div>
             </div>
@@ -304,7 +308,7 @@ export function UserManagementPage() {
                     ))}
                     {userGroups.length === 0 && (
                         <div className="text-center py-12 text-[var(--color-text-muted)]">
-                            Nenhum usuário encontrado.
+                            {t('users.notFound')}
                         </div>
                     )}
                 </div>

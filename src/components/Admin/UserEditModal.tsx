@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, Check, KeyRound, Eye, EyeOff } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../ui/Button'
 import type { BusinessUnit, UserWithUnits } from '../../types'
 import { formatUsername } from '../../lib/utils'
@@ -15,6 +16,7 @@ interface UserEditModalProps {
 }
 
 export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserEditModalProps) {
+    const { t } = useTranslation()
     const { adminResetPassword } = useAuth()
     const [role, setRole] = useState<'admin' | 'user'>(user.role)
     const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
@@ -60,7 +62,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
 
     const handleResetPassword = async () => {
         if (newPassword.length < 6) {
-            setPasswordMessage({ type: 'error', text: 'A senha deve ter pelo menos 6 caracteres' })
+            setPasswordMessage({ type: 'error', text: t('users.passwordTooShort') })
             return
         }
 
@@ -72,7 +74,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
         if (error) {
             setPasswordMessage({ type: 'error', text: error.message })
         } else {
-            setPasswordMessage({ type: 'success', text: 'Senha redefinida com sucesso!' })
+            setPasswordMessage({ type: 'success', text: t('users.passwordReset') })
             setNewPassword('')
             setShowPassword(false)
         }
@@ -86,7 +88,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                 <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-[1.5rem] bg-[var(--color-surface)] p-6 shadow-2xl focus:outline-none z-50 border border-[var(--color-border)] overflow-y-auto">
                     <div className="flex items-center justify-between mb-6">
                         <Dialog.Title className="text-xl font-bold text-[var(--color-text-primary)]">
-                            Editar Usuário
+                            {t('users.editUser')}
                         </Dialog.Title>
                         <Dialog.Close asChild>
                             <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
@@ -113,7 +115,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
 
                         {/* Role Selection */}
                         <div className="space-y-3">
-                            <label className="text-sm font-medium text-[var(--color-text-muted)]">Nível de Acesso</label>
+                            <label className="text-sm font-medium text-[var(--color-text-muted)]">{t('users.accessLevel')}</label>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setRole('user')}
@@ -122,7 +124,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                                         : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)] text-[var(--color-text-secondary)]'
                                         }`}
                                 >
-                                    Usuário
+                                    {t('users.userRole')}
                                 </button>
                                 <button
                                     onClick={() => setRole('admin')}
@@ -131,12 +133,12 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                                         : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)] text-[var(--color-text-secondary)]'
                                         }`}
                                 >
-                                    Administrador
+                                    {t('users.administrator')}
                                 </button>
                             </div>
                             {role === 'admin' && (
                                 <p className="text-xs text-amber-500 bg-amber-500/10 p-2 rounded">
-                                    Administradores têm acesso total a todas as empresas e configurações.
+                                    {t('users.adminFullAccess')}
                                 </p>
                             )}
                         </div>
@@ -144,8 +146,8 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                         {/* Business Units */}
                         <div className={`space-y-3 ${role === 'admin' ? 'opacity-75' : ''}`}>
                             <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-muted)]">
-                                Empresas Vinculadas
-                                {role === 'admin' && <span className="text-xs font-normal text-amber-500">(Supérfluo para Admin)</span>}
+                                {t('users.linkedCompanies')}
+                                {role === 'admin' && <span className="text-xs font-normal text-amber-500">{t('users.superfluousForAdmin')}</span>}
                             </label>
                             <div className="max-h-48 overflow-y-auto space-y-2 border border-[var(--color-border)] rounded-xl p-2 bg-[var(--color-surface-elevated)]">
                                 {allUnits.map(unit => (
@@ -170,7 +172,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                         <div className="space-y-3 pt-2 border-t border-[var(--color-border)]">
                             <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-muted)]">
                                 <KeyRound className="w-4 h-4" />
-                                Redefinir Senha
+                                {t('users.resetPassword')}
                             </label>
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
@@ -181,7 +183,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                                             setNewPassword(e.target.value)
                                             setPasswordMessage(null)
                                         }}
-                                        placeholder="Nova senha (mín. 6 caracteres)"
+                                        placeholder={t('users.newPasswordPlaceholder')}
                                         className="w-full px-3 py-2 pr-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]"
                                     />
                                     <button
@@ -198,7 +200,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                                     disabled={isResettingPassword || !newPassword}
                                     className="shrink-0"
                                 >
-                                    {isResettingPassword ? 'Redefinindo...' : 'Redefinir'}
+                                    {isResettingPassword ? t('users.resetting') : t('users.reset')}
                                 </Button>
                             </div>
                             {passwordMessage && (
@@ -214,10 +216,10 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
 
                     <div className="flex justify-end gap-3 mt-8">
                         <Button variant="outline" onClick={onClose} disabled={isSaving}>
-                            Cancelar
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={handleSave} disabled={isSaving}>
-                            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                            {isSaving ? t('common.saving') : t('common.saveChanges')}
                         </Button>
                     </div>
                 </Dialog.Content>

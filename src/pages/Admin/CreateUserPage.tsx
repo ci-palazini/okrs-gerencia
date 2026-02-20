@@ -52,11 +52,11 @@ export function CreateUserPage() {
             <div className="flex items-center gap-4">
                 <Button variant="ghost" onClick={() => navigate('/admin/users')}>
                     <ArrowLeft className="w-5 h-5 mr-2" />
-                    Voltar
+                    {t('common.back')}
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Criar Novo Usuário</h1>
-                    <p className="text-[var(--color-text-muted)] mt-1">Adicione um novo usuário à plataforma</p>
+                    <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{t('users.createTitle')}</h1>
+                    <p className="text-[var(--color-text-muted)] mt-1">{t('users.createSubtitle')}</p>
                 </div>
             </div>
 
@@ -80,8 +80,8 @@ export function CreateUserPage() {
 
                     <Input
                         type="text"
-                        label="Usuário"
-                        placeholder="nome.sobrenome"
+                        label={t('auth.username')}
+                        placeholder={t('users.usernamePlaceholder')}
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         icon={<User className="w-5 h-5" />}
@@ -122,7 +122,7 @@ export function CreateUserPage() {
                             className="flex-1"
                             onClick={() => navigate('/admin/users')}
                         >
-                            Cancelar
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             type="submit"
@@ -130,7 +130,7 @@ export function CreateUserPage() {
                             className="flex-1"
                             loading={loading}
                         >
-                            Criar Usuário
+                            {t('users.createButton')}
                         </Button>
                     </div>
                 </form>

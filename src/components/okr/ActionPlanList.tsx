@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, CheckCircle2, Clock, MoreVertical, ListTodo, Calendar, Trash2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
@@ -24,14 +25,16 @@ interface ActionPlanListProps {
     krId: string
 }
 
-const statusConfig = {
-    pending: { label: 'Pendente', color: 'default', icon: Clock },
-    in_progress: { label: 'Em Progresso', color: 'info', icon: Clock },
-    done: { label: 'Concluído', color: 'success', icon: CheckCircle2 }
-}
-
 export function ActionPlanList({ krId }: ActionPlanListProps) {
+    const { t } = useTranslation()
     const { user } = useAuth()
+
+    const statusConfig = {
+        pending: { label: t('actions.status.pending'), color: 'default', icon: Clock },
+        in_progress: { label: t('actions.status.inProgress'), color: 'info', icon: Clock },
+        done: { label: t('actions.status.done'), color: 'success', icon: CheckCircle2 }
+    }
+
     const [loading, setLoading] = useState(true)
     const [actions, setActions] = useState<Action[]>([])
     const [addModalOpen, setAddModalOpen] = useState(false)
@@ -92,7 +95,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     }
 
     async function deleteAction(actionId: string) {
-        if (!confirm('Tem certeza que deseja excluir esta ação?')) return
+        if (!confirm(t('actions.deleteConfirm'))) return
 
         try {
             const actionToDelete = actions.find(a => a.id === actionId)
@@ -136,14 +139,14 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
                     <ListTodo className="w-4 h-4" />
-                    Planos de Ação
+                    {t('actions.actionPlans')}
                     <Badge variant="default" size="sm" className="ml-2">
                         {actions.length}
                     </Badge>
                 </h4>
                 <Button variant="outline" size="sm" onClick={() => setAddModalOpen(true)}>
                     <Plus className="w-3 h-3 mr-1.5" />
-                    Nova Ação
+                    {t('actions.newAction')}
                 </Button>
             </div>
 
@@ -218,19 +221,19 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                     className="flex items-center px-2 py-1.5 text-xs text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
                                                     onClick={() => updateActionStatus(action.id, 'pending')}
                                                 >
-                                                    Marcar como Pendente
+                                                    {t('actions.markAsPending')}
                                                 </DropdownMenu.Item>
                                                 <DropdownMenu.Item
                                                     className="flex items-center px-2 py-1.5 text-xs text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
                                                     onClick={() => updateActionStatus(action.id, 'in_progress')}
                                                 >
-                                                    Marcar em Progresso
+                                                    {t('actions.markAsInProgress')}
                                                 </DropdownMenu.Item>
                                                 <DropdownMenu.Item
                                                     className="flex items-center px-2 py-1.5 text-xs text-[var(--color-success)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-success-muted)]"
                                                     onClick={() => updateActionStatus(action.id, 'done')}
                                                 >
-                                                    Marcar como Concluído
+                                                    {t('actions.markAsDone')}
                                                 </DropdownMenu.Item>
                                                 <DropdownMenu.Separator className="h-px my-1 bg-[var(--color-border)]" />
                                                 <DropdownMenu.Item
@@ -238,7 +241,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                     onClick={() => deleteAction(action.id)}
                                                 >
                                                     <Trash2 className="w-3 h-3 mr-2" />
-                                                    Excluir
+                                                    {t('common.delete')}
                                                 </DropdownMenu.Item>
                                             </DropdownMenu.Content>
                                         </DropdownMenu.Portal>
@@ -251,9 +254,9 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             ) : (
                 <div className="flex flex-col items-center justify-center py-6 border-2 border-dashed border-[var(--color-border)] rounded-xl bg-[var(--color-surface)]/50">
                     <ListTodo className="w-8 h-8 text-[var(--color-text-muted)]/50 mb-2" />
-                    <p className="text-sm text-[var(--color-text-muted)] mb-3">Nenhuma ação vinculada</p>
+                    <p className="text-sm text-[var(--color-text-muted)] mb-3">{t('actions.noActionsLinked')}</p>
                     <Button variant="ghost" size="sm" onClick={() => setAddModalOpen(true)}>
-                        Criar Primeira Ação
+                        {t('actions.createFirst')}
                     </Button>
                 </div>
             )}

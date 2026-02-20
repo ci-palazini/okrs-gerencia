@@ -345,7 +345,7 @@ export function PillarsTab() {
                                 <p className="text-xs text-[var(--color-text-muted)]">
                                     {editForm.business_unit_ids?.length === units.length
                                         ? t('settings.page.pillars.list.global')
-                                        : `${editForm.business_unit_ids?.length || 0} selected`}
+                                        : t('settings.page.pillars.form.selectedCount', { count: editForm.business_unit_ids?.length || 0 })}
                                 </p>
                             </div>
 
@@ -418,7 +418,7 @@ export function PillarsTab() {
                                             </div>
                                         )
                                     ) : (
-                                        <Badge variant="warning">None</Badge>
+                                        <Badge variant="warning">{t('settings.page.pillars.form.none')}</Badge>
                                     )}
                                 </div>
                                 <div className="col-span-2">

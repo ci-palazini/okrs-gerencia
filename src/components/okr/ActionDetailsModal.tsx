@@ -1,4 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
+import { useTranslation } from 'react-i18next'
 import { X, Calendar, User, Clock, CheckCircle2, AlertTriangle, FileText, Edit3 } from 'lucide-react'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -22,18 +23,25 @@ interface ActionDetailsModalProps {
     onEdit?: () => void
 }
 
-const statusConfig = {
-    pending: { label: 'Pendente', color: 'default', icon: Clock },
-    in_progress: { label: 'Em Progresso', color: 'info', icon: Clock },
-    done: { label: 'Concluído', color: 'success', icon: CheckCircle2 }
-}
-
 export function ActionDetailsModal({ action, open, onOpenChange, onEdit }: ActionDetailsModalProps) {
+    const { t, i18n } = useTranslation()
     if (!action) return null
+
+    const statusLabels = {
+        pending: t('actions.status.pending'),
+        in_progress: t('actions.status.inProgress'),
+        done: t('actions.status.done'),
+    }
+    const statusConfig = {
+        pending: { label: statusLabels.pending, color: 'default', icon: Clock },
+        in_progress: { label: statusLabels.in_progress, color: 'info', icon: Clock },
+        done: { label: statusLabels.done, color: 'success', icon: CheckCircle2 }
+    }
 
     const status = statusConfig[action.status]
     const StatusIcon = status.icon
     const isOverdue = action.due_date && new Date(action.due_date) < new Date() && action.status !== 'done'
+    const locale = i18n.language === 'es' ? 'es' : 'pt-BR'
 
     return (
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -54,7 +62,7 @@ export function ActionDetailsModal({ action, open, onOpenChange, onEdit }: Actio
                                 {isOverdue && (
                                     <Badge variant="danger" size="sm">
                                         <AlertTriangle className="w-3 h-3 mr-1" />
-                                        Atrasado
+                                        {t('actions.overdue')}
                                     </Badge>
                                 )}
                             </div>
@@ -64,7 +72,7 @@ export function ActionDetailsModal({ action, open, onOpenChange, onEdit }: Actio
                                 <button
                                     onClick={onEdit}
                                     className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
-                                    title="Editar Ação"
+                                    title={t('actions.editAction')}
                                 >
                                     <Edit3 className="w-5 h-5" />
                                 </button>
@@ -83,10 +91,10 @@ export function ActionDetailsModal({ action, open, onOpenChange, onEdit }: Actio
                         <div className="space-y-2">
                             <h4 className="text-sm font-medium text-[var(--color-text-secondary)] flex items-center gap-2">
                                 <FileText className="w-4 h-4" />
-                                Descrição
+                                {t('common.description')}
                             </h4>
                             <div className="p-4 rounded-xl bg-[var(--color-surface-subtle)]/50 border border-[var(--color-border)] text-[var(--color-text-primary)] whitespace-pre-wrap text-sm leading-relaxed">
-                                {action.description || <span className="text-[var(--color-text-muted)] italic">Nenhuma descrição fornecida.</span>}
+                                {action.description || <span className="text-[var(--color-text-muted)] italic">{t('common.noDescription')}</span>}
                             </div>
                         </div>
 
@@ -95,20 +103,20 @@ export function ActionDetailsModal({ action, open, onOpenChange, onEdit }: Actio
                             {/* Owner */}
                             <div className="space-y-1.5">
                                 <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                                    Responsável
+                                    {t('quarterlyCard.owner')}
                                 </h4>
                                 <div className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
                                     <div className="w-8 h-8 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)]">
                                         <User className="w-4 h-4" />
                                     </div>
-                                    <span>{action.owner_name || 'Não atribuído'}</span>
+                                    <span>{action.owner_name || t('common.unassigned')}</span>
                                 </div>
                             </div>
 
                             {/* Due Date */}
                             <div className="space-y-1.5">
                                 <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                                    Data Limite
+                                    {t('modals.action.dueDate')}
                                 </h4>
                                 <div className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
                                     <div className={cn(
@@ -118,7 +126,7 @@ export function ActionDetailsModal({ action, open, onOpenChange, onEdit }: Actio
                                         <Calendar className="w-4 h-4" />
                                     </div>
                                     <span>
-                                        {action.due_date ? formatDate(action.due_date) : 'Sem data definida'}
+                                        {action.due_date ? formatDate(action.due_date) : t('common.noDate')}
                                     </span>
                                 </div>
                             </div>
@@ -126,10 +134,10 @@ export function ActionDetailsModal({ action, open, onOpenChange, onEdit }: Actio
                             {/* Created At */}
                             <div className="space-y-1.5">
                                 <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                                    Criado em
+                                    {t('common.createdAt')}
                                 </h4>
                                 <div className="text-sm text-[var(--color-text-primary)] pl-1">
-                                    {action.created_at ? new Date(action.created_at).toLocaleDateString('pt-BR') : '-'}
+                                    {action.created_at ? new Date(action.created_at).toLocaleDateString(locale) : '-'}
                                 </div>
                             </div>
 
@@ -137,10 +145,10 @@ export function ActionDetailsModal({ action, open, onOpenChange, onEdit }: Actio
                             {action.status === 'done' && (
                                 <div className="space-y-1.5">
                                     <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                                        Concluído em
+                                        {t('common.completedAt')}
                                     </h4>
                                     <div className="text-sm text-[var(--color-text-primary)] pl-1">
-                                        {action.updated_at ? new Date(action.updated_at).toLocaleDateString('pt-BR') : '-'}
+                                        {action.updated_at ? new Date(action.updated_at).toLocaleDateString(locale) : '-'}
                                     </div>
                                 </div>
                             )}
