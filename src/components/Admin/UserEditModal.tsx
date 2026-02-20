@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Check } from 'lucide-react'
+import { X, Check, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { Button } from '../ui/Button'
 import type { BusinessUnit, UserWithUnits } from '../../types'
 import { formatUsername } from '../../lib/utils'
+import { useAuth } from '../../hooks/useAuth'
 
 interface UserEditModalProps {
     isOpen: boolean
@@ -14,16 +15,26 @@ interface UserEditModalProps {
 }
 
 export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserEditModalProps) {
+    const { adminResetPassword } = useAuth()
     const [role, setRole] = useState<'admin' | 'user'>(user.role)
     const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
 
+    // Password reset state
+    const [newPassword, setNewPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
+    const [isResettingPassword, setIsResettingPassword] = useState(false)
+    const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
     useEffect(() => {
         if (isOpen) {
             setRole(user.role)
-            // Check if user_business_units exists and has items
             const ids = user.user_business_units?.map(ubu => ubu.business_unit_id) || []
             setSelectedUnitIds(ids)
+            // Reset password fields when modal opens
+            setNewPassword('')
+            setShowPassword(false)
+            setPasswordMessage(null)
         }
     }, [isOpen, user])
 
@@ -47,11 +58,32 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
         }
     }
 
+    const handleResetPassword = async () => {
+        if (newPassword.length < 6) {
+            setPasswordMessage({ type: 'error', text: 'A senha deve ter pelo menos 6 caracteres' })
+            return
+        }
+
+        setIsResettingPassword(true)
+        setPasswordMessage(null)
+
+        const { error } = await adminResetPassword(user.id, newPassword)
+
+        if (error) {
+            setPasswordMessage({ type: 'error', text: error.message })
+        } else {
+            setPasswordMessage({ type: 'success', text: 'Senha redefinida com sucesso!' })
+            setNewPassword('')
+            setShowPassword(false)
+        }
+        setIsResettingPassword(false)
+    }
+
     return (
         <Dialog.Root open={isOpen} onOpenChange={onClose}>
             <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
-                <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-[1.5rem] bg-[var(--color-surface)] p-6 shadow-2xl focus:outline-none z-50 border border-[var(--color-border)]">
+                <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-[1.5rem] bg-[var(--color-surface)] p-6 shadow-2xl focus:outline-none z-50 border border-[var(--color-border)] overflow-y-auto">
                     <div className="flex items-center justify-between mb-6">
                         <Dialog.Title className="text-xl font-bold text-[var(--color-text-primary)]">
                             Editar Usuário
@@ -109,7 +141,7 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                             )}
                         </div>
 
-                        {/* Business Units - Always allow editing assignments */}
+                        {/* Business Units */}
                         <div className={`space-y-3 ${role === 'admin' ? 'opacity-75' : ''}`}>
                             <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-muted)]">
                                 Empresas Vinculadas
@@ -132,6 +164,51 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                                     </div>
                                 ))}
                             </div>
+                        </div>
+
+                        {/* Password Reset */}
+                        <div className="space-y-3 pt-2 border-t border-[var(--color-border)]">
+                            <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-muted)]">
+                                <KeyRound className="w-4 h-4" />
+                                Redefinir Senha
+                            </label>
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={newPassword}
+                                        onChange={(e) => {
+                                            setNewPassword(e.target.value)
+                                            setPasswordMessage(null)
+                                        }}
+                                        placeholder="Nova senha (mín. 6 caracteres)"
+                                        className="w-full px-3 py-2 pr-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleResetPassword}
+                                    disabled={isResettingPassword || !newPassword}
+                                    className="shrink-0"
+                                >
+                                    {isResettingPassword ? 'Redefinindo...' : 'Redefinir'}
+                                </Button>
+                            </div>
+                            {passwordMessage && (
+                                <p className={`text-xs p-2 rounded ${passwordMessage.type === 'success'
+                                        ? 'text-emerald-600 bg-emerald-500/10'
+                                        : 'text-red-500 bg-red-500/10'
+                                    }`}>
+                                    {passwordMessage.text}
+                                </p>
+                            )}
                         </div>
                     </div>
 

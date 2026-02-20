@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
-import { User, Lock, Sparkles, ArrowRight } from 'lucide-react'
+import { User, Lock, ArrowRight, Mail } from 'lucide-react'
 
 export function LoginPage() {
     const { t } = useTranslation()
@@ -12,6 +12,7 @@ export function LoginPage() {
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+    const [failedAttempts, setFailedAttempts] = useState(0)
     const { signIn, user } = useAuth()
     const navigate = useNavigate()
 
@@ -33,6 +34,7 @@ export function LoginPage() {
 
         if (error) {
             setError(error.message)
+            setFailedAttempts(prev => prev + 1)
             setLoading(false)
         }
         // No need to manually navigate here, the useEffect will handle it when user state updates
@@ -146,7 +148,31 @@ export function LoginPage() {
                         </Button>
                     </form>
 
-                    {/* Removed registration option */}
+                    {/* Show admin contacts after 3 failed attempts */}
+                    {failedAttempts >= 3 && (
+                        <div className="mt-6 p-4 rounded-xl bg-[var(--color-surface-elevated)] border border-[var(--color-border)] animate-in fade-in slide-in-from-bottom-2">
+                            <p className="text-sm font-medium text-[var(--color-text-primary)] mb-3">
+                                Esqueceu sua senha? Entre em contato com um dos administradores:
+                            </p>
+                            <div className="space-y-2">
+                                {[
+                                    { email: 'gabriel.palazini@br.spiraxsarco.com', label: 'SXS-BR' },
+                                    { email: 'sebastian.tito@ar.spiraxsarco.com', label: 'SXS-AR' },
+                                    { email: 'beatriz.pechoto@br.hiter.com', label: 'Hiter' },
+                                ].map(({ email, label }) => (
+                                    <a
+                                        key={email}
+                                        href={`mailto:${email}?subject=Solicitação de reset de senha - OKR Dashboard`}
+                                        className="flex items-center gap-2 text-sm text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors group"
+                                    >
+                                        <Mail className="w-4 h-4 shrink-0" />
+                                        <span className="group-hover:underline">{email}</span>
+                                        <span className="text-xs text-[var(--color-text-muted)]">({label})</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
