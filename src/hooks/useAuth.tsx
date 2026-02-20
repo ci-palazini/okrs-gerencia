@@ -123,8 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function signOut() {
-        await supabase.auth.signOut()
+        await supabase.auth.signOut({ scope: 'local' })
         setUser(null)
+        // Limpar qualquer chave de sessão do Supabase que possa ter ficado no localStorage
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-')) localStorage.removeItem(key)
+        })
+        // Forçar reload completo para a raiz, evitando restauração da sessão em cache
+        window.location.href = '/'
     }
 
     async function updatePassword(newPassword: string) {
