@@ -26,6 +26,7 @@ interface ActionWithRelations {
         id: string
         code: string
         title: string
+        scope: string | null
         objective: {
             id: string
             title: string
@@ -74,6 +75,7 @@ export function ActionsPage() {
                         id,
                         code,
                         title,
+                        scope,
                         objective:objectives(
                             id,
                             title,
@@ -86,9 +88,9 @@ export function ActionsPage() {
 
             if (error) throw error
 
-            // Client-side filter
+            // Client-side filter: only quarterly KR actions for the selected business unit
             const filteredByBu = (allActions || []).filter(action => {
-                // If action has a KR and that KR has an Objective and that Objective has the matching BU ID
+                if (action.key_result?.scope !== 'quarterly') return false
                 if (action.key_result?.objective?.business_unit_id === selectedUnit) {
                     return true
                 }

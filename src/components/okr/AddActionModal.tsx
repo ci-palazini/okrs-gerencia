@@ -101,6 +101,7 @@ export function AddActionModal({ open, onOpenChange, onSave, preSelectedKRId, ac
                     objective:objectives(title, business_unit_id, business_unit:business_units(id, name))
                 `)
                 .eq('is_active', true)
+                .eq('scope', 'quarterly')
                 .order('code')
 
             if (error) throw error
