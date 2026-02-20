@@ -42,6 +42,7 @@ interface KeyResult {
     owner_name: string | null
     source: string | null
     unit: string
+    currency_type?: string | null
     metric_type: 'percentage' | 'number' | 'currency' | 'days'
     objective_id: string
     target_direction: 'maximize' | 'minimize'
@@ -537,7 +538,7 @@ export function ObjectivesCorporatePage() {
                     if (!open) setSelectedKR(null)
                 }}
                 onSave={loadObjectivesData}
-                keyResult={selectedKR}
+                keyResult={selectedKR as any}
                 objectives={pillarsData.flatMap(p => p.objectives).map(o => ({
                     id: o.id,
                     code: o.code,

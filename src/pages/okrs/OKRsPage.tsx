@@ -325,7 +325,7 @@ export function OKRsPage() {
                 open={krModalOpen}
                 onOpenChange={setKrModalOpen}
                 onSave={loadData}
-                keyResult={selectedKR}
+                keyResult={selectedKR as any}
                 objectives={objectivesWithRelations}
                 defaultObjectiveId={defaultObjectiveId}
             />
