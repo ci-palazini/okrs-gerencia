@@ -20,7 +20,7 @@ interface CascadeKRModalProps {
     objectiveCode: string
     objectiveTitle: string
     objectiveYear?: number
-    parentKr?: Pick<CascadeKeyResult, 'id' | 'code' | 'title'> | null
+    parentKr?: Pick<CascadeKeyResult, 'id' | 'code' | 'title' | 'scope'> | null
     keyResult?: CascadeKeyResult | null
     initialCode?: string
 }
@@ -36,6 +36,7 @@ interface KRFormData {
     baseline: string
     target: string
     actual: string
+    scope: 'annual' | 'quarterly'
     quarter: string
     due_date: string
     confidence: ConfidenceLevel
@@ -120,6 +121,10 @@ export function CascadeKRModal({
     }, [isEditMode, keyResult, parentKr])
     const parentKrId = parentKr?.id || null
     const parentKrCode = parentKr?.code || ''
+    const fallbackParentId = isEditMode ? keyResult?.parent_kr_id || null : parentKrId
+    const [parentScopesById, setParentScopesById] = useState<Record<string, 'annual' | 'quarterly'>>({})
+    const parentScope = parentKr?.scope || (fallbackParentId ? parentScopesById[fallbackParentId] || null : null)
+    const isScopeLockedByParent = parentScope === 'quarterly'
 
     const [formData, setFormData] = useState<KRFormData>({
         code: '',
@@ -132,6 +137,7 @@ export function CascadeKRModal({
         baseline: '',
         target: '',
         actual: '',
+        scope: 'annual',
         quarter: '',
         due_date: `${objectiveYear || new Date().getFullYear()}-12-31`,
         confidence: null,
@@ -167,9 +173,10 @@ export function CascadeKRModal({
                 baseline: keyResult.baseline?.toString() || '',
                 target: keyResult.target?.toString() || '',
                 actual: keyResult.actual?.toString() || '',
-                quarter: keyResult.quarter?.toString() || '',
+                scope: keyResult.scope || 'annual',
+                quarter: keyResult.scope === 'quarterly' ? keyResult.quarter?.toString() || '' : '',
                 due_date: keyResult.due_date
-                    || (keyResult.quarter
+                    || (keyResult.scope === 'quarterly' && keyResult.quarter
                         ? suggestQuarterlyKRDueDate(keyResult.quarter as 1 | 2 | 3 | 4, objectiveYear || currentYear)
                         : `${objectiveYear || currentYear}-12-31`),
                 confidence: keyResult.confidence,
@@ -180,9 +187,10 @@ export function CascadeKRModal({
         }
 
         const suggestedCode = initialCode || (isChild && parentKrCode ? `${parentKrCode}.1` : `${objectiveCode}.1`)
-        const defaultQuarter = isChild ? '1' : ''
+        const defaultScope: 'annual' | 'quarterly' = parentScope === 'quarterly' ? 'quarterly' : 'annual'
+        const defaultQuarter = defaultScope === 'quarterly' ? '1' : ''
         const currentYear = objectiveYear || new Date().getFullYear()
-        const suggestedDueDate = isChild && defaultQuarter
+        const suggestedDueDate = defaultScope === 'quarterly' && defaultQuarter
             ? suggestQuarterlyKRDueDate(Number(defaultQuarter) as 1 | 2 | 3 | 4, currentYear)
             : `${currentYear}-12-31`
 
@@ -197,6 +205,7 @@ export function CascadeKRModal({
             baseline: '',
             target: '',
             actual: '',
+            scope: defaultScope,
             quarter: defaultQuarter,
             due_date: suggestedDueDate,
             confidence: null,
@@ -215,7 +224,40 @@ export function CascadeKRModal({
         initialCode,
         user?.full_name,
         user?.email,
+        parentScope,
+        objectiveYear,
     ])
+
+    useEffect(() => {
+        if (!open || !fallbackParentId || parentKr?.scope || parentScopesById[fallbackParentId]) {
+            return
+        }
+
+        let active = true
+
+        void (async () => {
+            try {
+                const { data, error: parentError } = await supabase
+                    .from('key_results')
+                    .select('scope')
+                    .eq('id', fallbackParentId)
+                    .single()
+
+                if (parentError) throw parentError
+
+                const fetchedScope = (data as { scope?: 'annual' | 'quarterly' } | null)?.scope
+                if (active && fetchedScope) {
+                    setParentScopesById((prev) => ({ ...prev, [fallbackParentId]: fetchedScope }))
+                }
+            } catch (parentScopeError) {
+                console.error('Error loading parent KR scope:', parentScopeError)
+            }
+        })()
+
+        return () => {
+            active = false
+        }
+    }, [open, fallbackParentId, parentKr?.scope, parentScopesById])
 
     useEffect(() => {
         if (!open || !objectiveId) {
@@ -274,6 +316,39 @@ export function CascadeKRModal({
         }))
     }
 
+    function handleScopeChange(nextScope: KRFormData['scope']) {
+        if (isScopeLockedByParent) return
+
+        setFormData((prev) => {
+            if (nextScope === 'annual') {
+                return {
+                    ...prev,
+                    scope: 'annual',
+                    quarter: '',
+                }
+            }
+
+            const effectiveYear = objectiveYear || new Date().getFullYear()
+            const nextQuarter = prev.quarter || '1'
+            return {
+                ...prev,
+                scope: 'quarterly',
+                quarter: nextQuarter,
+                due_date: prev.due_date || suggestQuarterlyKRDueDate(Number(nextQuarter) as 1 | 2 | 3 | 4, effectiveYear),
+            }
+        })
+    }
+
+    function handleQuarterChange(quarterValue: string) {
+        setFormData((prev) => ({
+            ...prev,
+            quarter: quarterValue,
+            due_date: quarterValue
+                ? suggestQuarterlyKRDueDate(Number(quarterValue) as 1 | 2 | 3 | 4, objectiveYear || new Date().getFullYear())
+                : prev.due_date,
+        }))
+    }
+
     async function handleSave() {
         if (!user) return
 
@@ -285,11 +360,32 @@ export function CascadeKRModal({
         const baseline = parseNullableNumber(formData.baseline)
         const target = parseNullableNumber(formData.target)
         const actual = parseNullableNumber(formData.actual)
-        const quarter = formData.quarter ? Number(formData.quarter) : null
+        const effectiveScope: KRFormData['scope'] = isScopeLockedByParent ? 'quarterly' : formData.scope
+        const quarter = effectiveScope === 'quarterly' && formData.quarter ? Number(formData.quarter) : null
+        const effectiveParentId = isEditMode ? keyResult?.parent_kr_id || null : parentKr?.id || null
 
-        if (formData.quarter && (Number.isNaN(quarter) || quarter === null || quarter < 1 || quarter > 4)) {
+        if (effectiveScope === 'quarterly' && (Number.isNaN(quarter) || quarter === null || quarter < 1 || quarter > 4)) {
             setError(t('modals.createKR.errorRequired'))
             return
+        }
+
+        if (effectiveParentId && effectiveScope !== 'quarterly') {
+            const { data: parentData, error: parentError } = await supabase
+                .from('key_results')
+                .select('scope')
+                .eq('id', effectiveParentId)
+                .single()
+
+            if (parentError) {
+                setError(parentError.message)
+                return
+            }
+
+            const parentKrScope = (parentData as { scope?: 'annual' | 'quarterly' } | null)?.scope
+            if (parentKrScope === 'quarterly') {
+                setError(t('modals.createKR.scopeLockedByParent'))
+                return
+            }
         }
 
         const targetDirection = formData.target_direction
@@ -298,7 +394,7 @@ export function CascadeKRModal({
         // Keep manually selected due date; only infer from quarter as fallback.
         let dueDate = formData.due_date
         const effectiveYear = objectiveYear || new Date().getFullYear()
-        if (!dueDate && isChild && quarter) {
+        if (!dueDate && effectiveScope === 'quarterly' && quarter) {
             dueDate = getLastDayOfQuarter(quarter as 1 | 2 | 3 | 4, effectiveYear)
         }
         if (!dueDate) {
@@ -315,9 +411,9 @@ export function CascadeKRModal({
             unit: getDefaultUnit(formData.metric_type),
             currency_type: formData.metric_type === 'currency' ? formData.currency_type : null,
             target_direction: targetDirection,
-            scope: isEditMode ? keyResult?.scope : (isChild ? 'quarterly' : 'annual'),
+            scope: effectiveScope,
             parent_kr_id: isEditMode ? keyResult?.parent_kr_id : (parentKr?.id || null),
-            quarter: isChild ? quarter : null,
+            quarter: effectiveScope === 'quarterly' ? quarter : null,
             due_date: dueDate,
             baseline,
             target,
@@ -468,23 +564,36 @@ export function CascadeKRModal({
                                     </p>
                                 )}
                             </div>
-                            {isChild && (
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                    {t('modals.createKR.scope')}
+                                </label>
+                                <select
+                                    value={isScopeLockedByParent ? 'quarterly' : formData.scope}
+                                    onChange={(event) => handleScopeChange(event.target.value as KRFormData['scope'])}
+                                    disabled={isScopeLockedByParent}
+                                    className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-70"
+                                >
+                                    <option value="annual">{t('modals.createKR.scopeAnnual')}</option>
+                                    <option value="quarterly">{t('modals.createKR.scopeQuarterly')}</option>
+                                </select>
+                                {isScopeLockedByParent && (
+                                    <p className="text-xs text-[var(--color-text-muted)] mt-1.5">
+                                        {t('modals.createKR.scopeLockedByParent')}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {(isScopeLockedByParent || formData.scope === 'quarterly') && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
                                         {t('modals.createKR.quarter')}
                                     </label>
                                     <select
                                         value={formData.quarter}
-                                        onChange={(event) => {
-                                            const quarterValue = event.target.value
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                quarter: quarterValue,
-                                                due_date: quarterValue
-                                                    ? suggestQuarterlyKRDueDate(Number(quarterValue) as 1 | 2 | 3 | 4, objectiveYear || new Date().getFullYear())
-                                                    : prev.due_date,
-                                            }))
-                                        }}
+                                        onChange={(event) => handleQuarterChange(event.target.value)}
                                         className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                                     >
                                         <option value="">-</option>
@@ -494,8 +603,8 @@ export function CascadeKRModal({
                                         <option value="4">Q4</option>
                                     </select>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
@@ -597,15 +706,6 @@ export function CascadeKRModal({
                                     <option value="at_risk">{t('modals.createKR.confidenceAtRisk')}</option>
                                     <option value="off_track">{t('modals.createKR.confidenceOffTrack')}</option>
                                 </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                    {t('modals.createKR.scopeAuto')}
-                                </label>
-                                <div className="h-11 px-4 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-secondary)] flex items-center">
-                                    {isChild ? t('modals.createKR.scopeQuarterly') : t('modals.createKR.scopeAnnual')}
-                                </div>
                             </div>
                         </div>
 

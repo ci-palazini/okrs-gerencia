@@ -245,7 +245,8 @@
             "scopeQuarterly": "Trimestral",
             "parentKR": "KR Anual (Padre)",
             "selectParentKR": "Seleccione el KR anual padre",
-            "quarter": "Trimestre"
+            "quarter": "Trimestre",
+            "scopeLockedByParent": "Alcance bloqueado: un KR hijo de trimestral debe ser trimestral."
         }
     },
     "header": {

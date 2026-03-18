@@ -15,11 +15,11 @@ import type { CascadeKeyResult, CascadeObjective, CascadeTreeNode } from '../../
 import { formatKRCurrency, getNextHierarchicalCode } from '../../lib/utils'
 
 interface KRModalState {
-    open: boolean
-    objective: CascadeObjective | null
-    parentKr: CascadeTreeNode | null
-    keyResult: CascadeKeyResult | null
-    initialCode: string
+  open: boolean
+  objective: CascadeObjective | null
+  parentKr: Pick<CascadeTreeNode, 'id' | 'code' | 'title' | 'scope'> | null
+  keyResult: CascadeKeyResult | null
+  initialCode: string
 }
 
 function getNextRootCode(objective: CascadeObjective, roots: CascadeTreeNode[]): string {

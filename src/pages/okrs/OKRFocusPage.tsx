@@ -33,7 +33,7 @@ import { cn, formatKRCurrency, getNextHierarchicalCode } from '../../lib/utils'
 interface KRModalState {
     open: boolean
     objective: CascadeObjective | null
-    parentKr: CascadeTreeNode | null
+    parentKr: Pick<CascadeTreeNode, 'id' | 'code' | 'title' | 'scope'> | null
     keyResult: CascadeKeyResult | null
     initialCode: string
 }

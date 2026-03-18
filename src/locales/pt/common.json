@@ -490,6 +490,7 @@
             "quarter": "Trimestre",
             "currency": "Moeda",
             "scopeAuto": "Escopo (automático)",
+            "scopeLockedByParent": "Escopo bloqueado: KR filho de trimestral deve ser trimestral.",
             "confidenceNotSet": "Não definido",
             "confidenceOnTrack": "Alta confiança",
             "confidenceAtRisk": "Média confiança",
