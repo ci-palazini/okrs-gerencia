@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Save, Target, Plus, Pencil } from 'lucide-react'
+import { X, Save, Target, Plus, Pencil, Calendar } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { validateObjectiveDueDate } from '../../lib/validations'
+import { getQuarterFromDate } from '../../lib/dateUtils'
 
 interface Pillar {
     id: string
@@ -29,6 +31,7 @@ interface ObjectiveData {
     pillar_id: string
     business_unit_id: string
     year: number
+    due_date: string | null
 }
 
 interface CreateObjectiveModalV2Props {
@@ -38,6 +41,7 @@ interface CreateObjectiveModalV2Props {
     pillars: Pillar[]
     units: Unit[]
     defaultPillarId?: string
+    defaultYear?: number
     objective?: ObjectiveData | null // If provided, modal is in edit mode
 }
 
@@ -48,6 +52,7 @@ export function CreateObjectiveModalV2({
     pillars,
     units,
     defaultPillarId,
+    defaultYear,
     objective
 }: CreateObjectiveModalV2Props) {
     const { t } = useTranslation()
@@ -63,8 +68,11 @@ export function CreateObjectiveModalV2({
         description: '',
         pillar_id: defaultPillarId || '',
         business_unit_id: units.length > 0 ? units[0].id : '',
-        year: 2026
+        year: defaultYear || new Date().getFullYear(),
+        due_date: `${defaultYear || new Date().getFullYear()}-12-31`
     })
+    
+    const [dueDateError, setDueDateError] = useState<string | null>(null)
 
     useEffect(() => {
         if (open) {
@@ -76,21 +84,25 @@ export function CreateObjectiveModalV2({
                     description: objective.description || '',
                     pillar_id: objective.pillar_id,
                     business_unit_id: objective.business_unit_id,
-                    year: objective.year
+                    year: objective.year,
+                    due_date: objective.due_date || `${objective.year}-12-31`
                 })
             } else {
+                const currentYear = defaultYear || new Date().getFullYear()
                 setFormData({
                     code: '',
                     title: '',
                     description: '',
                     pillar_id: defaultPillarId || pillars[0]?.id || '',
                     business_unit_id: units.length > 0 ? units[0].id : '',
-                    year: 2026
+                    year: currentYear,
+                    due_date: `${currentYear}-12-31`
                 })
             }
             setError(null)
+            setDueDateError(null)
         }
-    }, [open, defaultPillarId, pillars, units, objective, isEditMode])
+    }, [open, defaultPillarId, defaultYear, pillars, units, objective, isEditMode])
 
     // Auto-generate code with PILLAR-N format (only in create mode)
     useEffect(() => {
@@ -140,8 +152,17 @@ export function CreateObjectiveModalV2({
             return
         }
 
+        // Validate due_date
+        const locale = t('language') === 'es' ? 'es' : 'pt'
+        const dueDateValidation = validateObjectiveDueDate(formData.due_date, locale)
+        if (!dueDateValidation.valid) {
+            setDueDateError(dueDateValidation.error || '')
+            return
+        }
+
         setLoading(true)
         setError(null)
+        setDueDateError(null)
 
         try {
             if (isEditMode && objective) {
@@ -154,7 +175,8 @@ export function CreateObjectiveModalV2({
                         description: (formData.description || '').trim() || null,
                         pillar_id: formData.pillar_id,
                         business_unit_id: formData.business_unit_id,
-                        year: formData.year
+                        year: formData.year,
+                        due_date: formData.due_date
                     })
                     .eq('id', objective.id)
 
@@ -182,6 +204,7 @@ export function CreateObjectiveModalV2({
                         pillar_id: formData.pillar_id,
                         business_unit_id: formData.business_unit_id,
                         year: formData.year,
+                        due_date: formData.due_date,
                         is_active: true
                     })
 
@@ -308,16 +331,44 @@ export function CreateObjectiveModalV2({
                             />
                         </div>
 
-                        {/* Year */}
-                        <div>
-                            <Input
-                                label={t('modals.createObjective.year')}
-                                type="number"
-                                value={formData.year.toString()}
-                                onChange={(e) => setFormData(prev => ({ ...prev, year: parseInt(e.target.value) || 2026 }))}
-                            />
+                        {/* Year & Due Date */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Input
+                                    label={t('modals.createObjective.year')}
+                                    type="number"
+                                    value={formData.year.toString()}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, year: parseInt(e.target.value) || 2026 }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                    {t('deadline.label')} *
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="date"
+                                        value={formData.due_date}
+                                        onChange={(e) => {
+                                            setFormData(prev => ({ ...prev, due_date: e.target.value }))
+                                            setDueDateError(null)
+                                        }}
+                                        className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                    />
+                                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+                                </div>
+                                {formData.due_date && (
+                                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                                        {t('modals.createObjective.quarterPreview')}: Q{getQuarterFromDate(formData.due_date)}
+                                    </p>
+                                )}
+                                {dueDateError && (
+                                    <p className="mt-1 text-xs text-[var(--color-danger)]">
+                                        {dueDateError}
+                                    </p>
+                                )}
+                            </div>
                         </div>
-
 
                         {error && (
                             <div className="p-3 rounded-lg bg-[var(--color-danger-muted)] text-[var(--color-danger)] text-sm">

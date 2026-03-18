@@ -7,8 +7,10 @@ import { LoginPage } from './pages/auth/LoginPage'
 import { CreateUserPage } from './pages/Admin/CreateUserPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { OKRsPage } from './pages/okrs/OKRsPage'
+import { PillarOKRsPage } from './pages/okrs/PillarOKRsPage'
+import { OKRFocusPage } from './pages/okrs/OKRFocusPage'
+import { OKRConfidenceMapPage } from './pages/okrs/OKRConfidenceMapPage'
 import { ActionsPage } from './pages/actions/ActionsPage'
-import { ObjectivesCorporatePage } from './pages/objectives-corporate/ObjectivesCorporatePage'
 import { AuditLogPage } from './pages/audit/AuditLogPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
 import { UserManagementPage } from './pages/Admin/UserManagementPage'
@@ -32,8 +34,10 @@ function App() {
               {/* Protected routes */}
               <Route element={<MainLayout />}>
                 <Route path="/" element={<DashboardPage />} />
-                <Route path="/objectives-corporate" element={<ObjectivesCorporatePage />} />
                 <Route path="/okrs" element={<OKRsPage />} />
+                <Route path="/okrs/mapa" element={<OKRConfidenceMapPage />} />
+                <Route path="/okrs/pillar/:pillarId" element={<PillarOKRsPage />} />
+                <Route path="/okrs/pillar/:pillarId/kr/:krId" element={<OKRFocusPage />} />
                 <Route path="/kr-tracking" element={<KRTrackingPage />} />
                 <Route path="/actions" element={<ActionsPage />} />
                 <Route path="/audit" element={<AuditLogPage />} />

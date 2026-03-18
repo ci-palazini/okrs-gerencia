@@ -33,10 +33,12 @@ export function CreateUserPage() {
 
         setLoading(true)
 
-        // Auto-complete email domain
-        const fullEmail = `${username}@ci-okrs.com`
+        // Sanitize inputs and auto-complete email domain
+        const cleanUsername = username.trim().split('@')[0]
+        const fullEmail = `${cleanUsername}@ci-okrs.com`
+        const cleanFullName = fullName.trim()
 
-        const { error } = await signUp(fullEmail, password, fullName)
+        const { error } = await signUp(fullEmail, password, cleanFullName)
 
         if (error) {
             setError(error.message)

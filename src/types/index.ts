@@ -41,6 +41,7 @@ export interface Objective {
     pillar_id: string
     business_unit_id: string
     year: number
+    due_date: string | null
     is_active: boolean
     created_at?: string
     updated_at?: string
@@ -73,6 +74,7 @@ export interface KeyResult {
     progress: number | null
     confidence: ConfidenceLevel
     notes?: string | null
+    due_date: string | null
     created_at?: string
     updated_at?: string
 }
@@ -224,4 +226,16 @@ export interface NavItem {
 
 // Re-export ConfidenceLevel para uso em componentes
 export type { ConfidenceLevel as ConfidenceLevelType }
+
+// =====================================================
+// TIPOS PARA DEADLINE MANAGEMENT
+// =====================================================
+
+export type DeadlineStatus = 'on-track' | 'warning' | 'urgent' | 'overdue'
+
+export interface DeadlineAlert {
+    status: DeadlineStatus
+    daysRemaining: number
+    message: string
+}
 

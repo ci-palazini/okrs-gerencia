@@ -15,7 +15,7 @@ import { supabase } from '../../lib/supabase'
 interface DatabaseStats {
     objectives: number
     keyResults: number
-    actions: number
+    actionPlans: number
     audit: number
 }
 
@@ -47,7 +47,7 @@ export function SettingsPage() {
     const [stats, setStats] = useState<DatabaseStats>({
         objectives: 0,
         keyResults: 0,
-        actions: 0,
+        actionPlans: 0,
         audit: 0
     })
     const [loadingStats, setLoadingStats] = useState(false)
@@ -65,19 +65,19 @@ export function SettingsPage() {
             const [
                 { count: objCount },
                 { count: krCount },
-                { count: actionCount },
+                { count: actionPlanCount },
                 { count: auditCount }
             ] = await Promise.all([
                 supabase.from('objectives').select('*', { count: 'exact', head: true }),
                 supabase.from('key_results').select('*', { count: 'exact', head: true }),
-                supabase.from('actions').select('*', { count: 'exact', head: true }),
+                supabase.from('action_plans').select('*', { count: 'exact', head: true }),
                 supabase.from('audit_logs').select('*', { count: 'exact', head: true })
             ])
 
             setStats({
                 objectives: objCount || 0,
                 keyResults: krCount || 0,
-                actions: actionCount || 0,
+                actionPlans: actionPlanCount || 0,
                 audit: auditCount || 0
             })
         } catch (error) {
@@ -108,11 +108,24 @@ export function SettingsPage() {
                 data = okrs || []
                 filename = 'okrs_export.csv'
             } else if (type === 'actions') {
-                const { data: actions } = await supabase
-                    .from('actions')
-                    .select('*')
-                data = actions || []
-                filename = 'actions_export.csv'
+                const { data: plans } = await supabase
+                    .from('action_plans')
+                    .select(`
+                        *,
+                        tasks:action_plan_tasks(*),
+                        key_result:key_results(
+                            id,
+                            code,
+                            title,
+                            objective:objectives(
+                                id,
+                                title,
+                                business_unit:business_units(name)
+                            )
+                        )
+                    `)
+                data = plans || []
+                filename = 'action_plans_export.csv'
             }
 
             if (data.length > 0) {
@@ -365,7 +378,7 @@ export function SettingsPage() {
                                     {[
                                         { label: t('settings.page.data.stats.objectives'), value: stats.objectives },
                                         { label: t('settings.page.data.stats.keyResults'), value: stats.keyResults },
-                                        { label: t('settings.page.data.stats.actions'), value: stats.actions },
+                                        { label: t('settings.page.data.stats.actionPlans'), value: stats.actionPlans },
                                         { label: t('settings.page.data.stats.audit'), value: stats.audit },
                                     ].map((stat, index) => (
                                         <div key={index} className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-center">

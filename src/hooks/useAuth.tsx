@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, supabaseAdminAuth } from '../lib/supabase'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import type { UserWithUnits } from '../types'
 
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function signUp(email: string, password: string, fullName: string) {
         try {
-            const { error } = await supabase.auth.signUp({
+            const { error } = await supabaseAdminAuth.auth.signUp({
                 email,
                 password,
                 options: {

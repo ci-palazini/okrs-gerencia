@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
-    ChevronDown, ChevronRight,
-    TrendingUp, Truck, Shield, Target, Users, DollarSign, Clock, Pin
+    ChevronDown, ChevronRight, Pin
 } from 'lucide-react'
+import { Badge } from '../ui/Badge'
 import { cn } from '../../lib/utils'
 
 interface PillarSectionProps {
@@ -17,6 +18,11 @@ interface PillarSectionProps {
     children: React.ReactNode
     defaultExpanded?: boolean
     actions?: React.ReactNode
+    deadlineStats?: {
+        overdue: number
+        urgent: number
+        warning?: number
+    }
 }
 
 // Helper to dynamic icon load
@@ -24,8 +30,15 @@ import * as LucideIcons from 'lucide-react'
 
 // ...
 
-export function PillarSection({ pillar, children, defaultExpanded = true, actions }: PillarSectionProps) {
+export function PillarSection({
+    pillar,
+    children,
+    defaultExpanded = true,
+    actions,
+    deadlineStats,
+}: PillarSectionProps) {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+    const { t } = useTranslation()
 
     // Convert kebab-case (target) to PascalCase (Target)
     const iconName = pillar.icon
@@ -63,6 +76,25 @@ export function PillarSection({ pillar, children, defaultExpanded = true, action
                         <p className="text-sm text-[var(--color-text-muted)] line-clamp-1">
                             {pillar.description}
                         </p>
+                        {deadlineStats && (
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                                {deadlineStats.overdue > 0 && (
+                                    <Badge variant="danger" size="sm">
+                                        {deadlineStats.overdue} {t(deadlineStats.overdue > 1 ? 'deadline.overduePlural' : 'deadline.overdue')}
+                                    </Badge>
+                                )}
+                                {deadlineStats.urgent > 0 && (
+                                    <Badge variant="warning" size="sm">
+                                        {deadlineStats.urgent} {t(deadlineStats.urgent > 1 ? 'deadline.urgentPlural' : 'deadline.urgent')}
+                                    </Badge>
+                                )}
+                                {deadlineStats.warning && deadlineStats.warning > 0 && (
+                                    <Badge variant="info" size="sm">
+                                        {t('deadline.attentionCount', { count: deadlineStats.warning })}
+                                    </Badge>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

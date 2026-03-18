@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Save, TrendingUp, Target } from 'lucide-react'
+import { X, Save, TrendingUp, Target, Calendar } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { ProgressBar } from '../ui/ProgressBar'
@@ -9,6 +9,8 @@ import { Badge } from '../ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { calculateProgress, cn } from '../../lib/utils'
+import { validateKRDueDate, suggestQuarterlyKRDueDate } from '../../lib/validations'
+import { getQuarterFromDate, formatDeadlineDate } from '../../lib/dateUtils'
 
 interface KeyResultData {
     id: string
@@ -19,9 +21,13 @@ interface KeyResultData {
     target: number
     current_value: number
     unit: string
+    due_date?: string | null
+    scope?: 'annual' | 'quarterly'
+    quarter?: number | null
     objective?: {
         title: string
         country: string
+        due_date?: string | null
     }
 }
 
@@ -36,12 +42,15 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
     const { t } = useTranslation()
     const { user } = useAuth()
     const [currentValue, setCurrentValue] = useState<string>('')
+    const [dueDate, setDueDate] = useState<string>('')
     const [loading, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [dueDateError, setDueDateError] = useState<string | null>(null)
 
     useEffect(() => {
         if (keyResult) {
             setCurrentValue(keyResult.current_value.toString())
+            setDueDate(keyResult.due_date || '')
         }
     }, [keyResult])
 
@@ -57,12 +66,24 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
 
         setSaving(true)
         setError(null)
+        setDueDateError(null)
 
         try {
             const newValue = parseFloat(currentValue)
 
             if (isNaN(newValue)) {
                 throw new Error(t('modals.editKR.invalidValue'))
+            }
+
+            // Validate due_date if objective has one
+            const locale = t('language') === 'es' ? 'es' : 'pt'
+            if (dueDate && keyResult?.objective?.due_date) {
+                const dueDateValidation = validateKRDueDate(dueDate, keyResult.objective.due_date, locale)
+                if (!dueDateValidation.valid) {
+                    setDueDateError(dueDateValidation.error || '')
+                    setSaving(false)
+                    return
+                }
             }
 
             // Get old data for audit
@@ -77,6 +98,7 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
                 .from('key_results')
                 .update({
                     current_value: newValue,
+                    due_date: dueDate || null,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', keyResult!.id)
@@ -193,6 +215,40 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
                             placeholder={`Ex: ${keyResult.target}`}
                             icon={<Target className="w-5 h-5" />}
                         />
+
+                        {/* Due Date */}
+                        <div>
+                            <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                {t('deadline.label')}
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={(e) => {
+                                        setDueDate(e.target.value)
+                                        setDueDateError(null)
+                                    }}
+                                    className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                />
+                                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+                            </div>
+                            {dueDate && keyResult.scope === 'quarterly' && keyResult.quarter && (
+                                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                                    {t('modals.editKR.suggestedQuarterly')}: Q{keyResult.quarter} - {formatDeadlineDate(suggestQuarterlyKRDueDate(keyResult.quarter as 1 | 2 | 3 | 4, new Date().getFullYear()), t('language') === 'es' ? 'es-ES' : 'pt-BR')}
+                                </p>
+                            )}
+                            {dueDate && keyResult.objective?.due_date && new Date(dueDate) > new Date(keyResult.objective.due_date) && (
+                                <p className="mt-1 text-xs text-[var(--color-warning)]">
+                                    ⚠️ {t('deadline.cannotExceedObjective')}
+                                </p>
+                            )}
+                            {dueDateError && (
+                                <p className="mt-1 text-xs text-[var(--color-danger)]">
+                                    {dueDateError}
+                                </p>
+                            )}
+                        </div>
 
                         {error && (
                             <div className="p-3 rounded-lg bg-[var(--color-danger-muted)] text-[var(--color-danger)] text-sm">

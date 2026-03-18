@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     Plus, Edit3, Trash2, Target, TrendingDown,
@@ -10,6 +10,8 @@ import { ConfidenceEmoji } from '../ui/ConfidenceIndicator'
 import type { ConfidenceLevel } from '../ui/ConfidenceIndicator'
 import { ActionPlanList } from './ActionPlanList'
 import { cn, formatKRCurrency } from '../../lib/utils'
+import { DeadlineIndicatorCompact } from './DeadlineIndicator'
+import { formatDeadlineDate, getLastDayOfQuarter } from '../../lib/dateUtils'
 
 // =====================================================
 // TYPES
@@ -31,9 +33,11 @@ export interface QuarterlyKRData {
     objective_id: string
     owner_name: string | null
     source: string | null
+    is_active: boolean
     scope: 'annual' | 'quarterly'
     parent_kr_id: string | null
     target_direction: 'maximize' | 'minimize'
+    due_date: string | null
 }
 
 export interface QuarterlyTimelineProps {
@@ -78,7 +82,7 @@ export function QuarterlyTimeline({
     onUpdateValue,
     onUpdateConfidence,
 }: QuarterlyTimelineProps) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
 
     // Which quarterly KR has its actions expanded
     const [expandedActionKR, setExpandedActionKR] = useState<string | null>(null)
@@ -91,6 +95,9 @@ export function QuarterlyTimeline({
     const [editValue, setEditValue] = useState('')
 
     const quarters = [1, 2, 3, 4]
+    const timelineYear = annualKR.due_date
+        ? new Date(annualKR.due_date).getFullYear()
+        : new Date().getFullYear()
 
     // Group KRs by quarter
     const krsByQuarter: Record<number, QuarterlyKRData[]> = {}
@@ -201,6 +208,7 @@ export function QuarterlyTimeline({
                 const isCurrent = q === currentQuarter
                 const isPast = q < currentQuarter
                 const hasKRs = krs.length > 0
+                const quarterDeadline = getLastDayOfQuarter(q as 1 | 2 | 3 | 4, timelineYear)
 
                 return (
                     <div
@@ -241,6 +249,9 @@ export function QuarterlyTimeline({
                                         {krs.length} KR{krs.length > 1 ? 's' : ''}
                                     </span>
                                 )}
+                                <span className="text-[10px] text-[var(--color-text-muted)]">
+                                    {t('deadline.suggested')}: {formatDeadlineDate(quarterDeadline, i18n.language === 'es' ? 'es-ES' : 'pt-BR')}
+                                </span>
                             </div>
                             <button
                                 onClick={() => onAddQuarterlyKR(q)}
@@ -271,6 +282,7 @@ export function QuarterlyTimeline({
                                             <th className="px-3 py-2 w-20 text-center">{t('quarterlyCard.target')}</th>
                                             <th className="px-3 py-2 w-28">{t('quarterlyCard.progress')}</th>
                                             <th className="px-3 py-2 w-20 text-center">{t('quarterlyCard.confidence')}</th>
+                                            <th className="px-3 py-2 w-24 text-center">{t('deadline.label')}</th>
                                             <th className="px-3 py-2 w-16"></th>{/* actions */}
                                         </tr>
                                     </thead>
@@ -278,10 +290,11 @@ export function QuarterlyTimeline({
                                         {krs.map(kr => {
                                             const prog = kr.progress ?? 0
                                             const isActionsOpen = expandedActionKR === kr.id
+                                            const effectiveDueDate = kr.due_date || quarterDeadline
 
                                             return (
-                                                <>
-                                                    <tr key={kr.id} className="group/kr hover:bg-[var(--color-surface-hover)] transition-colors">
+                                                <Fragment key={kr.id}>
+                                                    <tr className="group/kr hover:bg-[var(--color-surface-hover)] transition-colors">
                                                         {/* Expand toggle */}
                                                         <td className="px-3 py-2.5">
                                                             <button
@@ -386,6 +399,14 @@ export function QuarterlyTimeline({
                                                             )}
                                                         </td>
 
+                                                        {/* Deadline */}
+                                                        <td className="px-3 py-2.5 text-center">
+                                                            <DeadlineIndicatorCompact
+                                                                dueDate={effectiveDueDate}
+                                                                isCompleted={kr.is_active === false || prog >= 100}
+                                                            />
+                                                        </td>
+
                                                         {/* Actions (edit/delete) */}
                                                         <td className="px-3 py-2.5 text-right">
                                                             <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover/kr:opacity-100 transition-opacity">
@@ -414,14 +435,14 @@ export function QuarterlyTimeline({
                                                     {/* Expanded: Action Plans */}
                                                     {isActionsOpen && (
                                                         <tr>
-                                                            <td colSpan={10} className="p-0 bg-[var(--color-surface-subtle)]/60 border-b border-[var(--color-border-subtle)]">
+                                                            <td colSpan={11} className="p-0 bg-[var(--color-surface-subtle)]/60 border-b border-[var(--color-border-subtle)]">
                                                                 <div className="px-6 py-4">
                                                                     <ActionPlanList krId={kr.id} />
                                                                 </div>
                                                             </td>
                                                         </tr>
                                                     )}
-                                                </>
+                                                </Fragment>
                                             )
                                         })}
                                     </tbody>

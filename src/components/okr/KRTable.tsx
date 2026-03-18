@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Edit3, Trash2, X, ChevronDown, CalendarRange } from 'lucide-react'
 import { ProgressBar } from '../ui/ProgressBar'
@@ -6,6 +6,7 @@ import { Badge } from '../ui/Badge'
 import { ConfidenceEmoji } from '../ui/ConfidenceIndicator'
 import type { ConfidenceLevel } from '../ui/ConfidenceIndicator'
 import { cn, formatKRCurrency } from '../../lib/utils'
+import { DeadlineIndicator } from './DeadlineIndicator'
 
 interface KeyResultRow {
     id: string
@@ -21,6 +22,8 @@ interface KeyResultRow {
     scope?: 'annual' | 'quarterly'
     quarter?: number | null
     objective_id?: string
+    due_date?: string | null
+    is_active?: boolean
     // Quarterly data
     baseline?: number | null
     target?: number | null
@@ -53,6 +56,8 @@ export function KRTable({
     const [editValue, setEditValue] = useState<string>('')
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
     const { t } = useTranslation()
+    const hasActions = Boolean(onEdit || onDelete)
+    const expandedColSpan = (showDataColumns ? 10 : 7) + (hasActions ? 1 : 0)
 
     const toggleExpand = (krId: string) => {
         const newExpanded = new Set(expandedIds)
@@ -102,7 +107,7 @@ export function KRTable({
     }
 
     return (
-        <div className="overflow-x-auto">
+        <div className={cn('overflow-x-auto', compact && 'text-xs')}>
             <table className="w-full">
                 <thead>
                     <tr className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
@@ -119,16 +124,16 @@ export function KRTable({
                         )}
                         <th className="px-3 py-3 w-28">{t('quarterlyCard.progress')}</th>
                         <th className="px-3 py-3 w-24 text-center">{t('quarterlyCard.confidence')}</th>
-                        {(onEdit || onDelete) && <th className="px-3 py-3 w-20 text-right"></th>}
+                        <th className="px-3 py-3 w-32 text-center">{t('deadline.label')}</th>
+                        {hasActions && <th className="px-3 py-3 w-20 text-right"></th>}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
                     {keyResults.map((kr) => {
                         const isExpanded = expandedIds.has(kr.id)
                         return (
-                            <>
+                            <Fragment key={kr.id}>
                                 <tr
-                                    key={kr.id}
                                     className={cn(
                                         "group transition-colors",
                                         isExpanded ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
@@ -328,8 +333,21 @@ export function KRTable({
                                         )}
                                     </td>
 
+                                    {/* Deadline */}
+                                    <td className="px-3 py-3 text-center">
+                                        {kr.due_date ? (
+                                            <DeadlineIndicator 
+                                                dueDate={kr.due_date} 
+                                                isCompleted={kr.progress === 100 || kr.is_active === false}
+                                                variant="both"
+                                            />
+                                        ) : (
+                                            <span className="text-xs text-[var(--color-text-muted)]">-</span>
+                                        )}
+                                    </td>
+
                                     {/* Actions */}
-                                    {(onEdit || onDelete) && (
+                                    {hasActions && (
                                         <td className="px-3 py-3 text-right whitespace-nowrap">
                                             {onEdit && (
                                                 <button
@@ -358,14 +376,14 @@ export function KRTable({
                                 </tr>
                                 {isExpanded && renderExpandedRow && (
                                     <tr>
-                                        <td colSpan={showDataColumns ? 10 : 7} className="p-0 bg-[var(--color-surface-subtle)]/50 border-b border-[var(--color-border)] animate-in slide-in-from-top-2 duration-200">
+                                        <td colSpan={expandedColSpan} className="p-0 bg-[var(--color-surface-subtle)]/50 border-b border-[var(--color-border)] animate-in slide-in-from-top-2 duration-200">
                                             <div className="p-4 pl-14">
                                                 {renderExpandedRow(kr)}
                                             </div>
                                         </td>
                                     </tr>
                                 )}
-                            </>
+                            </Fragment>
                         )
                     })}
                 </tbody>

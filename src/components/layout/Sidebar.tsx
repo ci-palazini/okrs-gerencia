@@ -8,7 +8,6 @@ import {
     ChevronLeft,
     ChevronRight,
     History,
-    Building2,
     Users,
     FolderTree,
     Megaphone,
@@ -17,7 +16,6 @@ import {
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
-import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 import { useAuth } from '../../hooks/useAuth'
 
 
@@ -27,10 +25,13 @@ import { useAuth } from '../../hooks/useAuth'
 export function Sidebar() {
     const { t } = useTranslation()
     const { sidebarCollapsed, toggleSidebar } = useSettings()
-    const { selectedUnit } = useBusinessUnit() // Use global context
     const location = useLocation()
     const { user } = useAuth()
     const collapsed = sidebarCollapsed
+    const isRouteActive = (href: string) => (
+        location.pathname === href ||
+        (href !== '/' && location.pathname.startsWith(`${href}/`))
+    )
 
     return (
         <aside
@@ -52,7 +53,7 @@ export function Sidebar() {
                     )}>
                         <img
                             src="/SXS_master_blue_rgb_150ppi.png"
-                            alt="OKR Dashboard"
+                            alt={t('header.appTitle')}
                             className={cn(
                                 "object-contain transition-all duration-300",
                                 collapsed ? "h-6 w-auto" : "h-8 w-auto"
@@ -73,12 +74,11 @@ export function Sidebar() {
                 {/* Static Links */}
                 {[
                     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
-                    { name: t('sidebar.corporateObjectives'), href: '/objectives-corporate', icon: Building2 },
                     { name: t('sidebar.okrs'), href: '/okrs', icon: Target },
                     { name: t('sidebar.tracking'), href: '/kr-tracking', icon: TrendingUp },
                     { name: t('sidebar.pillars'), href: '/pillars', icon: Layers },
                 ].map((item) => {
-                    const isActive = location.pathname === item.href
+                    const isActive = isRouteActive(item.href)
                     return (
                         <NavLink
                             key={item.name}
@@ -111,7 +111,7 @@ export function Sidebar() {
                     { name: t('sidebar.actions'), href: '/actions', icon: ListTodo },
                     { name: t('sidebar.audit'), href: '/audit', icon: History },
                 ].map((item) => {
-                    const isActive = location.pathname === item.href
+                    const isActive = isRouteActive(item.href)
                     return (
                         <NavLink
                             key={item.name}
@@ -207,7 +207,7 @@ export function Sidebar() {
                 {[
                     { name: t('sidebar.settings'), href: '/settings', icon: Settings },
                 ].map((item) => {
-                    const isActive = location.pathname === item.href
+                    const isActive = isRouteActive(item.href)
 
                     return (
                         <NavLink

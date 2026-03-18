@@ -1,347 +1,218 @@
-import { useState } from 'react'
+import { useMemo, useState, type ElementType } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, RefreshCw, Trash2, Target, Pencil } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
-import { Badge } from '../../components/ui/Badge'
+import { useNavigate } from 'react-router-dom'
+import { ArrowRight, Layers, Map, Search, AlertTriangle } from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { PillarSection } from '../../components/okr/PillarSection'
-import { KRTable } from '../../components/okr/KRTable'
-import { EditKRModalV2 } from '../../components/okr/EditKRModalV2'
-import { CreateObjectiveModalV2 } from '../../components/okr/CreateObjectiveModalV2'
-import { QuarterlyTimeline } from '../../components/okr/QuarterlyTimeline'
-import { QuarterSelector } from '../../components/ui/QuarterSelector'
-import { cn } from '../../lib/utils'
-import { useOKRData } from '../../hooks/useOKRData'
-import type { KeyResult } from '../../hooks/useOKRData'
+import { Badge } from '../../components/ui/Badge'
+import { Input } from '../../components/ui/Input'
+import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
+import type { CascadeTreeNode } from '../../hooks/useCascadeOKRData'
+import { calculateDeadlineStatus } from '../../lib/dateUtils'
+
+function countLeaves(nodes: CascadeTreeNode[]): number {
+    return nodes.reduce((acc, node) => {
+        if (node.children.length === 0) return acc + 1
+        return acc + countLeaves(node.children)
+    }, 0)
+}
+
+function getPillarIcon(iconName: string | null | undefined): ElementType {
+    if (!iconName) return Layers
+    const normalized = iconName
+        .split('-')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join('')
+
+    return (LucideIcons[normalized as keyof typeof LucideIcons] as ElementType) || Layers
+}
 
 export function OKRsPage() {
     const { t } = useTranslation()
-    const [searchParams] = useSearchParams()
-    const filterPillar = searchParams.get('pillar')
-
-    // Centralized data hook
+    const navigate = useNavigate()
     const {
-        pillars,
-        objectives,
-        objectivesWithRelations,
-        annualKRs,
-        allKRs,
         loading,
-        currentQuarter,
-        setCurrentQuarter,
-        year,
-        selectedUnit,
         selectedUnitData,
-        getChildKRs,
-        getObjectiveKRs,
+        objectives,
         getVisiblePillars,
-        updateConfidence,
-        updateValue,
-        deleteKR,
-        deleteObjective,
-        loadData,
-    } = useOKRData(filterPillar)
+        getObjectiveRoots,
+    } = useCascadeOKRData()
 
-    // Modal state
-    const [krModalOpen, setKrModalOpen] = useState(false)
-    const [selectedKR, setSelectedKR] = useState<KeyResult | null>(null)
-    const [defaultObjectiveId, setDefaultObjectiveId] = useState('')
-    const [isCreatingObjective, setIsCreatingObjective] = useState(false)
-    const [editingObjective, setEditingObjective] = useState<any>(null)
+    const [searchTerm, setSearchTerm] = useState('')
 
-    // =====================================================
-    // HANDLERS
-    // =====================================================
 
-    function handleEditKR(kr: any) {
-        setSelectedKR(kr)
-        setDefaultObjectiveId(kr.objective_id)
-        setKrModalOpen(true)
-    }
+    const normalizedSearch = searchTerm.trim().toLowerCase()
 
-    function handleAddKR(objectiveId: string) {
-        setSelectedKR(null)
-        setDefaultObjectiveId(objectiveId)
-        setKrModalOpen(true)
-    }
+    const pillarCards = useMemo(() => {
+        const pillars = getVisiblePillars()
 
-    function handleAddQuarterlyKR(parentKR: KeyResult, quarter: number) {
-        setSelectedKR({
-            ...parentKR,
-            id: undefined as any,
-            scope: 'quarterly',
-            parent_kr_id: parentKR.id,
-            quarter,
-            code: `${parentKR.code}.Q${quarter}`,
-            baseline: null,
-            target: null,
-            actual: null,
-            progress: null,
-            confidence: null,
-        } as any)
-        setDefaultObjectiveId(parentKR.objective_id || '')
-        setKrModalOpen(true)
-    }
+        return pillars
+            .map((pillar) => {
+                const pillarObjectives = objectives.filter((objective) => objective.pillar_id === pillar.id)
+                const roots = pillarObjectives.flatMap((objective) => getObjectiveRoots(objective.id))
+                const totalLeaves = countLeaves(roots)
 
-    function handleEditObjective(objective: any) {
-        setEditingObjective(objective)
-        setIsCreatingObjective(true)
-    }
+                // Calculate deadline statistics for active objectives
+                const activeObjectives = pillarObjectives.filter((obj) => obj.is_active !== false)
+                const overdueCount = activeObjectives.filter(obj => 
+                    obj.due_date && calculateDeadlineStatus(obj.due_date, obj.is_active === false) === 'overdue'
+                ).length
+                const urgentCount = activeObjectives.filter(obj => 
+                    obj.due_date && calculateDeadlineStatus(obj.due_date, obj.is_active === false) === 'urgent'
+                ).length
 
-    // =====================================================
-    // LOADING STATE
-    // =====================================================
+                return {
+                    pillar,
+                    objectiveCount: pillarObjectives.length,
+                    rootCount: roots.length,
+                    leafCount: totalLeaves,
+                    overdueCount,
+                    urgentCount,
+                }
+            })
+            .filter(({ pillar }) => {
+                if (!normalizedSearch) return true
+                return (
+                    pillar.name.toLowerCase().includes(normalizedSearch)
+                    || pillar.code.toLowerCase().includes(normalizedSearch)
+                    || (pillar.description || '').toLowerCase().includes(normalizedSearch)
+                )
+            })
+    }, [getObjectiveRoots, getVisiblePillars, normalizedSearch, objectives])
 
     if (loading && !selectedUnitData) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center justify-center min-h-[360px]">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
                     <p className="text-[var(--color-text-secondary)]">{t('okr.loadingData')}</p>
                 </div>
             </div>
         )
     }
 
-    // =====================================================
-    // RENDER
-    // =====================================================
-
-    const visiblePillars = getVisiblePillars().filter(p => !filterPillar || p.id === filterPillar)
-
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
-                        {t('okr.title')} - {selectedUnitData?.name || t('okr.local')}
-                    </h1>
-                    <p className="text-[var(--color-text-secondary)]">
-                        {t('okr.subtitle')}
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Button onClick={() => setIsCreatingObjective(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        {t('okr.newObjective')}
-                    </Button>
-                    <QuarterSelector
-                        quarter={currentQuarter}
-                        onSelect={setCurrentQuarter}
-                    />
-                    <Badge variant="info" size="md">
-                        {year}
-                    </Badge>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={loadData}
-                        disabled={loading}
-                    >
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
-                </div>
-            </div>
+            <Card variant="elevated" className="p-0 overflow-hidden">
+                <CardContent className="p-5 md:p-6 space-y-4">
+                    <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
+                                {t('okr.title')} - {selectedUnitData?.name || t('okr.local')}
+                            </h1>
+                            <p className="text-[var(--color-text-secondary)] mt-1.5">
+                                {t('okr.flow.pillarsSubtitle')}
+                            </p>
+                        </div>
 
-            {/* Pillars */}
-            {loading && visiblePillars.length === 0 ? (
-                <div className="flex items-center justify-center py-16">
-                    <div className="w-8 h-8 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-                </div>
-            ) : (
-                <div className="space-y-8">
-                    {visiblePillars.map((pillar) => {
-                        const pillarObjectives = objectives.filter(o => o.pillar_id === pillar.id)
-
-                        return (
-                            <PillarSection
-                                key={pillar.id}
-                                pillar={pillar}
-                                actions={
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            setIsCreatingObjective(true)
-                                        }}
-                                    >
-                                        <Target className="w-4 h-4 mr-2" />
-                                        {t('okr.newObjective')}
-                                    </Button>
-                                }
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="primary"
+                                onClick={() => navigate('/okrs/mapa')}
+                                className="shadow-md"
                             >
-                                {pillarObjectives.length > 0 ? (
-                                    <div className="space-y-8">
-                                        {pillarObjectives.map((objective, index) => {
-                                            const objectiveKRs = getObjectiveKRs(objective.id)
+                                <Map className="w-4 h-4 mr-2" />
+                                {t('okr.flow.openConfidenceMap')}
+                            </Button>
+                        </div>
+                    </div>
 
-                                            return (
-                                                <div key={objective.id} className={cn(
-                                                    "space-y-4",
-                                                    index > 0 && "pt-8 border-t border-[var(--color-border-subtle)]"
-                                                )}>
-                                                    {/* Objective Header */}
-                                                    <div className="flex items-start justify-between gap-4">
-                                                        <div>
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <Badge variant="outline" className="text-xs font-bold font-mono">
-                                                                    {objective.code}
-                                                                </Badge>
-                                                                <h4 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                                                                    {objective.title}
-                                                                </h4>
-                                                            </div>
-                                                            {objective.description && (
-                                                                <p className="text-sm text-[var(--color-text-secondary)] pl-1">
-                                                                    {objective.description}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 w-8 p-0 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
-                                                                title={t('common.edit')}
-                                                                onClick={() => handleEditObjective(objective)}
-                                                            >
-                                                                <Pencil className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 w-8 p-0 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
-                                                                title={t('common.delete')}
-                                                                onClick={async () => {
-                                                                    if (window.confirm(t('okr.deleteObjectiveConfirm'))) {
-                                                                        try {
-                                                                            await deleteObjective(objective.id)
-                                                                        } catch (error) {
-                                                                            console.error('Error deleting objective:', error)
-                                                                            alert(t('okr.deleteObjectiveError'))
-                                                                        }
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => handleAddKR(objective.id)}
-                                                            >
-                                                                <Plus className="w-3 h-3 mr-1.5" />
-                                                                {t('okr.newKR')}
-                                                            </Button>
-                                                        </div>
+                    <Input
+                        label={t('okr.flow.searchPillarsLabel')}
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder={t('okr.flow.searchPillarsPlaceholder')}
+                        icon={<Search className="w-4 h-4" />}
+                    />
+                </CardContent>
+            </Card>
+
+            {pillarCards.length === 0 ? (
+                <Card variant="elevated">
+                    <CardContent className="py-12 text-center">
+                        <p className="text-lg font-semibold text-[var(--color-text-primary)]">
+                            {t('okr.flow.emptyPillarsTitle')}
+                        </p>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2">
+                            {t('okr.flow.emptyPillarsDescription')}
+                        </p>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {pillarCards.map(({ pillar, objectiveCount, rootCount, leafCount, overdueCount, urgentCount }) => {
+                        const PillarIcon = getPillarIcon(pillar.icon)
+                        const hasDeadlineIssues = overdueCount > 0 || urgentCount > 0
+                        return (
+                            <button
+                                key={pillar.id}
+                                type="button"
+                                onClick={() => navigate(`/okrs/pillar/${pillar.id}`)}
+                                className="text-left"
+                            >
+                                <Card variant="elevated" hover className="h-full">
+                                    <CardHeader className="pb-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span
+                                                    className="w-9 h-9 rounded-lg flex items-center justify-center"
+                                                    style={{ backgroundColor: `${pillar.color}22`, color: pillar.color }}
+                                                >
+                                                    <PillarIcon className="w-4 h-4" />
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <CardTitle className="text-base truncate">{pillar.name}</CardTitle>
+                                                        {hasDeadlineIssues && (
+                                                            <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                                        )}
                                                     </div>
-
-                                                    {/* KRs Table */}
-                                                    {objectiveKRs.length > 0 ? (
-                                                        <KRTable
-                                                            keyResults={objectiveKRs}
-                                                            onUpdateConfidence={updateConfidence}
-                                                            onUpdateValue={updateValue}
-                                                            onEdit={handleEditKR}
-                                                            onDelete={async (krId) => {
-                                                                if (window.confirm(t('okr.deleteKRConfirm'))) {
-                                                                    await deleteKR(krId)
-                                                                }
-                                                            }}
-                                                            renderExpandedRow={(kr) => {
-                                                                const childKRs = getChildKRs(kr.id)
-
-                                                                return (
-                                                                    <div className="space-y-4">
-                                                                        {/* Quarterly Timeline */}
-                                                                        <QuarterlyTimeline
-                                                                            annualKR={kr as any}
-                                                                            quarterlyKRs={childKRs as any}
-                                                                            currentQuarter={currentQuarter}
-                                                                            onAddQuarterlyKR={(quarter) => handleAddQuarterlyKR(kr as any, quarter)}
-                                                                            onEditKR={handleEditKR}
-                                                                            onDeleteKR={async (id) => {
-                                                                                await deleteKR(id)
-                                                                            }}
-                                                                            onUpdateValue={updateValue}
-                                                                            onUpdateConfidence={updateConfidence}
-                                                                        />
-
-                                                                    </div>
-                                                                )
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <div className="text-center py-6 bg-[var(--color-surface-subtle)]/30 rounded-lg border border-dashed border-[var(--color-border)]">
-                                                            <p className="text-sm text-[var(--color-text-muted)] mb-2">
-                                                                {t('okr.noKRs')}
-                                                            </p>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => handleAddKR(objective.id)}
-                                                            >
-                                                                {t('okr.addFirstKR')}
-                                                            </Button>
-                                                        </div>
-                                                    )}
+                                                    <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                                                        {pillar.code}
+                                                    </p>
                                                 </div>
-                                            )
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 text-[var(--color-text-muted)]">
-                                        <p>{t('okr.noObjectives')}</p>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="mt-4"
-                                            onClick={() => setIsCreatingObjective(true)}
-                                        >
-                                            <Target className="w-4 h-4 mr-2" />
-                                            {t('okr.defineFirstObjective')}
-                                        </Button>
-                                    </div>
-                                )}
-                            </PillarSection>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0 mt-0.5" />
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {pillar.description && (
+                                            <p className="text-sm text-[var(--color-text-muted)] line-clamp-2">
+                                                {pillar.description}
+                                            </p>
+                                        )}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Badge variant="default" size="sm">
+                                                {t('okr.flow.pillarObjectives', { count: objectiveCount })}
+                                            </Badge>
+                                            <Badge variant="info" size="sm">
+                                                {t('okr.flow.pillarRootKRs', { count: rootCount })}
+                                            </Badge>
+                                            <Badge variant="success" size="sm">
+                                                {t('okr.flow.pillarLeafKRs', { count: leafCount })}
+                                            </Badge>
+                                            {overdueCount > 0 && (
+                                                <Badge variant="danger" size="sm">
+                                                    {overdueCount} {t(overdueCount > 1 ? 'deadline.overduePlural' : 'deadline.overdue')}
+                                                </Badge>
+                                            )}
+                                            {urgentCount > 0 && (
+                                                <Badge variant="warning" size="sm">
+                                                    {urgentCount} {t(urgentCount > 1 ? 'deadline.urgentPlural' : 'deadline.urgent')}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <p className="text-sm font-medium text-[var(--color-primary)]">
+                                            {t('okr.flow.openPillar')}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </button>
                         )
                     })}
                 </div>
             )}
-
-            {visiblePillars.length === 0 && !loading && (
-                <div className="text-center py-16">
-                    <p className="text-[var(--color-text-muted)] mb-4">
-                        {t('okr.noPillars')}
-                    </p>
-                </div>
-            )}
-
-            {/* Edit/Create KR Modal */}
-            <EditKRModalV2
-                open={krModalOpen}
-                onOpenChange={setKrModalOpen}
-                onSave={loadData}
-                keyResult={selectedKR as any}
-                objectives={objectivesWithRelations}
-                defaultObjectiveId={defaultObjectiveId}
-            />
-
-            <CreateObjectiveModalV2
-                open={isCreatingObjective}
-                onOpenChange={(open) => {
-                    setIsCreatingObjective(open)
-                    if (!open) setEditingObjective(null)
-                }}
-                onSave={loadData}
-                pillars={pillars}
-                units={selectedUnit ? [{ id: selectedUnit, name: selectedUnitData?.name || '', code: '' }] : []}
-                defaultPillarId={filterPillar || undefined}
-                objective={editingObjective}
-            />
         </div>
     )
 }

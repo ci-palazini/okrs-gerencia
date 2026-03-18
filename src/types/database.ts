@@ -136,6 +136,7 @@ export interface Database {
                     title: string
                     description: string | null
                     year: number
+                    due_date: string | null
                     is_active: boolean
                     created_at: string
                     updated_at: string
@@ -148,6 +149,7 @@ export interface Database {
                     title: string
                     description?: string | null
                     year?: number
+                    due_date: string
                     is_active?: boolean
                     created_at?: string
                     updated_at?: string
@@ -159,6 +161,7 @@ export interface Database {
                     title?: string
                     description?: string | null
                     year?: number
+                    due_date?: string
                     is_active?: boolean
                     updated_at?: string
                 }
@@ -177,6 +180,17 @@ export interface Database {
                     currency_type: string | null
                     order_index: number
                     is_active: boolean
+                    target_direction: 'maximize' | 'minimize'
+                    scope: 'annual' | 'quarterly'
+                    parent_kr_id: string | null
+                    quarter: number | null
+                    baseline: number | null
+                    target: number | null
+                    actual: number | null
+                    progress: number | null
+                    confidence: 'on_track' | 'at_risk' | 'off_track' | null
+                    notes: string | null
+                    due_date: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -193,6 +207,17 @@ export interface Database {
                     currency_type?: string | null
                     order_index?: number
                     is_active?: boolean
+                    target_direction?: 'maximize' | 'minimize'
+                    scope?: 'annual' | 'quarterly'
+                    parent_kr_id?: string | null
+                    quarter?: number | null
+                    baseline?: number | null
+                    target?: number | null
+                    actual?: number | null
+                    progress?: number | null
+                    confidence?: 'on_track' | 'at_risk' | 'off_track' | null
+                    notes?: string | null
+                    due_date: string
                     created_at?: string
                     updated_at?: string
                 }
@@ -208,6 +233,17 @@ export interface Database {
                     currency_type?: string | null
                     order_index?: number
                     is_active?: boolean
+                    target_direction?: 'maximize' | 'minimize'
+                    scope?: 'annual' | 'quarterly'
+                    parent_kr_id?: string | null
+                    quarter?: number | null
+                    baseline?: number | null
+                    target?: number | null
+                    actual?: number | null
+                    progress?: number | null
+                    confidence?: 'on_track' | 'at_risk' | 'off_track' | null
+                    notes?: string | null
+                    due_date?: string
                     updated_at?: string
                 }
             }

@@ -96,6 +96,33 @@ export function getStatusColor(progress: number): 'success' | 'warning' | 'dange
 }
 
 /**
+ * Generate next hierarchical code in the format PARENT.1, PARENT.2...
+ * considering only direct children of the given parent code.
+ */
+export function getNextHierarchicalCode(parentCode: string, siblingCodes: string[]): string {
+    const escapedParentCode = parentCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const directChildRegex = new RegExp(`^${escapedParentCode}\\.(\\d+)$`)
+    const usedIndexes = new Set<number>()
+
+    siblingCodes.forEach((code) => {
+        const match = code.match(directChildRegex)
+        if (!match) return
+
+        const index = Number(match[1])
+        if (Number.isInteger(index) && index > 0) {
+            usedIndexes.add(index)
+        }
+    })
+
+    let nextIndex = 1
+    while (usedIndexes.has(nextIndex)) {
+        nextIndex += 1
+    }
+
+    return `${parentCode}.${nextIndex}`
+}
+
+/**
  * Format username from email (get part before @)
  */
 export function formatUsername(email: string | null | undefined): string {

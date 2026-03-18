@@ -16,21 +16,21 @@ const confidenceConfig = {
         icon: CheckCircle2,
         color: 'text-[var(--color-success)]',
         bg: 'bg-[var(--color-success)]/15',
-        label: 'No caminho',
+        label: 'Alta confiança',
         fillColor: 'fill-[var(--color-success)]'
     },
     at_risk: {
         icon: AlertTriangle,
         color: 'text-[var(--color-warning)]',
         bg: 'bg-[var(--color-warning)]/15',
-        label: 'Em risco',
+        label: 'Média confiança',
         fillColor: 'fill-[var(--color-warning)]'
     },
     off_track: {
         icon: XCircle,
         color: 'text-[var(--color-danger)]',
         bg: 'bg-[var(--color-danger)]/15',
-        label: 'Atrasado',
+        label: 'Baixa confiança',
         fillColor: 'fill-[var(--color-danger)]'
     }
 }
@@ -83,13 +83,14 @@ export function ConfidenceIndicator({
 
                 return (
                     <button
+                        type="button"
                         key={level}
                         onClick={() => onChange?.(level)}
                         className={cn(
-                            'p-1.5 rounded-lg transition-all',
+                            'p-1.5 rounded-lg border border-transparent transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-surface)]',
                             isSelected
-                                ? cn(config.bg, 'ring-2 ring-offset-1', config.color.replace('text-', 'ring-'))
-                                : 'opacity-40 hover:opacity-70'
+                                ? cn(config.bg, config.color, 'border-current shadow-sm opacity-100')
+                                : 'opacity-50 hover:opacity-85 hover:bg-[var(--color-surface-hover)]'
                         )}
                         title={config.label}
                     >

@@ -21,7 +21,7 @@ export function Header() {
             {/* Left side - Breadcrumb or Title */}
             <div>
                 <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                    OKR Dashboard
+                    {t('header.appTitle')}
                 </h1>
             </div>
 
@@ -52,14 +52,14 @@ export function Header() {
                                 onClick={() => i18n.changeLanguage('pt')}
                             >
                                 <span className="w-6 text-center">🇧🇷</span>
-                                Português
+                                {t('header.languagePortuguese')}
                             </DropdownMenu.Item>
                             <DropdownMenu.Item
                                 className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
                                 onClick={() => i18n.changeLanguage('es')}
                             >
                                 <span className="w-6 text-center">🇦🇷</span>
-                                Español
+                                {t('header.languageSpanish')}
                             </DropdownMenu.Item>
                         </DropdownMenu.Content>
                     </DropdownMenu.Portal>

@@ -78,17 +78,30 @@ export function useKRTracking() {
             const krs = (krsData || []) as unknown as AnnualKRForTracking[]
             setAnnualKRs(krs)
 
-            // 2. Load all tracking entries for these KRs and current year
+            // 2. Load all quarterly child KRs for these annual KRs
             if (krs.length > 0) {
-                const { data: trackingRows, error: trackingError } = await supabase
-                    .from('kr_annual_tracking')
-                    .select('*')
-                    .in('kr_id', krs.map(k => k.id))
-                    .eq('year', year)
+                const { data: quarterlyKRs, error: trackingError } = await supabase
+                    .from('key_results')
+                    .select('id, parent_kr_id, quarter, baseline, target, actual, notes')
+                    .in('parent_kr_id', krs.map(k => k.id))
+                    .eq('scope', 'quarterly')
                     .order('quarter')
 
                 if (trackingError) throw trackingError
-                setTrackingData((trackingRows || []) as KRTrackingEntry[])
+                
+                // Map KeyResult rows to KRTrackingEntry interface for UI compatibility
+                const mappedEntries: KRTrackingEntry[] = (quarterlyKRs || []).map(q => ({
+                    id: q.id,
+                    kr_id: q.parent_kr_id!,
+                    year: year, // Children KRs are for the same year
+                    quarter: q.quarter!,
+                    baseline: q.baseline,
+                    target: q.target,
+                    actual: q.actual,
+                    notes: q.notes
+                }))
+                
+                setTrackingData(mappedEntries)
             } else {
                 setTrackingData([])
             }
@@ -103,39 +116,55 @@ export function useKRTracking() {
         loadData()
     }, [loadData])
 
-    /** Upsert a tracking entry (insert or update by unique kr_id+year+quarter) */
+    /** Update a quarterly KR entry */
     const upsertTracking = useCallback(async (
-        krId: string,
+        krId: string, // This is the parent (annual) KR ID in the current state, or child ID if updated
         quarter: number,
         fields: { baseline?: number | null; target?: number | null; actual?: number | null; notes?: string | null }
     ) => {
-        const existing = trackingData.find(e => e.kr_id === krId && e.quarter === quarter && e.year === year)
-        const payload = {
-            kr_id: krId,
-            year,
-            quarter,
-            baseline: fields.baseline !== undefined ? fields.baseline : (existing?.baseline ?? null),
-            target: fields.target !== undefined ? fields.target : (existing?.target ?? null),
-            actual: fields.actual !== undefined ? fields.actual : (existing?.actual ?? null),
-            notes: fields.notes !== undefined ? fields.notes : (existing?.notes ?? null),
+        const existing = trackingData.find(e => e.kr_id === krId && e.quarter === quarter)
+        
+        if (!existing) {
+            console.warn(`No quarterly KR found for annual KR ${krId} in quarter ${quarter}`)
+            return
         }
 
+        const payload: any = {
+            updated_at: new Date().toISOString()
+        }
+        if (fields.baseline !== undefined) payload.baseline = fields.baseline
+        if (fields.target !== undefined) payload.target = fields.target
+        if (fields.actual !== undefined) payload.actual = fields.actual
+        if (fields.notes !== undefined) payload.notes = fields.notes
+
         const { data, error } = await supabase
-            .from('kr_annual_tracking')
-            .upsert(payload, { onConflict: 'kr_id,year,quarter' })
+            .from('key_results')
+            .update(payload)
+            .eq('id', existing.id)
             .select()
             .single()
 
         if (error) throw error
 
+        const updatedEntry: KRTrackingEntry = {
+            id: data.id,
+            kr_id: data.parent_kr_id,
+            year: year,
+            quarter: data.quarter,
+            baseline: data.baseline,
+            target: data.target,
+            actual: data.actual,
+            notes: data.notes
+        }
+
         setTrackingData(prev => {
-            const idx = prev.findIndex(e => e.kr_id === krId && e.quarter === quarter && e.year === year)
+            const idx = prev.findIndex(e => e.id === data.id)
             if (idx >= 0) {
                 const updated = [...prev]
-                updated[idx] = data as KRTrackingEntry
+                updated[idx] = updatedEntry
                 return updated
             }
-            return [...prev, data as KRTrackingEntry]
+            return [...prev, updatedEntry]
         })
     }, [year, trackingData])
 

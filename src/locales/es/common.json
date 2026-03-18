@@ -52,7 +52,6 @@
     "sidebar": {
         "managementControl": "Control de Gestión",
         "dashboard": "Dashboard",
-        "corporateObjectives": "Objetivos Corp.",
         "okrs": "OKR's",
         "managePillars": "Gestionar Pilares",
         "actions": "Acciones",
@@ -79,6 +78,30 @@
         "attentionKRs": "Key Results que Necesitan Atención",
         "lowestProgress": "Menor progreso",
         "noKRsFound": "Ningún Key Result encontrado."
+    },
+    "deadline": {
+        "label": "Plazo",
+        "overdue": "Atrasado",
+        "overduePlural": "Atrasados",
+        "urgent": "Urgente",
+        "urgentPlural": "Urgentes",
+        "warning": "Atención",
+        "onTrack": "En plazo",
+        "daysRemaining": "{{count}} días restantes",
+        "daysOverdue": "{{count}} días de retraso",
+        "selectDate": "Seleccione la fecha",
+        "required": "Plazo obligatorio.",
+        "cannotExceedObjective": "El plazo del KR no puede superar el plazo del Objetivo",
+        "noDeadline": "Sin plazo",
+        "suggested": "Plazo sugerido",
+        "overdueItemsTitle": "OKRs atrasados",
+        "urgentItemsTitle": "OKRs urgentes",
+        "overdueItemsDescription": "{{count}} ítem(ns) con plazo vencido",
+        "urgentItemsDescription": "{{count}} ítem(ns) con plazo próximo",
+        "noneOverdue": "Ningún OKR atrasado.",
+        "noneUrgent": "Ningún OKR urgente.",
+        "openItem": "Abrir",
+        "attentionCount": "{{count}} en atención"
     },
     "okr": {
         "title": "OKRs",
@@ -108,19 +131,7 @@
         "seedData": "Ejecute el script {{script}} en el Supabase SQL Editor para poblar los datos.",
         "base": "Base",
         "target": "Meta",
-        "current": "Actual",
-        "corporate": {
-            "title": "Objetivos Corporativos",
-            "subtitle": "GSC Objectives {{year}} - Visión consolidada de todos los pilares",
-            "saving": "Guardando...",
-            "tip": "Consejo:",
-            "tipContent": "Haga clic en los valores de Baseline, Meta o Real para editar directamente. El % de Avance se calcula automáticamente. Use los indicadores de confianza para señalar el estado de cada KR.",
-            "pillarSummary": "{{objectives}} objetivo(s) • {{krs}} Key Result(s)",
-            "emptyState": {
-                "title": "Ningún objetivo corporativo encontrado.",
-                "description": "Ejecute la migración <1>migration004_objectives_corporate.sql</1> en Supabase para poblar los datos."
-            }
-        }
+        "current": "Actual"
     },
     "actions": {
         "title": "Acciones",

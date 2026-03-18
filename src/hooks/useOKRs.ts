@@ -238,6 +238,96 @@ export function useOKRs() {
         }
     }, [])
 
+    const updateObjectiveDueDate = useCallback(async (
+        id: string,
+        dueDate: string,
+        userId: string
+    ) => {
+        setLoading(true)
+        setError(null)
+        try {
+            // Get old value for audit
+            const { data: oldData } = await supabase
+                .from('objectives')
+                .select('*')
+                .eq('id', id)
+                .single()
+
+            // Update due_date
+            const { data, error } = await supabase
+                .from('objectives')
+                .update({ due_date: dueDate, updated_at: new Date().toISOString() })
+                .eq('id', id)
+                .select()
+                .single()
+
+            if (error) throw error
+
+            // Create audit log
+            await supabase.from('audit_logs').insert({
+                user_id: userId,
+                action: 'update',
+                entity_type: 'objectives',
+                entity_id: id,
+                entity_name: data?.title,
+                old_value: { due_date: oldData?.due_date },
+                new_value: { due_date: dueDate }
+            })
+
+            return data as Objective
+        } catch (err) {
+            setError(err as Error)
+            return null
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    const updateKRDueDate = useCallback(async (
+        id: string,
+        dueDate: string,
+        userId: string
+    ) => {
+        setLoading(true)
+        setError(null)
+        try {
+            // Get old value for audit
+            const { data: oldData } = await supabase
+                .from('key_results')
+                .select('*')
+                .eq('id', id)
+                .single()
+
+            // Update due_date
+            const { data, error } = await supabase
+                .from('key_results')
+                .update({ due_date: dueDate, updated_at: new Date().toISOString() })
+                .eq('id', id)
+                .select()
+                .single()
+
+            if (error) throw error
+
+            // Create audit log
+            await supabase.from('audit_logs').insert({
+                user_id: userId,
+                action: 'update',
+                entity_type: 'key_results',
+                entity_id: id,
+                entity_name: data?.title,
+                old_value: { due_date: oldData?.due_date },
+                new_value: { due_date: dueDate }
+            })
+
+            return data as KeyResult
+        } catch (err) {
+            setError(err as Error)
+            return null
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
     return {
         loading,
         error,
@@ -247,6 +337,8 @@ export function useOKRs() {
         fetchChildrenKRs,
         fetchMonthlyData,
         updateMonthlyData,
-        updateKeyResultProgress
+        updateKeyResultProgress,
+        updateObjectiveDueDate,
+        updateKRDueDate
     }
 }
