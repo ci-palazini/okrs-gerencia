@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, GitBranch, Plus, Search, Trash2, Pencil, User } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Plus, Search, Trash2, Pencil } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import { ConfidenceIndicator } from '../../components/ui/ConfidenceIndicator'
+import type { ConfidenceLevel } from '../../components/ui/ConfidenceIndicator'
 import { Input } from '../../components/ui/Input'
 import { CreateObjectiveModalV2 } from '../../components/okr/CreateObjectiveModalV2'
 import { CascadeKRModal } from '../../components/okr/CascadeKRModal'
@@ -43,6 +44,67 @@ function countLeaves(nodes: CascadeTreeNode[]): number {
     }, 0)
 }
 
+function getConfidenceBorderColor(confidence: ConfidenceLevel): string {
+    switch (confidence) {
+        case 'on_track': return 'border-l-green-500'
+        case 'at_risk': return 'border-l-yellow-500'
+        case 'off_track': return 'border-l-red-500'
+        default: return 'border-l-[var(--color-border)]'
+    }
+}
+
+function getProgressBarColor(progress: number | null, confidence: ConfidenceLevel): string {
+    if (confidence === 'on_track') return 'bg-green-500'
+    if (confidence === 'at_risk') return 'bg-yellow-500'
+    if (confidence === 'off_track') return 'bg-red-500'
+    if (progress === null) return 'bg-[var(--color-border)]'
+    if (progress >= 70) return 'bg-green-500'
+    if (progress >= 40) return 'bg-yellow-500'
+    return 'bg-red-500'
+}
+
+const AVATAR_COLORS = [
+    'bg-blue-500', 'bg-purple-500', 'bg-green-600', 'bg-orange-500',
+    'bg-pink-500', 'bg-teal-500', 'bg-indigo-500', 'bg-red-500',
+]
+
+
+function getInitials(name: string): string {
+    return name
+        .split(' ')
+        .slice(0, 2)
+        .map((n) => n[0]?.toUpperCase() ?? '')
+        .join('')
+}
+
+interface OwnerChipsProps {
+    owners: string[]
+    colorMap: Map<string, string>
+}
+
+function OwnerChips({ owners, colorMap }: OwnerChipsProps) {
+    if (owners.length === 0) return null
+
+    return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+            {owners.map((name) => {
+                const color = colorMap.get(name) ?? 'bg-gray-500'
+                return (
+                    <span
+                        key={name}
+                        className={`inline-flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full text-white text-xs font-medium shrink-0 ${color}`}
+                    >
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[10px] font-bold">
+                            {getInitials(name)}
+                        </span>
+                        {name}
+                    </span>
+                )
+            })}
+        </div>
+    )
+}
+
 export function PillarOKRsPage() {
     const { t } = useTranslation()
     const navigate = useNavigate()
@@ -68,6 +130,7 @@ export function PillarOKRsPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [objectiveModalOpen, setObjectiveModalOpen] = useState(false)
     const [editingObjective, setEditingObjective] = useState<CascadeObjective | null>(null)
+    const [collapsedObjectives, setCollapsedObjectives] = useState<Set<string>>(new Set())
     const [krModalState, setKrModalState] = useState<KRModalState>({
         open: false,
         objective: null,
@@ -82,6 +145,26 @@ export function PillarOKRsPage() {
     }, [getVisiblePillars, pillarId])
 
     const normalizedSearch = searchTerm.trim().toLowerCase()
+
+    const ownerColorMap = useMemo(() => {
+        const map = new Map<string, string>()
+        let colorIndex = 0
+        for (const objective of objectives) {
+            const roots = getObjectiveRoots(objective.id)
+            for (const root of roots) {
+                const names = (root.owner_names && root.owner_names.length > 0)
+                    ? root.owner_names
+                    : root.owner_name ? [root.owner_name] : []
+                for (const name of names) {
+                    if (!map.has(name)) {
+                        map.set(name, AVATAR_COLORS[colorIndex % AVATAR_COLORS.length])
+                        colorIndex++
+                    }
+                }
+            }
+        }
+        return map
+    }, [objectives, getObjectiveRoots])
 
     const objectiveCards = useMemo(() => {
         if (!pillarId) return []
@@ -146,6 +229,18 @@ export function PillarOKRsPage() {
 
         if (!window.confirm(message)) return
         await deleteKR(rootKr.id)
+    }
+
+    function toggleObjectiveCollapse(objectiveId: string) {
+        setCollapsedObjectives((prev) => {
+            const next = new Set(prev)
+            if (next.has(objectiveId)) {
+                next.delete(objectiveId)
+            } else {
+                next.add(objectiveId)
+            }
+            return next
+        })
     }
 
     if (loading && !selectedPillar) {
@@ -246,206 +341,248 @@ export function PillarOKRsPage() {
                 </Card>
             ) : (
                 <div className="space-y-5">
-                    {objectiveCards.map(({ objective, roots, rootCount, leafCount }) => (
-                        <Card key={objective.id} variant="elevated" className="p-0 overflow-hidden">
-                            <CardHeader className="p-4 md:p-5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]/20">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <Badge variant="outline" size="sm" className="font-mono font-bold">
-                                                {objective.code}
-                                            </Badge>
-                                            <CardTitle className="text-base">{objective.title}</CardTitle>
-                                            {objective.due_date && (
-                                                <DeadlineBadge 
-                                                    dueDate={objective.due_date} 
-                                                    isCompleted={objective.is_active === false}
-                                                    size="sm"
-                                                />
-                                            )}
-                                        </div>
-                                        {objective.description && (
-                                            <p className="text-sm text-[var(--color-text-muted)] mt-1.5">
-                                                {objective.description}
-                                            </p>
-                                        )}
-                                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                                            <Badge variant="info" size="sm">
-                                                {t('okr.flow.pillarRootKRs', { count: rootCount })}
-                                            </Badge>
-                                            <Badge variant="success" size="sm">
-                                                {t('okr.flow.pillarLeafKRs', { count: leafCount })}
-                                            </Badge>
-                                        </div>
-                                    </div>
+                    {objectiveCards.map(({ objective, roots, rootCount, leafCount }) => {
+                        const isCollapsed = collapsedObjectives.has(objective.id)
 
-                                    <div className="flex items-center gap-2 flex-wrap justify-end">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                setEditingObjective(objective)
-                                                setObjectiveModalOpen(true)
-                                            }}
-                                        >
-                                            <Pencil className="w-3 h-3 mr-1" />
-                                            {t('common.edit')}
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
-                                            onClick={() => handleDeleteObjective(objective)}
-                                        >
-                                            <Trash2 className="w-3 h-3 mr-1" />
-                                            {t('common.delete')}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => openCreateRootKRModal(objective)}
-                                        >
-                                            <Plus className="w-3 h-3 mr-1" />
-                                            {t('okr.cascade.newRootKR')}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
+                        return (
+                            <Card key={objective.id} variant="elevated" className="p-0 overflow-hidden">
+                                <CardHeader className="p-4 md:p-5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]/20">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex items-start gap-2 min-w-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleObjectiveCollapse(objective.id)}
+                                                className="mt-0.5 shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+                                                title={isCollapsed ? 'Expandir' : 'Recolher'}
+                                            >
+                                                {isCollapsed
+                                                    ? <ChevronRight className="w-4 h-4" />
+                                                    : <ChevronDown className="w-4 h-4" />
+                                                }
+                                            </button>
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <Badge variant="outline" size="sm" className="font-mono font-bold">
+                                                        {objective.code}
+                                                    </Badge>
+                                                    <CardTitle className="text-base">{objective.title}</CardTitle>
+                                                    {objective.due_date && (
+                                                        <DeadlineBadge
+                                                            dueDate={objective.due_date}
+                                                            isCompleted={objective.is_active === false}
+                                                            size="sm"
+                                                        />
+                                                    )}
+                                                </div>
+                                                {objective.description && (
+                                                    <p className="text-sm text-[var(--color-text-muted)] mt-1.5">
+                                                        {objective.description}
+                                                    </p>
+                                                )}
+                                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                    <Badge variant="info" size="sm">
+                                                        {t('okr.flow.pillarRootKRs', { count: rootCount })}
+                                                    </Badge>
+                                                    <Badge variant="success" size="sm">
+                                                        {t('okr.flow.pillarLeafKRs', { count: leafCount })}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                            <CardContent className="p-4 md:p-5 space-y-3">
-                                {roots.length === 0 ? (
-                                    <div className="text-center py-8 border-2 border-dashed border-[var(--color-border)] rounded-xl">
-                                        <p className="text-sm text-[var(--color-text-muted)] mb-3">
-                                            {t('okr.flow.noRootForObjective')}
-                                        </p>
-                                        <Button variant="outline" size="sm" onClick={() => openCreateRootKRModal(objective)}>
-                                            <Plus className="w-4 h-4 mr-2" />
-                                            {t('okr.addFirstKR')}
-                                        </Button>
+                                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setEditingObjective(objective)
+                                                    setObjectiveModalOpen(true)
+                                                }}
+                                            >
+                                                <Pencil className="w-3 h-3 mr-1" />
+                                                {t('common.edit')}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+                                                onClick={() => handleDeleteObjective(objective)}
+                                            >
+                                                <Trash2 className="w-3 h-3 mr-1" />
+                                                {t('common.delete')}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openCreateRootKRModal(objective)}
+                                            >
+                                                <Plus className="w-3 h-3 mr-1" />
+                                                {t('okr.cascade.newRootKR')}
+                                            </Button>
+                                        </div>
                                     </div>
-                                ) : (
-                                    roots.map((root) => (
-                                        <Card key={root.id} variant="default" className="p-0 overflow-hidden">
-                                            <CardContent className="p-4">
-                                                <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-3">
-                                                    <div className="min-w-0">
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <Badge variant="outline" size="sm" className="font-mono">{root.code}</Badge>
-                                                            <p className="text-sm md:text-base font-semibold text-[var(--color-text-primary)] truncate">
-                                                                {root.title}
-                                                            </p>
-                                                            <Badge variant={root.children.length > 0 ? 'info' : 'success'} size="sm">
-                                                                {t('okr.flow.rootChildren', { count: root.children.length })}
-                                                            </Badge>
-                                                            {root.due_date && (
-                                                                <DeadlineBadge
-                                                                    dueDate={root.due_date}
-                                                                    isCompleted={root.is_active === false || (root.progress ?? 0) >= 100}
+                                </CardHeader>
+
+                                {!isCollapsed && (
+                                    <CardContent className="p-4 md:p-5 space-y-3">
+                                        {roots.length === 0 ? (
+                                            <div className="text-center py-8 border-2 border-dashed border-[var(--color-border)] rounded-xl">
+                                                <p className="text-sm text-[var(--color-text-muted)] mb-3">
+                                                    {t('okr.flow.noRootForObjective')}
+                                                </p>
+                                                <Button variant="outline" size="sm" onClick={() => openCreateRootKRModal(objective)}>
+                                                    <Plus className="w-4 h-4 mr-2" />
+                                                    {t('okr.addFirstKR')}
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            roots.map((root) => {
+                                                const ownerNames = (root.owner_names && root.owner_names.length > 0)
+                                                    ? root.owner_names
+                                                    : root.owner_name ? [root.owner_name] : []
+                                                const progress = root.progress !== null ? Math.round(root.progress) : null
+                                                const borderColor = getConfidenceBorderColor(root.confidence)
+                                                const barColor = getProgressBarColor(root.progress, root.confidence)
+
+                                                return (
+                                                    <div
+                                                        key={root.id}
+                                                        className={`group rounded-lg border border-[var(--color-border)] border-l-4 ${borderColor} bg-[var(--color-surface)] overflow-hidden`}
+                                                    >
+                                                        {/* KR Header */}
+                                                        <div className="px-4 pt-4 pb-3">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <Badge variant="outline" size="sm" className="font-mono shrink-0">{root.code}</Badge>
+                                                                        <p className="text-sm md:text-base font-semibold text-[var(--color-text-primary)]">
+                                                                            {root.title}
+                                                                        </p>
+                                                                        {root.due_date && (
+                                                                            <DeadlineBadge
+                                                                                dueDate={root.due_date}
+                                                                                isCompleted={root.is_active === false || (root.progress ?? 0) >= 100}
+                                                                                size="sm"
+                                                                            />
+                                                                        )}
+                                                                        {ownerNames.length > 0 && (
+                                                                            <OwnerChips owners={ownerNames} colorMap={ownerColorMap} />
+                                                                        )}
+                                                                    </div>
+                                                                    {root.description && (
+                                                                        <p className="text-sm text-[var(--color-text-muted)] mt-1.5 line-clamp-2">
+                                                                            {root.description}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Sub-KRs badge */}
+                                                                {root.children.length > 0 && (
+                                                                    <Badge variant="info" size="sm" className="shrink-0 hidden sm:inline-flex">
+                                                                        {t('okr.flow.rootChildren', { count: root.children.length })}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Metrics row */}
+                                                        <div className="px-4 pb-3 space-y-2">
+                                                            <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] flex-wrap">
+                                                                <span className="font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wide">
+                                                                    {t('quarterlyCard.baseline')}
+                                                                </span>
+                                                                <span className="font-semibold text-[var(--color-text-primary)]">
+                                                                    {formatMetricValue(root, root.baseline)}
+                                                                </span>
+                                                                <span className="text-[var(--color-text-muted)]">→</span>
+                                                                <span className="font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wide">
+                                                                    {t('quarterlyCard.actual')}
+                                                                </span>
+                                                                <span className="font-semibold text-[var(--color-text-primary)]">
+                                                                    {formatMetricValue(root, root.actual)}
+                                                                </span>
+                                                                <span className="text-[var(--color-text-muted)]">→</span>
+                                                                <span className="font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wide">
+                                                                    {t('quarterlyCard.target')}
+                                                                </span>
+                                                                <span className="font-semibold text-[var(--color-text-primary)]">
+                                                                    {formatMetricValue(root, root.target)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="flex-1 h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full rounded-full transition-all ${barColor}`}
+                                                                        style={{ width: `${Math.min(100, Math.max(0, progress ?? 0))}%` }}
+                                                                    />
+                                                                </div>
+                                                                <span className="text-sm font-bold text-[var(--color-text-primary)] shrink-0 w-10 text-right">
+                                                                    {progress !== null ? `${progress}%` : '-'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Actions row — visible on hover (desktop) or always (mobile) */}
+                                                        <div className="px-4 pb-3 flex items-center justify-between gap-2 border-t border-[var(--color-border-subtle)] pt-2.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                            <div className="flex items-center gap-1">
+                                                                <Button
+                                                                    variant="ghost"
                                                                     size="sm"
+                                                                    onClick={() => {
+                                                                        setKrModalState({
+                                                                            open: true,
+                                                                            objective,
+                                                                            parentKr: null,
+                                                                            keyResult: root,
+                                                                            initialCode: root.code,
+                                                                        })
+                                                                    }}
+                                                                >
+                                                                    <Pencil className="w-3 h-3 mr-1" />
+                                                                    {t('common.edit')}
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+                                                                    onClick={() => handleDeleteRootKR(root)}
+                                                                >
+                                                                    <Trash2 className="w-3 h-3 mr-1" />
+                                                                    {t('common.delete')}
+                                                                </Button>
+                                                                <ConfidenceIndicator
+                                                                    value={root.confidence}
+                                                                    editable
+                                                                    onChange={(nextValue) => updateConfidence(root.id, nextValue)}
                                                                 />
-                                                            )}
-                                                        </div>
-                                                        {root.description && (
-                                                            <p className="text-sm text-[var(--color-text-muted)] mt-1.5 line-clamp-2">
-                                                                {root.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
+                                                            </div>
 
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                setKrModalState({
-                                                                    open: true,
-                                                                    objective,
-                                                                    parentKr: null,
-                                                                    keyResult: root,
-                                                                    initialCode: root.code,
-                                                                })
-                                                            }}
-                                                        >
-                                                            <Pencil className="w-3 h-3 mr-1" />
-                                                            {t('common.edit')}
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
-                                                            onClick={() => handleDeleteRootKR(root)}
-                                                        >
-                                                            <Trash2 className="w-3 h-3 mr-1" />
-                                                            {t('common.delete')}
-                                                        </Button>
-                                                        <Button
-                                                            variant="primary"
-                                                            size="sm"
-                                                            onClick={() => navigate(
-                                                                `/okrs/pillar/${selectedPillar.id}/kr/${root.id}`,
-                                                                { state: { backTo: currentPath } }
-                                                            )}
-                                                        >
-                                                            {t('okr.flow.openFullScreen')}
-                                                            <ArrowRight className="w-4 h-4 ml-1" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-3">
-                                                    <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                                                        <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.baseline')}</p>
-                                                        <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1">
-                                                            {formatMetricValue(root, root.baseline)}
-                                                        </p>
-                                                    </div>
-                                                    <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                                                        <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.actual')}</p>
-                                                        <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1">
-                                                            {formatMetricValue(root, root.actual)}
-                                                        </p>
-                                                    </div>
-                                                    <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                                                        <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.target')}</p>
-                                                        <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1">
-                                                            {formatMetricValue(root, root.target)}
-                                                        </p>
-                                                    </div>
-                                                    <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                                                        <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.progress')}</p>
-                                                        <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1">
-                                                            {root.progress !== null ? `${Math.round(root.progress)}%` : '-'}
-                                                        </p>
-                                                    </div>
-                                                    <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                                                        <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.confidence')}</p>
-                                                        <div className="mt-1">
-                                                            <ConfidenceIndicator
-                                                                value={root.confidence}
-                                                                editable
-                                                                onChange={(nextValue) => updateConfidence(root.id, nextValue)}
-                                                            />
+                                                            <Button
+                                                                variant="primary"
+                                                                size="sm"
+                                                                onClick={() => navigate(
+                                                                    `/okrs/pillar/${selectedPillar.id}/kr/${root.id}`,
+                                                                    { state: { backTo: currentPath } }
+                                                                )}
+                                                            >
+                                                                {root.children.length > 0 && (
+                                                                    <span className="mr-1 text-xs opacity-75">
+                                                                        {t('okr.flow.rootChildren', { count: root.children.length })}
+                                                                    </span>
+                                                                )}
+                                                                {t('okr.flow.openFullScreen')}
+                                                                <ArrowRight className="w-4 h-4 ml-1" />
+                                                            </Button>
                                                         </div>
                                                     </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-4 mt-3 text-xs text-[var(--color-text-muted)] flex-wrap">
-                                                    <span className="inline-flex items-center gap-1">
-                                                        <User className="w-3 h-3" />
-                                                        {t('quarterlyCard.owner')}: {(root.owner_names && root.owner_names.length > 0) ? root.owner_names.join(', ') : (root.owner_name || t('common.unassigned'))}
-                                                    </span>
-                                                    <span className="inline-flex items-center gap-1">
-                                                        <GitBranch className="w-3 h-3" />
-                                                        {t('okr.flow.openFullScreenHint')}
-                                                    </span>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))
+                                                )
+                                            })
+                                        )}
+                                    </CardContent>
                                 )}
-                            </CardContent>
-                        </Card>
-                    ))}
+                            </Card>
+                        )
+                    })}
                 </div>
             )}
 

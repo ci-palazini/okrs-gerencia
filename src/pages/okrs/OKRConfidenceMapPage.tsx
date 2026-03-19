@@ -10,6 +10,7 @@ import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import type { CascadeObjective, CascadePillar, CascadeTreeNode } from '../../hooks/useCascadeOKRData'
 import type { ConfidenceLevel } from '../../types'
 import { cn } from '../../lib/utils'
+import { supabase } from '../../lib/supabase'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,23 @@ function filterTreeBySearch(nodes: CascadeTreeNode[], term: string): CascadeTree
         .map((node) => ({
             ...node,
             children: filterTreeBySearch(node.children, term),
+        }))
+}
+
+function nodeMatchesTeam(node: CascadeTreeNode, memberNames: Set<string>): boolean {
+    const owners = node.owner_names?.length
+        ? node.owner_names
+        : node.owner_name ? [node.owner_name] : []
+    if (owners.some((o) => memberNames.has(o))) return true
+    return node.children.some((child) => nodeMatchesTeam(child, memberNames))
+}
+
+function filterTreeByTeam(nodes: CascadeTreeNode[], memberNames: Set<string>): CascadeTreeNode[] {
+    return nodes
+        .filter((node) => nodeMatchesTeam(node, memberNames))
+        .map((node) => ({
+            ...node,
+            children: filterTreeByTeam(node.children, memberNames),
         }))
 }
 
@@ -359,8 +377,29 @@ export function OKRConfidenceMapPage() {
     const [collapsedPillarIds, setCollapsedPillarIds] = useState<Set<string>>(new Set())
     const [collapsedObjectiveIds, setCollapsedObjectiveIds] = useState<Set<string>>(new Set())
     const [activePillarId, setActivePillarId] = useState<string | null>(null)
+    const [teams, setTeams] = useState<{ id: string; name: string; memberNames: string[] }[]>([])
+    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
 
     const pillarSectionRefs = useRef<Map<string, HTMLElement>>(new Map())
+
+    useEffect(() => {
+        supabase
+            .from('teams')
+            .select('id, name, team_members(users(full_name))')
+            .eq('is_active', true)
+            .order('order_index')
+            .then(({ data }) => {
+                if (data) {
+                    setTeams(data.map((t: any) => ({
+                        id: t.id,
+                        name: t.name,
+                        memberNames: (t.team_members as any[])
+                            .map((m: any) => m.users?.full_name)
+                            .filter(Boolean),
+                    })))
+                }
+            })
+    }, [])
 
     // Build all sections from data
     const allSections = useMemo<PillarSection[]>(() => {
@@ -385,6 +424,12 @@ export function OKRConfidenceMapPage() {
 
     const normalizedSearch = searchTerm.trim().toLowerCase()
 
+    const teamMemberNames = useMemo<Set<string> | null>(() => {
+        if (!selectedTeamId) return null
+        const team = teams.find((t) => t.id === selectedTeamId)
+        return new Set(team?.memberNames ?? [])
+    }, [selectedTeamId, teams])
+
     const filteredSections = useMemo<PillarSection[]>(() => {
         return allSections
             .map((section) => {
@@ -399,20 +444,29 @@ export function OKRConfidenceMapPage() {
                             matchesText(group.objective.code, normalizedSearch)
                             || matchesText(group.objective.title, normalizedSearch)
                         )
-                        if (!normalizedSearch || pillarMatches || objectiveMatches) return group
 
-                        const filteredRoots = filterTreeBySearch(group.roots, normalizedSearch)
-                        if (filteredRoots.length === 0) return null
+                        // Apply search filter
+                        let roots = group.roots
+                        if (normalizedSearch && !pillarMatches && !objectiveMatches) {
+                            roots = filterTreeBySearch(roots, normalizedSearch)
+                            if (roots.length === 0) return null
+                        }
+
+                        // Apply team filter
+                        if (teamMemberNames) {
+                            roots = filterTreeByTeam(roots, teamMemberNames)
+                            if (roots.length === 0) return null
+                        }
 
                         return {
                             objective: group.objective,
-                            roots: filteredRoots,
-                            confidence: countConfidence(flattenNodes(filteredRoots)),
+                            roots,
+                            confidence: countConfidence(flattenNodes(roots)),
                         }
                     })
                     .filter((group): group is ObjectiveGroup => group !== null)
 
-                if (normalizedSearch && !pillarMatches && objectiveGroups.length === 0) return null
+                if ((normalizedSearch || teamMemberNames) && !pillarMatches && objectiveGroups.length === 0) return null
 
                 return {
                     pillar: section.pillar,
@@ -421,7 +475,7 @@ export function OKRConfidenceMapPage() {
                 }
             })
             .filter((section): section is PillarSection => section !== null)
-    }, [allSections, normalizedSearch])
+    }, [allSections, normalizedSearch, teamMemberNames])
 
     const globalSummary = useMemo(() => {
         return allSections.reduce<ConfidenceSummary>((acc, s) => {
@@ -434,13 +488,13 @@ export function OKRConfidenceMapPage() {
         }, { total: 0, on_track: 0, at_risk: 0, off_track: 0, not_set: 0 })
     }, [allSections])
 
-    // Auto-expand everything when searching
+    // Auto-expand everything when searching or filtering by team
     useEffect(() => {
-        if (normalizedSearch) {
+        if (normalizedSearch || selectedTeamId) {
             setCollapsedPillarIds(new Set())
             setCollapsedObjectiveIds(new Set())
         }
-    }, [normalizedSearch])
+    }, [normalizedSearch, selectedTeamId])
 
     // Initialize active pillar to first section
     useEffect(() => {
@@ -554,14 +608,34 @@ export function OKRConfidenceMapPage() {
                     </div>
                 </div>
 
-                {/* Search */}
-                <Input
-                    label={t('okr.flow.mapSearchLabel')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder={t('okr.flow.mapSearchPlaceholder')}
-                    icon={<Search className="w-4 h-4" />}
-                />
+                {/* Search + Team filter */}
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                        {t('okr.flow.mapSearchLabel')}
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1">
+                            <Input
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder={t('okr.flow.mapSearchPlaceholder')}
+                                icon={<Search className="w-4 h-4" />}
+                            />
+                        </div>
+                        {teams.length > 0 && (
+                            <select
+                                value={selectedTeamId ?? ''}
+                                onChange={(e) => setSelectedTeamId(e.target.value || null)}
+                                className="h-11 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent hover:border-[var(--color-text-muted)] transition-all duration-200 min-w-[160px]"
+                            >
+                                <option value="">{t('okr.flow.mapTeamFilterAll', 'Todos os times')}</option>
+                                {teams.map((team) => (
+                                    <option key={team.id} value={team.id}>{team.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                </div>
 
                 {/* Global confidence bar */}
                 <GlobalSummaryBar summary={globalSummary} />

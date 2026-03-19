@@ -112,7 +112,19 @@ export function CascadeKRModal({
     const [assigneesLoading, setAssigneesLoading] = useState(false)
     const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([])
     const [ownerDropdownOpen, setOwnerDropdownOpen] = useState(false)
+    const ownerDropdownRef = useRef<HTMLDivElement>(null)
     const initializedContextRef = useRef<string | null>(null)
+
+    useEffect(() => {
+        if (!ownerDropdownOpen) return
+        function handleClickOutside(event: MouseEvent) {
+            if (ownerDropdownRef.current && !ownerDropdownRef.current.contains(event.target as Node)) {
+                setOwnerDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [ownerDropdownOpen])
 
     const isEditMode = !!keyResult?.id
     const isChild = useMemo(() => {
@@ -558,7 +570,7 @@ export function CascadeKRModal({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="relative">
+                            <div className="relative" ref={ownerDropdownRef}>
                                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
                                     {t('modals.createKR.owner')}
                                 </label>
