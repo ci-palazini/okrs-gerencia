@@ -113,7 +113,7 @@ function ConfidenceDot({ confidence }: { confidence: ConfidenceLevel }) {
     return (
         <div
             className="flex-shrink-0 rounded-full"
-            style={{ width: '8px', height: '8px', backgroundColor: color }}
+            style={{ width: '10px', height: '10px', backgroundColor: color, boxShadow: `0 0 0 3px ${color}30` }}
         />
     )
 }
@@ -141,12 +141,17 @@ function GlobalSummaryBar({ summary }: { summary: ConfidenceSummary }) {
                     {segments.map((seg) => seg.count > 0 && (
                         <div key={seg.key} className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
-                            <span className="text-xs text-[var(--color-text-secondary)]">{seg.label}</span>
+                            <span className="text-xs text-[var(--color-text-secondary)]">
+                                {seg.label}
+                                <span className="ml-1 text-[var(--color-text-muted)]">
+                                    ({Math.round((seg.count / summary.total) * 100)}%)
+                                </span>
+                            </span>
                         </div>
                     ))}
                 </div>
             </div>
-            <div className="flex h-2 rounded-full overflow-hidden gap-px">
+            <div className="flex h-3 rounded-full overflow-hidden gap-px">
                 {segments.map((seg) => seg.count > 0 && (
                     <div
                         key={seg.key}
@@ -237,6 +242,11 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
     const hasChildren = node.children.length > 0
     const progress = node.progress !== null ? Math.max(0, Math.min(100, node.progress)) : null
     const progressColor = getProgressColor(progress)
+    const confidenceBorderColor =
+        node.confidence === 'on_track' ? 'var(--color-success)'
+        : node.confidence === 'at_risk' ? 'var(--color-warning)'
+        : node.confidence === 'off_track' ? 'var(--color-danger)'
+        : 'transparent'
 
     return (
         <div>
@@ -286,7 +296,8 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
                 <button
                     type="button"
                     onClick={() => onNavigate(pillarId, node.id)}
-                    className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-left min-w-0 transition-colors"
+                    className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-left min-w-0 transition-colors border-l-2"
+                    style={{ borderLeftColor: confidenceBorderColor }}
                 >
                     <ConfidenceDot confidence={node.confidence} />
 
@@ -300,7 +311,7 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
 
                     {/* Progress bar */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <div className="w-16 h-1.5 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
+                        <div className="w-20 h-2 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
                             {progress !== null && (
                                 <div
                                     className="h-full rounded-full transition-all duration-300"
@@ -308,7 +319,7 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
                                 />
                             )}
                         </div>
-                        <span className="text-xs text-[var(--color-text-muted)] w-7 text-right flex-shrink-0">
+                        <span className="text-xs font-medium text-[var(--color-text-muted)] w-7 text-right flex-shrink-0">
                             {progress !== null ? `${progress}%` : '—'}
                         </span>
                     </div>
@@ -706,6 +717,22 @@ export function OKRConfidenceMapPage() {
                                                     )}
                                                 </div>
                                             </div>
+                                            {section.confidence.total > 0 && (
+                                                <div className="mt-2.5 flex h-1.5 rounded-full overflow-hidden gap-px">
+                                                    {section.confidence.on_track > 0 && (
+                                                        <div style={{ width: `${(section.confidence.on_track / section.confidence.total) * 100}%`, backgroundColor: 'var(--color-success)' }} />
+                                                    )}
+                                                    {section.confidence.at_risk > 0 && (
+                                                        <div style={{ width: `${(section.confidence.at_risk / section.confidence.total) * 100}%`, backgroundColor: 'var(--color-warning)' }} />
+                                                    )}
+                                                    {section.confidence.off_track > 0 && (
+                                                        <div style={{ width: `${(section.confidence.off_track / section.confidence.total) * 100}%`, backgroundColor: 'var(--color-danger)' }} />
+                                                    )}
+                                                    {section.confidence.not_set > 0 && (
+                                                        <div style={{ width: `${(section.confidence.not_set / section.confidence.total) * 100}%`, backgroundColor: 'var(--color-border)' }} />
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Objectives and KR trees */}
@@ -716,25 +743,38 @@ export function OKRConfidenceMapPage() {
                                                     return (
                                                         <div key={group.objective.id}>
                                                             {/* Objective header */}
-                                                            <div className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-surface-hover)]/20">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleObjective(group.objective.id)}
-                                                                    className="w-5 h-5 rounded flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] flex-shrink-0"
-                                                                >
-                                                                    {isObjectiveExpanded
-                                                                        ? <ChevronDown className="w-3.5 h-3.5" />
-                                                                        : <ChevronRight className="w-3.5 h-3.5" />}
-                                                                </button>
-                                                                <Badge variant="outline" size="sm" className="font-mono flex-shrink-0">
-                                                                    {group.objective.code}
-                                                                </Badge>
-                                                                <span className="text-sm font-semibold text-[var(--color-text-primary)] flex-1 truncate">
-                                                                    {group.objective.title}
-                                                                </span>
-                                                                <Badge variant="default" size="sm" className="flex-shrink-0">
-                                                                    {t('okr.flow.mapTotalKRs', { count: group.confidence.total })}
-                                                                </Badge>
+                                                            <div className="px-4 pt-2.5 pb-2 bg-[var(--color-surface-hover)]/20">
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleObjective(group.objective.id)}
+                                                                        className="w-5 h-5 rounded flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] flex-shrink-0"
+                                                                    >
+                                                                        {isObjectiveExpanded
+                                                                            ? <ChevronDown className="w-3.5 h-3.5" />
+                                                                            : <ChevronRight className="w-3.5 h-3.5" />}
+                                                                    </button>
+                                                                    <Badge variant="outline" size="sm" className="font-mono flex-shrink-0">
+                                                                        {group.objective.code}
+                                                                    </Badge>
+                                                                    <span className="text-sm font-semibold text-[var(--color-text-primary)] flex-1 truncate">
+                                                                        {group.objective.title}
+                                                                    </span>
+                                                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                                                        <Badge variant="default" size="sm">
+                                                                            {t('okr.flow.mapTotalKRs', { count: group.confidence.total })}
+                                                                        </Badge>
+                                                                        {group.confidence.on_track > 0 && (
+                                                                            <Badge variant="success" size="sm">{group.confidence.on_track}</Badge>
+                                                                        )}
+                                                                        {group.confidence.at_risk > 0 && (
+                                                                            <Badge variant="warning" size="sm">{group.confidence.at_risk}</Badge>
+                                                                        )}
+                                                                        {group.confidence.off_track > 0 && (
+                                                                            <Badge variant="danger" size="sm">{group.confidence.off_track}</Badge>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             </div>
 
                                                             {/* KR tree */}
