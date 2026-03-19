@@ -14,8 +14,7 @@ import { ActionsPage } from './pages/actions/ActionsPage'
 import { AuditLogPage } from './pages/audit/AuditLogPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
 import { UserManagementPage } from './pages/Admin/UserManagementPage'
-import { DepartmentsPage } from './pages/Admin/DepartmentsPage'
-import { MyTeamPage } from './pages/Manager/MyTeamPage'
+import { TeamsPage } from './pages/teams/TeamsPage'
 import { ProfilePage } from './pages/profile/ProfilePage'
 import { KRTrackingPage } from './pages/kr-tracking/KRTrackingPage'
 import { PillarsPage } from './pages/pillars/PillarsPage'
@@ -45,8 +44,7 @@ function App() {
                 <Route path="/pillars" element={<PillarsPage />} />
                 <Route path="/admin/users" element={<UserManagementPage />} />
                 <Route path="/admin/users/create" element={<CreateUserPage />} />
-                <Route path="/admin/departments" element={<DepartmentsPage />} />
-                <Route path="/my-team" element={<MyTeamPage />} />
+                <Route path="/teams" element={<TeamsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
               </Route>
             </Routes>

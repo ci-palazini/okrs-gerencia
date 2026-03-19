@@ -269,8 +269,8 @@ export function UserManagementPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-[var(--color-text-muted)]">
                 <ShieldCheck className="w-16 h-16 mb-4 text-[var(--color-text-muted)] opacity-20" />
-                <h2 className="text-xl font-semibold">{t('departments.restricted')}</h2>
-                <p>{t('departments.adminOnly')}</p>
+                <h2 className="text-xl font-semibold">{t('users.restricted', 'Acesso Restrito')}</h2>
+                <p>{t('users.adminOnly', 'Apenas administradores podem acessar esta página.')}</p>
             </div>
         )
     }

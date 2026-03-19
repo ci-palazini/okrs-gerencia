@@ -59,7 +59,33 @@
         "settings": "Configurações",
         "tracking": "Acompanhamento",
         "pillars": "Pilares",
-        "users": "Usuários"
+        "users": "Usuários",
+        "teams": "Times"
+    },
+    "teams": {
+        "title": "Times",
+        "subtitle": "Organize colaboradores em times para acompanhamento de OKRs",
+        "newTeam": "Novo Time",
+        "editTeam": "Editar Time",
+        "name": "Nome",
+        "namePlaceholder": "Ex: Time de Produto, Comercial Sul...",
+        "description": "Descrição",
+        "descriptionPlaceholder": "Descrição opcional...",
+        "leader": "Líder",
+        "leaderLabel": "Líder",
+        "teamMembers": "Membros do Time",
+        "noMembers": "Nenhum membro vinculado. Clique em editar para adicionar.",
+        "memberSingular": "membro",
+        "memberPlural": "membros",
+        "countSingular": "time",
+        "countPlural": "times",
+        "emptyTitle": "Nenhum time cadastrado",
+        "emptyDesc": "Crie times para organizar colaboradores e acompanhar OKRs por equipe.",
+        "createFirst": "Criar Primeiro Time",
+        "create": "Criar Time",
+        "saveChanges": "Salvar Alterações",
+        "saving": "Salvando...",
+        "deleteConfirm": "Tem certeza que deseja excluir o time \"{{name}}\"? Todos os membros serão desvinculados."
     },
     "dashboard": {
         "title": "Dashboard",
@@ -657,43 +683,6 @@
                 }
             }
         }
-    },
-    "departments": {
-        "title": "Departamentos",
-        "subtitle": "Organize gerentes e equipes por departamento",
-        "newDepartment": "Novo Departamento",
-        "editDepartment": "Editar Departamento",
-        "name": "Nome",
-        "namePlaceholder": "Ex: Engenharia, Comercial...",
-        "description": "Descrição",
-        "descriptionPlaceholder": "Descrição opcional...",
-        "manager": "Gerente",
-        "managerLabel": "Gerente",
-        "teamMembers": "Membros do Time",
-        "noMembers": "Nenhum membro vinculado. Clique em editar para adicionar.",
-        "memberSingular": "membro",
-        "memberPlural": "membros",
-        "countSingular": "departamento",
-        "countPlural": "departamentos",
-        "emptyTitle": "Nenhum departamento cadastrado",
-        "emptyDesc": "Crie departamentos para organizar gerentes e equipes.",
-        "createFirst": "Criar Primeiro Departamento",
-        "create": "Criar Departamento",
-        "saveChanges": "Salvar Alterações",
-        "saving": "Salvando...",
-        "deleteConfirm": "Tem certeza que deseja excluir o departamento \"{{name}}\"? Todos os membros serão desvinculados.",
-        "restricted": "Acesso Restrito",
-        "adminOnly": "Apenas administradores podem acessar esta página.",
-        "userInOtherDept": "Usuário já pertence a outro departamento",
-        "otherDept": "outro dept."
-    },
-    "myTeam": {
-        "title": "Meu Time",
-        "restricted": "Acesso Restrito",
-        "managerOnly": "Apenas gerentes de departamento têm acesso a esta página.",
-        "notFound": "Departamento não encontrado",
-        "you": "Você",
-        "noMembers": "Ainda não há membros neste time."
     },
     "quarterlyCard": {
         "indicator": "Indicador",

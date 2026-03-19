@@ -59,7 +59,33 @@
         "settings": "Configuración",
         "tracking": "Seguimiento",
         "pillars": "Pilares",
-        "users": "Usuarios"
+        "users": "Usuarios",
+        "teams": "Equipos"
+    },
+    "teams": {
+        "title": "Equipos",
+        "subtitle": "Organice colaboradores en equipos para el seguimiento de OKRs",
+        "newTeam": "Nuevo Equipo",
+        "editTeam": "Editar Equipo",
+        "name": "Nombre",
+        "namePlaceholder": "Ej: Equipo de Producto, Comercial Sur...",
+        "description": "Descripción",
+        "descriptionPlaceholder": "Descripción opcional...",
+        "leader": "Líder",
+        "leaderLabel": "Líder",
+        "teamMembers": "Miembros del Equipo",
+        "noMembers": "Ningún miembro vinculado. Haga clic en editar para agregar.",
+        "memberSingular": "miembro",
+        "memberPlural": "miembros",
+        "countSingular": "equipo",
+        "countPlural": "equipos",
+        "emptyTitle": "Ningún equipo registrado",
+        "emptyDesc": "Cree equipos para organizar colaboradores y hacer seguimiento de OKRs por equipo.",
+        "createFirst": "Crear Primer Equipo",
+        "create": "Crear Equipo",
+        "saveChanges": "Guardar Cambios",
+        "saving": "Guardando...",
+        "deleteConfirm": "¿Está seguro de que desea eliminar el equipo \"{{name}}\"? Todos los miembros serán desvinculados."
     },
     "dashboard": {
         "title": "Dashboard",
@@ -405,43 +431,6 @@
                 }
             }
         }
-    },
-    "departments": {
-        "title": "Departamentos",
-        "subtitle": "Organice gerentes y equipos por departamento",
-        "newDepartment": "Nuevo Departamento",
-        "editDepartment": "Editar Departamento",
-        "name": "Nombre",
-        "namePlaceholder": "Ej: Ingeniería, Comercial...",
-        "description": "Descripción",
-        "descriptionPlaceholder": "Descripción opcional...",
-        "manager": "Gerente",
-        "managerLabel": "Gerente",
-        "teamMembers": "Miembros del Equipo",
-        "noMembers": "Ningún miembro vinculado. Haga clic en editar para agregar.",
-        "memberSingular": "miembro",
-        "memberPlural": "miembros",
-        "countSingular": "departamento",
-        "countPlural": "departamentos",
-        "emptyTitle": "Ningún departamento registrado",
-        "emptyDesc": "Cree departamentos para organizar gerentes y equipos.",
-        "createFirst": "Crear Primer Departamento",
-        "create": "Crear Departamento",
-        "saveChanges": "Guardar Cambios",
-        "saving": "Guardando...",
-        "deleteConfirm": "¿Está seguro de que desea eliminar el departamento \"{{name}}\"? Todos los miembros serán desvinculados.",
-        "restricted": "Acceso Restringido",
-        "adminOnly": "Solo administradores pueden acceder a esta página.",
-        "userInOtherDept": "El usuario ya pertenece a otro departamento",
-        "otherDept": "otro depto."
-    },
-    "myTeam": {
-        "title": "Mi Equipo",
-        "restricted": "Acceso Restringido",
-        "managerOnly": "Solo los gerentes de departamento tienen acceso a esta página.",
-        "notFound": "Departamento no encontrado",
-        "you": "Tú",
-        "noMembers": "Aún no hay miembros en este equipo."
     },
     "quarterlyCard": {
         "indicator": "Indicador",

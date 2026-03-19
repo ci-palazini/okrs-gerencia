@@ -26,6 +26,9 @@ dist-ssr
 *.sln
 *.sw?
 
+.claude/
+.mcp.json
+
 supabase/*
 
 *.sql

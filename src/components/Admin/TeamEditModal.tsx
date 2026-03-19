@@ -6,52 +6,49 @@ import type { UserWithUnits } from '../../types'
 import { useTranslation } from 'react-i18next'
 import { formatUsername } from '../../lib/utils'
 
-interface DepartmentEditModalProps {
+interface TeamEditModalProps {
     isOpen: boolean
     onClose: () => void
-    department: { id?: string; name: string; description: string | null } | null
+    team: { id?: string; name: string; description: string | null } | null
     allUsers: UserWithUnits[]
-    currentManagerId: string | null
+    currentLeaderId: string | null
     currentMemberIds: string[]
-    /** IDs de usuários que já estão em OUTRO departamento (disabled na lista) */
-    usersInOtherDepartments: string[]
     onSave: (data: {
         id?: string
         name: string
         description: string | null
-        managerId: string | null
+        leaderId: string | null
         memberIds: string[]
     }) => Promise<void>
 }
 
-export function DepartmentEditModal({
+export function TeamEditModal({
     isOpen,
     onClose,
-    department,
+    team,
     allUsers,
-    currentManagerId,
+    currentLeaderId,
     currentMemberIds,
-    usersInOtherDepartments,
     onSave,
-}: DepartmentEditModalProps) {
+}: TeamEditModalProps) {
     const { t } = useTranslation()
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
-    const [managerId, setManagerId] = useState<string | null>(null)
+    const [leaderId, setLeaderId] = useState<string | null>(null)
     const [memberIds, setMemberIds] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
 
     useEffect(() => {
         if (isOpen) {
-            setName(department?.name || '')
-            setDescription(department?.description || '')
-            setManagerId(currentManagerId)
+            setName(team?.name || '')
+            setDescription(team?.description || '')
+            setLeaderId(currentLeaderId)
             setMemberIds(currentMemberIds)
         }
-    }, [isOpen, department, currentManagerId, currentMemberIds])
+    }, [isOpen, team, currentLeaderId, currentMemberIds])
 
     const handleToggleMember = (userId: string) => {
-        if (userId === managerId) return // can't uncheck the manager from members
+        if (userId === leaderId) return // não pode desmarcar o líder dos membros
         setMemberIds(prev =>
             prev.includes(userId)
                 ? prev.filter(id => id !== userId)
@@ -59,12 +56,12 @@ export function DepartmentEditModal({
         )
     }
 
-    const handleSetManager = (userId: string) => {
-        if (managerId === userId) {
-            setManagerId(null)
+    const handleSetLeader = (userId: string) => {
+        if (leaderId === userId) {
+            setLeaderId(null)
         } else {
-            setManagerId(userId)
-            // also make sure the manager is in the members list
+            setLeaderId(userId)
+            // garantir que o líder está na lista de membros
             if (!memberIds.includes(userId)) {
                 setMemberIds(prev => [...prev, userId])
             }
@@ -76,33 +73,21 @@ export function DepartmentEditModal({
         setIsSaving(true)
         try {
             await onSave({
-                id: department?.id,
+                id: team?.id,
                 name: name.trim(),
                 description: description.trim() || null,
-                managerId,
+                leaderId,
                 memberIds,
             })
             onClose()
         } catch (error) {
-            console.error('Failed to save department', error)
+            console.error('Failed to save team', error)
         } finally {
             setIsSaving(false)
         }
     }
 
-    const isEditing = !!department?.id
-
-    // Available users: admins are always selectable; for non-admins, only those not in OTHER departments
-    const availableUsers = allUsers.filter(u => {
-        const isInThisDept = currentMemberIds.includes(u.id)
-        const isInOtherDept = usersInOtherDepartments.includes(u.id)
-        return isInThisDept || !isInOtherDept
-    })
-
-    // Users that are in another department (show disabled if they happen to appear)
-    const disabledUsers = allUsers.filter(u => {
-        return usersInOtherDepartments.includes(u.id) && !currentMemberIds.includes(u.id)
-    })
+    const isEditing = !!team?.id
 
     return (
         <Dialog.Root open={isOpen} onOpenChange={onClose}>
@@ -111,7 +96,7 @@ export function DepartmentEditModal({
                 <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[560px] translate-x-[-50%] translate-y-[-50%] rounded-[1.5rem] bg-[var(--color-surface)] p-6 shadow-2xl focus:outline-none z-50 border border-[var(--color-border)] overflow-y-auto">
                     <div className="flex items-center justify-between mb-6">
                         <Dialog.Title className="text-xl font-bold text-[var(--color-text-primary)]">
-                            {isEditing ? t('departments.editDepartment', 'Editar Departamento') : t('departments.newDepartment', 'Novo Departamento')}
+                            {isEditing ? t('teams.editTeam', 'Editar Time') : t('teams.newTeam', 'Novo Time')}
                         </Dialog.Title>
                         <Dialog.Close asChild>
                             <button className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
@@ -121,67 +106,67 @@ export function DepartmentEditModal({
                     </div>
 
                     <div className="space-y-5">
-                        {/* Name */}
+                        {/* Nome */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--color-text-muted)]">
-                                {t('departments.name', 'Nome')} *
+                                {t('teams.name', 'Nome')} *
                             </label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 className="w-full px-3 py-2 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50"
-                                placeholder={t('departments.namePlaceholder', 'Ex: Engenharia, Comercial...')}
+                                placeholder={t('teams.namePlaceholder', 'Ex: Time de Produto, Comercial Sul...')}
                             />
                         </div>
 
-                        {/* Description */}
+                        {/* Descrição */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--color-text-muted)]">
-                                {t('departments.description', 'Descrição')}
+                                {t('teams.description', 'Descrição')}
                             </label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 rows={2}
                                 className="w-full px-3 py-2 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 resize-none"
-                                placeholder={t('departments.descriptionPlaceholder', 'Descrição opcional...')}
+                                placeholder={t('teams.descriptionPlaceholder', 'Descrição opcional...')}
                             />
                         </div>
 
-                        {/* Manager Selection */}
+                        {/* Seleção de Líder */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--color-text-muted)] flex items-center gap-2">
                                 <Crown className="w-4 h-4 text-amber-500" />
-                                {t('departments.manager', 'Gerente')}
+                                {t('teams.leader', 'Líder')}
                             </label>
                             <div className="max-h-36 overflow-y-auto space-y-1 border border-[var(--color-border)] rounded-xl p-2 bg-[var(--color-surface-elevated)]">
-                                {availableUsers.map(user => (
+                                {allUsers.map(user => (
                                     <div
                                         key={user.id}
-                                        onClick={() => handleSetManager(user.id)}
-                                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer select-none transition-colors ${managerId === user.id
+                                        onClick={() => handleSetLeader(user.id)}
+                                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer select-none transition-colors ${leaderId === user.id
                                             ? 'bg-amber-500/10 border border-amber-500/30'
                                             : 'hover:bg-[var(--color-surface-hover)]'
                                             }`}
                                     >
-                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${managerId === user.id
+                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${leaderId === user.id
                                             ? 'bg-amber-500 border-amber-500 text-white'
                                             : 'border-[var(--color-text-muted)]'
                                             }`}>
-                                            {managerId === user.id && <Crown className="w-3 h-3" />}
+                                            {leaderId === user.id && <Crown className="w-3 h-3" />}
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-sm text-[var(--color-text-secondary)]">
                                                 {user.full_name}
                                                 {user.user_business_units?.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1 ml-2 inline-flex">
+                                                    <span className="inline-flex flex-wrap gap-1 ml-2">
                                                         {user.user_business_units.map(ubu => (
                                                             <span key={ubu.business_unit_id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-muted)] font-medium">
                                                                 {ubu.business_units.code}
                                                             </span>
                                                         ))}
-                                                    </div>
+                                                    </span>
                                                 )}
                                             </span>
                                             <span className="text-xs text-[var(--color-text-muted)]">{formatUsername(user.email)}</span>
@@ -191,20 +176,20 @@ export function DepartmentEditModal({
                             </div>
                         </div>
 
-                        {/* Team Members */}
+                        {/* Membros do Time */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--color-text-muted)]">
-                                {t('departments.teamMembers', 'Membros do Time')}
+                                {t('teams.teamMembers', 'Membros do Time')}
                             </label>
                             <div className="max-h-48 overflow-y-auto space-y-1 border border-[var(--color-border)] rounded-xl p-2 bg-[var(--color-surface-elevated)]">
-                                {availableUsers.map(user => {
-                                    const isManager = managerId === user.id
+                                {allUsers.map(user => {
+                                    const isLeader = leaderId === user.id
                                     const isSelected = memberIds.includes(user.id)
                                     return (
                                         <div
                                             key={user.id}
                                             onClick={() => handleToggleMember(user.id)}
-                                            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer select-none transition-colors ${isManager ? 'opacity-60 cursor-default' : 'hover:bg-[var(--color-surface-hover)]'
+                                            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer select-none transition-colors ${isLeader ? 'opacity-60 cursor-default' : 'hover:bg-[var(--color-surface-hover)]'
                                                 }`}
                                         >
                                             <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected
@@ -217,41 +202,24 @@ export function DepartmentEditModal({
                                                 <span className="text-sm text-[var(--color-text-secondary)] truncate">
                                                     {user.full_name}
                                                     {user.user_business_units?.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1 ml-2 inline-flex">
+                                                        <span className="inline-flex flex-wrap gap-1 ml-2">
                                                             {user.user_business_units.map(ubu => (
                                                                 <span key={ubu.business_unit_id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-muted)] font-medium">
                                                                     {ubu.business_units.code}
                                                                 </span>
                                                             ))}
-                                                        </div>
+                                                        </span>
                                                     )}
                                                 </span>
-                                                {isManager && (
+                                                {isLeader && (
                                                     <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20 flex-shrink-0">
-                                                        {t('departments.managerLabel', 'Gerente')}
+                                                        {t('teams.leaderLabel', 'Líder')}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                     )
                                 })}
-
-                                {/* Show disabled users from other departments */}
-                                {disabledUsers.map(user => (
-                                    <div
-                                        key={user.id}
-                                        className="flex items-center gap-3 p-2 rounded-lg opacity-40 cursor-not-allowed select-none"
-                                        title={t('departments.userInOtherDept', 'Usuário já pertence a outro departamento')}
-                                    >
-                                        <div className="w-5 h-5 rounded border border-[var(--color-text-muted)] flex items-center justify-center" />
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                                            <span className="text-sm text-[var(--color-text-muted)] truncate">{user.full_name}</span>
-                                            <span className="text-xs text-[var(--color-text-muted)] italic flex-shrink-0">
-                                                {t('departments.otherDept', 'outro dept.')}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     </div>
@@ -262,10 +230,10 @@ export function DepartmentEditModal({
                         </Button>
                         <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
                             {isSaving
-                                ? t('departments.saving', 'Salvando...')
+                                ? t('teams.saving', 'Salvando...')
                                 : isEditing
-                                    ? t('departments.saveChanges', 'Salvar Alterações')
-                                    : t('departments.create', 'Criar Departamento')
+                                    ? t('teams.saveChanges', 'Salvar Alterações')
+                                    : t('teams.create', 'Criar Time')
                             }
                         </Button>
                     </div>

@@ -29,10 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         business_unit_id,
                         business_units ( name, code )
                     ),
-                    department_members (
-                        department_id,
+                    team_members (
+                        team_id,
                         role,
-                        departments ( name )
+                        teams ( name )
                     )
                 `)
                 .eq('id', authUser.id)

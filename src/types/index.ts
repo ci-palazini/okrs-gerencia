@@ -156,16 +156,14 @@ export interface UserWithUnits extends User {
         business_unit_id: string
         business_units: BusinessUnit
     }[]
-    department_members?: {
-        department_id: string
-        role: 'manager' | 'member'
-        departments?: {
-            name: string
-        }
+    team_members?: {
+        team_id: string
+        role: 'leader' | 'member'
+        teams?: { name: string }
     }[]
 }
 
-export interface Department {
+export interface Team {
     id: string
     name: string
     description: string | null
@@ -175,17 +173,17 @@ export interface Department {
     updated_at?: string
 }
 
-export interface DepartmentMember {
-    department_id: string
+export interface TeamMember {
+    team_id: string
     user_id: string
-    role: 'manager' | 'member'
+    role: 'leader' | 'member'
     created_at?: string
 }
 
-export interface DepartmentWithMembers extends Department {
-    department_members: {
+export interface TeamWithMembers extends Team {
+    team_members: {
         user_id: string
-        role: 'manager' | 'member'
+        role: 'leader' | 'member'
         users: UserWithUnits
     }[]
 }
