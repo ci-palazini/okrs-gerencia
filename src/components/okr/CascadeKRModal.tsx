@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
-import { GitBranch, Plus, Save, X } from 'lucide-react'
+import { GitBranch, Plus, Save, X, ChevronDown, Check } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { supabase } from '../../lib/supabase'
@@ -29,6 +29,7 @@ interface KRFormData {
     code: string
     title: string
     owner_name: string
+    owner_names: string[]
     metric_type: 'percentage' | 'number' | 'currency' | 'days'
     unit: string
     currency_type: 'BRL' | 'USD' | 'ARS' | 'GBP'
@@ -110,6 +111,7 @@ export function CascadeKRModal({
     const [error, setError] = useState<string | null>(null)
     const [assigneesLoading, setAssigneesLoading] = useState(false)
     const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([])
+    const [ownerDropdownOpen, setOwnerDropdownOpen] = useState(false)
     const initializedContextRef = useRef<string | null>(null)
 
     const isEditMode = !!keyResult?.id
@@ -130,6 +132,7 @@ export function CascadeKRModal({
         code: '',
         title: '',
         owner_name: '',
+        owner_names: [],
         metric_type: 'percentage',
         unit: '%',
         currency_type: 'BRL',
@@ -162,10 +165,14 @@ export function CascadeKRModal({
 
         if (isEditMode && keyResult) {
             const currentYear = new Date().getFullYear()
+            const existingOwners = keyResult.owner_names && keyResult.owner_names.length > 0
+                ? keyResult.owner_names
+                : keyResult.owner_name ? [keyResult.owner_name] : []
             setFormData({
                 code: keyResult.code || '',
                 title: keyResult.title || '',
                 owner_name: keyResult.owner_name || '',
+                owner_names: existingOwners,
                 metric_type: keyResult.metric_type,
                 unit: getDefaultUnit(keyResult.metric_type),
                 currency_type: (keyResult.currency_type || 'BRL') as KRFormData['currency_type'],
@@ -194,10 +201,12 @@ export function CascadeKRModal({
             ? suggestQuarterlyKRDueDate(Number(defaultQuarter) as 1 | 2 | 3 | 4, currentYear)
             : `${currentYear}-12-31`
 
+        const defaultOwner = user?.full_name || user?.email || ''
         setFormData({
             code: suggestedCode,
             title: '',
-            owner_name: user?.full_name || user?.email || '',
+            owner_name: defaultOwner,
+            owner_names: defaultOwner ? [defaultOwner] : [],
             metric_type: 'percentage',
             unit: getDefaultUnit('percentage'),
             currency_type: 'BRL',
@@ -402,11 +411,13 @@ export function CascadeKRModal({
             return
         }
 
+        const ownerNames = formData.owner_names.filter(Boolean)
         const payload = {
             objective_id: objectiveId,
             code: formData.code.trim(),
             title: formData.title.trim(),
-            owner_name: formData.owner_name.trim() || null,
+            owner_names: ownerNames.length > 0 ? ownerNames : null,
+            owner_name: ownerNames[0] || null,
             metric_type: formData.metric_type,
             unit: getDefaultUnit(formData.metric_type),
             currency_type: formData.metric_type === 'currency' ? formData.currency_type : null,
@@ -478,7 +489,18 @@ export function CascadeKRModal({
         }
     }
 
-    const ownerInOptions = assigneeOptions.some((assignee) => assignee.name === formData.owner_name)
+    const toggleOwner = useCallback((name: string) => {
+        setFormData((prev) => {
+            const selected = prev.owner_names.includes(name)
+                ? prev.owner_names.filter((n) => n !== name)
+                : [...prev.owner_names, name]
+            return {
+                ...prev,
+                owner_names: selected,
+                owner_name: selected[0] || '',
+            }
+        })
+    }, [])
 
     return (
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -536,32 +558,62 @@ export function CascadeKRModal({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
+                            <div className="relative">
                                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
                                     {t('modals.createKR.owner')}
                                 </label>
-                                <select
-                                    value={formData.owner_name}
-                                    onChange={(event) => setFormData((prev) => ({ ...prev, owner_name: event.target.value }))}
+                                <button
+                                    type="button"
                                     disabled={assigneesLoading}
-                                    className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-70"
+                                    onClick={() => setOwnerDropdownOpen((prev) => !prev)}
+                                    className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-70 flex items-center justify-between text-sm"
                                 >
-                                    <option value="">
-                                        {assigneesLoading ? t('modals.createKR.ownerLoading') : t('modals.createKR.ownerSelectPlaceholder')}
-                                    </option>
-                                    {formData.owner_name && !ownerInOptions && (
-                                        <option value={formData.owner_name}>{formData.owner_name}</option>
-                                    )}
-                                    {assigneeOptions.map((assignee) => (
-                                        <option key={assignee.id} value={assignee.name}>
-                                            {assignee.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {!assigneesLoading && assigneeOptions.length === 0 && (
-                                    <p className="text-xs text-[var(--color-text-muted)] mt-1.5">
-                                        {t('modals.createKR.ownerNoUsers')}
-                                    </p>
+                                    <span className="truncate text-left">
+                                        {assigneesLoading
+                                            ? t('modals.createKR.ownerLoading')
+                                            : formData.owner_names.length > 0
+                                                ? formData.owner_names.join(', ')
+                                                : t('modals.createKR.ownerSelectPlaceholder')}
+                                    </span>
+                                    <ChevronDown className={`w-4 h-4 ml-2 flex-shrink-0 transition-transform ${ownerDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                {ownerDropdownOpen && (
+                                    <div className="absolute z-50 mt-1 w-full rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-lg max-h-48 overflow-y-auto">
+                                        {assigneeOptions.length === 0 ? (
+                                            <p className="px-4 py-3 text-sm text-[var(--color-text-muted)]">
+                                                {t('modals.createKR.ownerNoUsers')}
+                                            </p>
+                                        ) : (
+                                            assigneeOptions.map((assignee) => {
+                                                const isSelected = formData.owner_names.includes(assignee.name)
+                                                return (
+                                                    <button
+                                                        key={assignee.id}
+                                                        type="button"
+                                                        onClick={() => toggleOwner(assignee.name)}
+                                                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-sm text-left transition-colors"
+                                                    >
+                                                        <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-[var(--color-primary)] border-[var(--color-primary)]' : 'border-[var(--color-border)]'}`}>
+                                                            {isSelected && <Check className="w-3 h-3 text-white" />}
+                                                        </span>
+                                                        <span className="text-[var(--color-text-primary)]">{assignee.name}</span>
+                                                    </button>
+                                                )
+                                            })
+                                        )}
+                                    </div>
+                                )}
+                                {formData.owner_names.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                        {formData.owner_names.map((name) => (
+                                            <span key={name} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-xs">
+                                                {name}
+                                                <button type="button" onClick={() => toggleOwner(name)} className="hover:text-[var(--color-danger)]">
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                             <div>

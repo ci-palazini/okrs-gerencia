@@ -188,7 +188,7 @@ function AccordionNode({
 
                                 <div className="flex items-center gap-4 mt-2 text-xs text-[var(--color-text-muted)] flex-wrap">
                                     <span>{objective.code}</span>
-                                    <span>{t('quarterlyCard.owner')}: {node.owner_name || t('common.unassigned')}</span>
+                                    <span>{t('quarterlyCard.owner')}: {(node.owner_names && node.owner_names.length > 0) ? node.owner_names.join(', ') : (node.owner_name || t('common.unassigned'))}</span>
                                     {node.source && <span>{node.source}</span>}
                                     {node.quarter && <span>Q{node.quarter}</span>}
                                 </div>
@@ -569,7 +569,7 @@ export function OKRFocusPage() {
                                 <Badge variant="info" size="sm">{selectedUnitData?.name || t('okr.local')}</Badge>
                                 <Badge variant="outline" size="sm" className="inline-flex items-center gap-1">
                                     <User className="w-3 h-3" />
-                                    {t('quarterlyCard.owner')}: {selectedNode.owner_name || t('common.unassigned')}
+                                    {t('quarterlyCard.owner')}: {(selectedNode.owner_names && selectedNode.owner_names.length > 0) ? selectedNode.owner_names.join(', ') : (selectedNode.owner_name || t('common.unassigned'))}
                                 </Badge>
                                 {selectedNode.due_date && (
                                     <DeadlineBadge 

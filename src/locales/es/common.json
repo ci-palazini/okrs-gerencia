@@ -60,7 +60,8 @@
         "tracking": "Seguimiento",
         "pillars": "Pilares",
         "users": "Usuarios",
-        "teams": "Equipos"
+        "teams": "Equipos",
+        "mapa": "Mapa"
     },
     "teams": {
         "title": "Equipos",

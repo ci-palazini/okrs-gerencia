@@ -1,17 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, ChevronRight, ListTree, ScanEye, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, GitBranch, Search } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import { Card, CardContent } from '../../components/ui/Card'
-import { ConfidenceIndicator } from '../../components/ui/ConfidenceIndicator'
 import { Input } from '../../components/ui/Input'
 import { DeadlineIndicatorIcon } from '../../components/okr/DeadlineIndicator'
 import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import type { CascadeObjective, CascadePillar, CascadeTreeNode } from '../../hooks/useCascadeOKRData'
 import type { ConfidenceLevel } from '../../types'
 import { cn } from '../../lib/utils'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ConfidenceSummary {
     total: number
@@ -21,48 +21,19 @@ interface ConfidenceSummary {
     not_set: number
 }
 
-interface FlowNodeLayout {
-    id: string
-    node: CascadeTreeNode
-    parentId: string | null
-    depth: number
-    row: number
-    x: number
-    y: number
-}
-
-interface FlowEdgeLayout {
-    id: string
-    path: string
-    confidence: ConfidenceLevel
-}
-
-interface ObjectiveFlowLayout {
-    nodes: FlowNodeLayout[]
-    edges: FlowEdgeLayout[]
-    width: number
-    height: number
-}
-
-interface ObjectiveFlowGroup {
+interface ObjectiveGroup {
     objective: CascadeObjective
     roots: CascadeTreeNode[]
-    layout: ObjectiveFlowLayout
     confidence: ConfidenceSummary
 }
 
-interface PillarMapSection {
+interface PillarSection {
     pillar: CascadePillar
-    objectives: ObjectiveFlowGroup[]
+    objectives: ObjectiveGroup[]
     confidence: ConfidenceSummary
 }
 
-const FLOW_NODE_WIDTH = 250
-const FLOW_NODE_HEIGHT = 94
-const FLOW_COL_GAP = 130
-const FLOW_ROW_GAP = 112
-const FLOW_PAD_X = 26
-const FLOW_PAD_Y = 20
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function flattenNodes(nodes: CascadeTreeNode[]): CascadeTreeNode[] {
     return nodes.flatMap((node) => [node, ...flattenNodes(node.children)])
@@ -76,13 +47,7 @@ function countConfidence(nodes: CascadeTreeNode[]): ConfidenceSummary {
         else if (node.confidence === 'off_track') acc.off_track += 1
         else acc.not_set += 1
         return acc
-    }, {
-        total: 0,
-        on_track: 0,
-        at_risk: 0,
-        off_track: 0,
-        not_set: 0,
-    })
+    }, { total: 0, on_track: 0, at_risk: 0, off_track: 0, not_set: 0 })
 }
 
 function matchesText(value: string | null | undefined, term: string): boolean {
@@ -92,22 +57,18 @@ function matchesText(value: string | null | undefined, term: string): boolean {
 
 function nodeMatchesSearch(node: CascadeTreeNode, term: string): boolean {
     if (!term) return true
-
     if (
         matchesText(node.code, term)
         || matchesText(node.title, term)
         || matchesText(node.owner_name, term)
+        || (node.owner_names || []).some((n) => matchesText(n, term))
         || matchesText(node.description, term)
-    ) {
-        return true
-    }
-
+    ) return true
     return node.children.some((child) => nodeMatchesSearch(child, term))
 }
 
 function filterTreeBySearch(nodes: CascadeTreeNode[], term: string): CascadeTreeNode[] {
     if (!term) return nodes
-
     return nodes
         .filter((node) => nodeMatchesSearch(node, term))
         .map((node) => ({
@@ -116,161 +77,315 @@ function filterTreeBySearch(nodes: CascadeTreeNode[], term: string): CascadeTree
         }))
 }
 
-function getNodeAccentClasses(confidence: ConfidenceLevel): string {
-    if (confidence === 'on_track') {
-        return 'border-[var(--color-success)]/40 bg-[var(--color-success-muted)]/45'
-    }
-    if (confidence === 'at_risk') {
-        return 'border-[var(--color-warning)]/40 bg-[var(--color-warning-muted)]/45'
-    }
-    if (confidence === 'off_track') {
-        return 'border-[var(--color-danger)]/45 bg-[var(--color-danger-muted)]/45'
-    }
-    return 'border-[var(--color-border)] bg-[var(--color-surface)]/80'
+function getProgressColor(progress: number | null): string {
+    if (progress === null) return 'var(--color-border)'
+    if (progress >= 70) return 'var(--color-success)'
+    if (progress >= 40) return 'var(--color-warning)'
+    return 'var(--color-danger)'
 }
 
-function getEdgeColorClass(confidence: ConfidenceLevel): string {
-    if (confidence === 'on_track') return 'stroke-[var(--color-success)]/45'
-    if (confidence === 'at_risk') return 'stroke-[var(--color-warning)]/45'
-    if (confidence === 'off_track') return 'stroke-[var(--color-danger)]/45'
-    return 'stroke-[var(--color-border)]'
+// ─── ConfidenceDot ────────────────────────────────────────────────────────────
+
+function ConfidenceDot({ confidence }: { confidence: ConfidenceLevel }) {
+    const color =
+        confidence === 'on_track' ? 'var(--color-success)'
+        : confidence === 'at_risk' ? 'var(--color-warning)'
+        : confidence === 'off_track' ? 'var(--color-danger)'
+        : 'var(--color-text-muted)'
+    return (
+        <div
+            className="flex-shrink-0 rounded-full"
+            style={{ width: '8px', height: '8px', backgroundColor: color }}
+        />
+    )
 }
 
-function buildFlowLayout(roots: CascadeTreeNode[]): ObjectiveFlowLayout {
-    if (roots.length === 0) {
-        return {
-            nodes: [],
-            edges: [],
-            width: 0,
-            height: 0,
-        }
-    }
+// ─── GlobalSummaryBar ─────────────────────────────────────────────────────────
 
-    type Unpositioned = Omit<FlowNodeLayout, 'x' | 'y'>
-    const staged: Unpositioned[] = []
-    let nextRow = 0
+function GlobalSummaryBar({ summary }: { summary: ConfidenceSummary }) {
+    const { t } = useTranslation()
+    if (summary.total === 0) return null
 
-    const walk = (node: CascadeTreeNode, depth: number, parentId: string | null): number => {
-        if (node.children.length === 0) {
-            const row = nextRow
-            nextRow += 1
-            staged.push({
-                id: node.id,
-                node,
-                parentId,
-                depth,
-                row,
-            })
-            return row
-        }
+    const segments = [
+        { key: 'on_track', count: summary.on_track, color: 'var(--color-success)', label: t('okr.flow.mapOnTrackCount', { count: summary.on_track }) },
+        { key: 'at_risk', count: summary.at_risk, color: 'var(--color-warning)', label: t('okr.flow.mapAtRiskCount', { count: summary.at_risk }) },
+        { key: 'off_track', count: summary.off_track, color: 'var(--color-danger)', label: t('okr.flow.mapOffTrackCount', { count: summary.off_track }) },
+        { key: 'not_set', count: summary.not_set, color: 'var(--color-border)', label: t('okr.flow.mapNotSetCount', { count: summary.not_set }) },
+    ]
 
-        const childRows = node.children.map((child) => walk(child, depth + 1, node.id))
-        const row = (Math.min(...childRows) + Math.max(...childRows)) / 2
-        staged.push({
-            id: node.id,
-            node,
-            parentId,
-            depth,
-            row,
-        })
-        return row
-    }
-
-    roots.forEach((root, index) => {
-        if (index > 0) {
-            nextRow += 0.85
-        }
-        walk(root, 0, null)
-    })
-
-    const maxDepth = Math.max(...staged.map((item) => item.depth))
-    const maxRow = Math.max(...staged.map((item) => item.row))
-
-    const width = (FLOW_PAD_X * 2) + ((maxDepth + 1) * FLOW_NODE_WIDTH) + (maxDepth * FLOW_COL_GAP)
-    const height = (FLOW_PAD_Y * 2) + ((maxRow + 1) * FLOW_ROW_GAP) + FLOW_NODE_HEIGHT
-
-    const nodes: FlowNodeLayout[] = staged.map((item) => ({
-        ...item,
-        x: FLOW_PAD_X + (item.depth * (FLOW_NODE_WIDTH + FLOW_COL_GAP)),
-        y: FLOW_PAD_Y + (item.row * FLOW_ROW_GAP),
-    }))
-
-    const nodeById = new Map(nodes.map((node) => [node.id, node]))
-    const curve = Math.max(36, FLOW_COL_GAP * 0.42)
-
-    const edges = nodes
-        .filter((node) => node.parentId)
-        .map((node) => {
-            const parent = nodeById.get(node.parentId || '')
-            if (!parent) return null
-
-            const startX = parent.x + FLOW_NODE_WIDTH
-            const startY = parent.y + (FLOW_NODE_HEIGHT / 2)
-            const endX = node.x
-            const endY = node.y + (FLOW_NODE_HEIGHT / 2)
-            const path = `M ${startX} ${startY} C ${startX + curve} ${startY}, ${endX - curve} ${endY}, ${endX} ${endY}`
-
-            return {
-                id: `${parent.id}-${node.id}`,
-                path,
-                confidence: node.node.confidence,
-            }
-        })
-        .filter((edge): edge is FlowEdgeLayout => edge !== null)
-
-    return {
-        nodes,
-        edges,
-        width,
-        height,
-    }
+    return (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+                    {t('okr.flow.mapTotalKRs', { count: summary.total })}
+                </span>
+                <div className="flex flex-wrap items-center gap-3">
+                    {segments.map((seg) => seg.count > 0 && (
+                        <div key={seg.key} className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                            <span className="text-xs text-[var(--color-text-secondary)]">{seg.label}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="flex h-2 rounded-full overflow-hidden gap-px">
+                {segments.map((seg) => seg.count > 0 && (
+                    <div
+                        key={seg.key}
+                        className="transition-all duration-500"
+                        style={{ width: `${(seg.count / summary.total) * 100}%`, backgroundColor: seg.color }}
+                    />
+                ))}
+            </div>
+        </div>
+    )
 }
+
+// ─── PillarNavigator ──────────────────────────────────────────────────────────
+
+interface PillarNavigatorProps {
+    sections: PillarSection[]
+    activePillarId: string | null
+    onPillarClick: (pillarId: string) => void
+}
+
+function PillarNavigator({ sections, activePillarId, onPillarClick }: PillarNavigatorProps) {
+    const { t } = useTranslation()
+
+    return (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] px-2 mb-2">
+                {t('okr.flow.pillarsNav', 'Pilares')}
+            </p>
+            <div className="flex flex-col gap-1">
+                {sections.map((section) => {
+                    const isActive = activePillarId === section.pillar.id
+                    const { total, on_track, at_risk, off_track, not_set } = section.confidence
+                    const pct = (n: number) => total > 0 ? (n / total) * 100 : 0
+
+                    return (
+                        <button
+                            key={section.pillar.id}
+                            type="button"
+                            onClick={() => onPillarClick(section.pillar.id)}
+                            className={cn(
+                                'w-full text-left px-2 py-2 rounded-lg transition-colors',
+                                isActive
+                                    ? 'bg-[var(--color-primary)]/10'
+                                    : 'hover:bg-[var(--color-surface-hover)]'
+                            )}
+                        >
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <div
+                                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: section.pillar.color }}
+                                />
+                                <span className={cn(
+                                    'text-xs font-medium truncate flex-1',
+                                    isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-primary)]'
+                                )}>
+                                    {section.pillar.name}
+                                </span>
+                                <span className="text-[10px] text-[var(--color-text-muted)] flex-shrink-0">{total}</span>
+                            </div>
+                            <div className="flex h-1 rounded-full overflow-hidden gap-px">
+                                {on_track > 0 && <div style={{ width: `${pct(on_track)}%`, backgroundColor: 'var(--color-success)' }} />}
+                                {at_risk > 0 && <div style={{ width: `${pct(at_risk)}%`, backgroundColor: 'var(--color-warning)' }} />}
+                                {off_track > 0 && <div style={{ width: `${pct(off_track)}%`, backgroundColor: 'var(--color-danger)' }} />}
+                                {not_set > 0 && <div style={{ width: `${pct(not_set)}%`, backgroundColor: 'var(--color-border)' }} />}
+                            </div>
+                        </button>
+                    )
+                })}
+            </div>
+        </div>
+    )
+}
+
+// ─── KRTreeNode ───────────────────────────────────────────────────────────────
+
+interface KRTreeNodeProps {
+    node: CascadeTreeNode
+    pillarId: string
+    depth: number
+    isLast: boolean
+    ancestorIsLast: boolean[]
+    onNavigate: (pillarId: string, krId: string) => void
+}
+
+function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate }: KRTreeNodeProps) {
+    const { t } = useTranslation()
+    const [collapsed, setCollapsed] = useState(false)
+    const hasChildren = node.children.length > 0
+    const progress = node.progress !== null ? Math.max(0, Math.min(100, node.progress)) : null
+    const progressColor = getProgressColor(progress)
+
+    return (
+        <div>
+            <div className="flex items-center group min-h-[38px]">
+                {/* Vertical continuation lines for ancestor levels */}
+                {Array.from({ length: depth }, (_, i) => (
+                    <div
+                        key={i}
+                        className="flex-shrink-0 self-stretch"
+                        style={{
+                            width: '20px',
+                            borderLeft: ancestorIsLast[i] ? 'none' : '2px solid var(--color-border)',
+                        }}
+                    />
+                ))}
+
+                {/* L-shaped connector for current level */}
+                {depth > 0 && (
+                    <div className="flex-shrink-0 self-stretch relative" style={{ width: '20px' }}>
+                        <div
+                            className="absolute"
+                            style={{
+                                left: 0,
+                                top: 0,
+                                width: '14px',
+                                height: '50%',
+                                borderLeft: '2px solid var(--color-border)',
+                                borderBottom: '2px solid var(--color-border)',
+                                borderBottomLeftRadius: '4px',
+                            }}
+                        />
+                        {!isLast && (
+                            <div
+                                className="absolute"
+                                style={{
+                                    left: 0,
+                                    top: '50%',
+                                    bottom: 0,
+                                    borderLeft: '2px solid var(--color-border)',
+                                }}
+                            />
+                        )}
+                    </div>
+                )}
+
+                {/* Row content */}
+                <button
+                    type="button"
+                    onClick={() => onNavigate(pillarId, node.id)}
+                    className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-left min-w-0 transition-colors"
+                >
+                    <ConfidenceDot confidence={node.confidence} />
+
+                    <span className="font-mono text-[11px] font-semibold text-[var(--color-text-muted)] flex-shrink-0 min-w-[52px]">
+                        {node.code}
+                    </span>
+
+                    <span className="flex-1 text-sm text-[var(--color-text-primary)] truncate">
+                        {node.title}
+                    </span>
+
+                    {/* Progress bar */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <div className="w-16 h-1.5 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
+                            {progress !== null && (
+                                <div
+                                    className="h-full rounded-full transition-all duration-300"
+                                    style={{ width: `${progress}%`, backgroundColor: progressColor }}
+                                />
+                            )}
+                        </div>
+                        <span className="text-xs text-[var(--color-text-muted)] w-7 text-right flex-shrink-0">
+                            {progress !== null ? `${progress}%` : '—'}
+                        </span>
+                    </div>
+
+                    {/* Owner (hidden on smaller screens) */}
+                    <span className="hidden xl:block text-xs text-[var(--color-text-muted)] w-28 truncate flex-shrink-0">
+                        {(node.owner_names && node.owner_names.length > 0)
+                            ? node.owner_names.join(', ')
+                            : (node.owner_name || t('common.unassigned'))}
+                    </span>
+
+                    {/* Deadline */}
+                    {node.due_date && (
+                        <DeadlineIndicatorIcon
+                            dueDate={node.due_date}
+                            isCompleted={node.progress === 100 || node.is_active === false}
+                        />
+                    )}
+                </button>
+
+                {/* Expand/collapse children */}
+                {hasChildren && (
+                    <button
+                        type="button"
+                        onClick={() => setCollapsed((prev) => !prev)}
+                        className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors ml-1"
+                    >
+                        {collapsed
+                            ? <ChevronRight className="w-3.5 h-3.5" />
+                            : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                )}
+            </div>
+
+            {/* Children */}
+            {hasChildren && !collapsed && (
+                <div>
+                    {node.children.map((child, i) => (
+                        <KRTreeNode
+                            key={child.id}
+                            node={child}
+                            pillarId={pillarId}
+                            depth={depth + 1}
+                            isLast={i === node.children.length - 1}
+                            ancestorIsLast={[...ancestorIsLast, isLast]}
+                            onNavigate={onNavigate}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function OKRConfidenceMapPage() {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const location = useLocation()
     const currentPath = `${location.pathname}${location.search}${location.hash}`
-    const {
-        loading,
-        selectedUnitData,
-        objectives,
-        getVisiblePillars,
-        getObjectiveRoots,
-    } = useCascadeOKRData()
+
+    const { loading, selectedUnitData, objectives, getVisiblePillars, getObjectiveRoots } = useCascadeOKRData()
 
     const [searchTerm, setSearchTerm] = useState('')
     const [collapsedPillarIds, setCollapsedPillarIds] = useState<Set<string>>(new Set())
-    const [presentationMode, setPresentationMode] = useState(false)
+    const [collapsedObjectiveIds, setCollapsedObjectiveIds] = useState<Set<string>>(new Set())
+    const [activePillarId, setActivePillarId] = useState<string | null>(null)
 
+    const pillarSectionRefs = useRef<Map<string, HTMLElement>>(new Map())
 
-    const allSections = useMemo<PillarMapSection[]>(() => {
+    // Build all sections from data
+    const allSections = useMemo<PillarSection[]>(() => {
         return getVisiblePillars().map((pillar) => {
-            const objectiveGroups: ObjectiveFlowGroup[] = objectives
+            const objectiveGroups: ObjectiveGroup[] = objectives
                 .filter((objective) => objective.pillar_id === pillar.id)
                 .map((objective) => {
                     const roots = getObjectiveRoots(objective.id)
-                    const allNodes = flattenNodes(roots)
                     return {
                         objective,
                         roots,
-                        layout: buildFlowLayout(roots),
-                        confidence: countConfidence(allNodes),
+                        confidence: countConfidence(flattenNodes(roots)),
                     }
                 })
-
-            const allNodes = objectiveGroups.flatMap((group) => flattenNodes(group.roots))
             return {
                 pillar,
                 objectives: objectiveGroups,
-                confidence: countConfidence(allNodes),
+                confidence: countConfidence(objectiveGroups.flatMap((g) => flattenNodes(g.roots))),
             }
         })
     }, [getObjectiveRoots, getVisiblePillars, objectives])
 
     const normalizedSearch = searchTerm.trim().toLowerCase()
 
-    const filteredSections = useMemo<PillarMapSection[]>(() => {
+    const filteredSections = useMemo<PillarSection[]>(() => {
         return allSections
             .map((section) => {
                 const pillarMatches = (
@@ -278,18 +393,13 @@ export function OKRConfidenceMapPage() {
                     || matchesText(section.pillar.code, normalizedSearch)
                     || matchesText(section.pillar.description, normalizedSearch)
                 )
-
                 const objectiveGroups = section.objectives
                     .map((group) => {
                         const objectiveMatches = (
                             matchesText(group.objective.code, normalizedSearch)
                             || matchesText(group.objective.title, normalizedSearch)
-                            || matchesText(group.objective.description, normalizedSearch)
                         )
-
-                        if (!normalizedSearch || pillarMatches || objectiveMatches) {
-                            return group
-                        }
+                        if (!normalizedSearch || pillarMatches || objectiveMatches) return group
 
                         const filteredRoots = filterTreeBySearch(group.roots, normalizedSearch)
                         if (filteredRoots.length === 0) return null
@@ -297,43 +407,82 @@ export function OKRConfidenceMapPage() {
                         return {
                             objective: group.objective,
                             roots: filteredRoots,
-                            layout: buildFlowLayout(filteredRoots),
                             confidence: countConfidence(flattenNodes(filteredRoots)),
                         }
                     })
-                    .filter((group): group is ObjectiveFlowGroup => group !== null)
+                    .filter((group): group is ObjectiveGroup => group !== null)
 
-                if (normalizedSearch && !pillarMatches && objectiveGroups.length === 0) {
-                    return null
-                }
+                if (normalizedSearch && !pillarMatches && objectiveGroups.length === 0) return null
 
-                const visibleNodes = objectiveGroups.flatMap((group) => flattenNodes(group.roots))
                 return {
                     pillar: section.pillar,
                     objectives: objectiveGroups,
-                    confidence: countConfidence(visibleNodes),
+                    confidence: countConfidence(objectiveGroups.flatMap((g) => flattenNodes(g.roots))),
                 }
             })
-            .filter((section): section is PillarMapSection => section !== null)
+            .filter((section): section is PillarSection => section !== null)
     }, [allSections, normalizedSearch])
 
     const globalSummary = useMemo(() => {
-        return allSections.reduce<ConfidenceSummary>((acc, section) => {
-            acc.total += section.confidence.total
-            acc.on_track += section.confidence.on_track
-            acc.at_risk += section.confidence.at_risk
-            acc.off_track += section.confidence.off_track
-            acc.not_set += section.confidence.not_set
+        return allSections.reduce<ConfidenceSummary>((acc, s) => {
+            acc.total += s.confidence.total
+            acc.on_track += s.confidence.on_track
+            acc.at_risk += s.confidence.at_risk
+            acc.off_track += s.confidence.off_track
+            acc.not_set += s.confidence.not_set
             return acc
-        }, {
-            total: 0,
-            on_track: 0,
-            at_risk: 0,
-            off_track: 0,
-            not_set: 0,
-        })
+        }, { total: 0, on_track: 0, at_risk: 0, off_track: 0, not_set: 0 })
     }, [allSections])
 
+    // Auto-expand everything when searching
+    useEffect(() => {
+        if (normalizedSearch) {
+            setCollapsedPillarIds(new Set())
+            setCollapsedObjectiveIds(new Set())
+        }
+    }, [normalizedSearch])
+
+    // Initialize active pillar to first section
+    useEffect(() => {
+        if (!activePillarId && filteredSections.length > 0) {
+            setActivePillarId(filteredSections[0].pillar.id)
+        }
+    }, [filteredSections, activePillarId])
+
+    // IntersectionObserver for scroll-spy
+    useEffect(() => {
+        const refs = pillarSectionRefs.current
+        if (refs.size === 0) return
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('data-pillar-id')
+                        if (id) setActivePillarId(id)
+                        break
+                    }
+                }
+            },
+            { threshold: 0, rootMargin: '-80px 0px -60% 0px' }
+        )
+
+        refs.forEach((el) => observer.observe(el))
+        return () => observer.disconnect()
+    }, [filteredSections])
+
+    function setPillarRef(pillarId: string, el: HTMLElement | null) {
+        if (el) pillarSectionRefs.current.set(pillarId, el)
+        else pillarSectionRefs.current.delete(pillarId)
+    }
+
+    function scrollToPillar(pillarId: string) {
+        const el = pillarSectionRefs.current.get(pillarId)
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            setActivePillarId(pillarId)
+        }
+    }
 
     function togglePillar(pillarId: string) {
         setCollapsedPillarIds((prev) => {
@@ -344,20 +493,17 @@ export function OKRConfidenceMapPage() {
         })
     }
 
-    function expandAllPillars() {
-        setCollapsedPillarIds(new Set())
-    }
-
-    function collapseAllPillars() {
-        setCollapsedPillarIds(new Set(filteredSections.map((section) => section.pillar.id)))
+    function toggleObjective(objectiveId: string) {
+        setCollapsedObjectiveIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(objectiveId)) next.delete(objectiveId)
+            else next.add(objectiveId)
+            return next
+        })
     }
 
     function openKRFocus(pillarId: string, krId: string) {
         navigate(`/okrs/pillar/${pillarId}/kr/${krId}`, { state: { backTo: currentPath } })
-    }
-
-    function handlePrint() {
-        window.print()
     }
 
     if (loading && allSections.length === 0) {
@@ -372,101 +518,57 @@ export function OKRConfidenceMapPage() {
     }
 
     return (
-        <div className={cn('space-y-6', presentationMode && 'pb-10')}>
-            {!presentationMode && (
-                <Card variant="elevated" className="p-0 overflow-hidden">
-                    <CardContent className="p-5 md:p-6 space-y-4">
-                        <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
-                            <div>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate('/okrs')}
-                                    className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] mb-3"
-                                >
-                                    <ArrowLeft className="w-4 h-4" />
-                                    {t('okr.flow.backToPillars')}
-                                </button>
+        <div className="flex gap-0 min-h-[calc(100vh-112px)]">
+            {/* Left sticky navigator */}
+            <aside className="hidden lg:block w-[200px] flex-shrink-0 sticky top-6 self-start pr-4">
+                <PillarNavigator
+                    sections={filteredSections}
+                    activePillarId={activePillarId}
+                    onPillarClick={scrollToPillar}
+                />
+            </aside>
 
-                                <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] flex items-center gap-2">
-                                    <ListTree className="w-6 h-6 text-[var(--color-primary)]" />
-                                    {t('okr.flow.mapTitle')}
-                                </h1>
-                                <p className="text-[var(--color-text-secondary)] mt-1.5">
-                                    {t('okr.flow.mapSubtitle')}
-                                </p>
-                                <p className="text-sm text-[var(--color-text-muted)] mt-2">
-                                    {t('okr.flow.mapShareHint')}
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Button variant="outline" onClick={expandAllPillars}>
-                                    {t('okr.cascade.expandAll')}
-                                </Button>
-                                <Button variant="ghost" onClick={collapseAllPillars}>
-                                    {t('okr.cascade.collapseAll')}
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto_auto] gap-3 items-end">
-                            <Input
-                                label={t('okr.flow.mapSearchLabel')}
-                                value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
-                                placeholder={t('okr.flow.mapSearchPlaceholder')}
-                                icon={<Search className="w-4 h-4" />}
-                            />
-                            <Button variant="outline" onClick={() => setPresentationMode(true)}>
-                                {t('okr.flow.mapPresentationEnter')}
-                            </Button>
-                            <Button variant="outline" onClick={handlePrint}>
-                                {t('okr.flow.mapPrint')}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {presentationMode && (
-                <div className="flex justify-end gap-2 print:hidden">
-                    <Button variant="outline" onClick={() => setPresentationMode(false)}>
-                        {t('okr.flow.mapPresentationExit')}
-                    </Button>
-                    <Button variant="outline" onClick={handlePrint}>
-                        {t('okr.flow.mapPrint')}
-                    </Button>
-                </div>
-            )}
-
-            <Card variant="elevated">
-                <CardContent className="p-4 md:p-5">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" size="sm">
-                            {selectedUnitData?.name || t('okr.local')}
-                        </Badge>
-                        <Badge variant="default" size="sm">
-                            {t('okr.flow.mapTotalKRs', { count: globalSummary.total })}
-                        </Badge>
-                        <Badge variant="success" size="sm">
-                            {t('okr.flow.mapOnTrackCount', { count: globalSummary.on_track })}
-                        </Badge>
-                        <Badge variant="warning" size="sm">
-                            {t('okr.flow.mapAtRiskCount', { count: globalSummary.at_risk })}
-                        </Badge>
-                        <Badge variant="danger" size="sm">
-                            {t('okr.flow.mapOffTrackCount', { count: globalSummary.off_track })}
-                        </Badge>
-                        <Badge variant="default" size="sm">
-                            {t('okr.flow.mapNotSetCount', { count: globalSummary.not_set })}
-                        </Badge>
+            {/* Right scrollable content */}
+            <div className="flex-1 min-w-0 flex flex-col gap-6">
+                {/* Page header */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] flex items-center gap-2">
+                            <GitBranch className="w-6 h-6 text-[var(--color-primary)]" />
+                            {t('okr.flow.mapTitle')}
+                        </h1>
+                        <p className="text-[var(--color-text-secondary)] mt-1">
+                            {selectedUnitData?.name && (
+                                <span className="font-medium">{selectedUnitData.name} · </span>
+                            )}
+                            {t('okr.flow.mapSubtitle')}
+                        </p>
                     </div>
-                </CardContent>
-            </Card>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button variant="outline" onClick={() => setCollapsedPillarIds(new Set())}>
+                            {t('okr.cascade.expandAll')}
+                        </Button>
+                        <Button variant="ghost" onClick={() => setCollapsedPillarIds(new Set(filteredSections.map((s) => s.pillar.id)))}>
+                            {t('okr.cascade.collapseAll')}
+                        </Button>
+                    </div>
+                </div>
 
-            {filteredSections.length === 0 ? (
-                <Card variant="elevated">
-                    <CardContent className="py-10 text-center">
+                {/* Search */}
+                <Input
+                    label={t('okr.flow.mapSearchLabel')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder={t('okr.flow.mapSearchPlaceholder')}
+                    icon={<Search className="w-4 h-4" />}
+                />
+
+                {/* Global confidence bar */}
+                <GlobalSummaryBar summary={globalSummary} />
+
+                {/* Pillar sections */}
+                {filteredSections.length === 0 ? (
+                    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-10 text-center">
                         <p className="text-lg font-semibold text-[var(--color-text-primary)]">
                             {t('okr.flow.mapEmptyTitle')}
                         </p>
@@ -475,157 +577,128 @@ export function OKRConfidenceMapPage() {
                                 ? t('okr.flow.mapEmptySearchDescription')
                                 : t('okr.flow.mapEmptyDescription')}
                         </p>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="space-y-4">
-                    {filteredSections.map((section) => {
-                        const isExpanded = !collapsedPillarIds.has(section.pillar.id)
-
-                        return (
-                            <Card key={section.pillar.id} variant="elevated" className="overflow-hidden">
-                                <CardContent className="p-0">
-                                    <div className="px-4 md:px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-hover)]/50">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        {filteredSections.map((section) => {
+                            const isPillarExpanded = !collapsedPillarIds.has(section.pillar.id)
+                            return (
+                                <section
+                                    key={section.pillar.id}
+                                    ref={(el) => setPillarRef(section.pillar.id, el)}
+                                    data-pillar-id={section.pillar.id}
+                                >
+                                    <div
+                                        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden"
+                                        style={{ borderLeftColor: section.pillar.color, borderLeftWidth: '4px' }}
+                                    >
+                                        {/* Pillar header */}
+                                        <div className="px-4 py-3 bg-[var(--color-surface-hover)]/40 border-b border-[var(--color-border)]">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2 min-w-0">
                                                     <button
                                                         type="button"
                                                         onClick={() => togglePillar(section.pillar.id)}
-                                                        className="w-8 h-8 rounded-lg border border-[var(--color-border)] inline-flex items-center justify-center text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
-                                                        aria-label={isExpanded ? t('okr.flow.mapCollapsePillar') : t('okr.flow.mapExpandPillar')}
+                                                        className="w-7 h-7 rounded-lg border border-[var(--color-border)] inline-flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] flex-shrink-0"
+                                                        aria-label={isPillarExpanded ? t('okr.flow.mapCollapsePillar') : t('okr.flow.mapExpandPillar')}
                                                     >
-                                                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                        {isPillarExpanded
+                                                            ? <ChevronDown className="w-3.5 h-3.5" />
+                                                            : <ChevronRight className="w-3.5 h-3.5" />}
                                                     </button>
-                                                    <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                                                    <div
+                                                        className="w-3 h-3 rounded-full flex-shrink-0"
+                                                        style={{ backgroundColor: section.pillar.color }}
+                                                    />
+                                                    <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate">
                                                         {section.pillar.name}
                                                     </h2>
-                                                    <Badge variant="outline" size="sm">{section.pillar.code}</Badge>
+                                                    <Badge variant="outline" size="sm" className="flex-shrink-0">
+                                                        {section.pillar.code}
+                                                    </Badge>
                                                 </div>
-                                                <div className="flex items-center gap-2 flex-wrap mt-2">
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
                                                     <Badge variant="default" size="sm">
-                                                        {t('okr.flow.pillarObjectives', { count: section.objectives.length })}
+                                                        {t('okr.flow.mapTotalKRs', { count: section.confidence.total })}
                                                     </Badge>
-                                                    <Badge variant="success" size="sm">
-                                                        {t('okr.flow.mapOnTrackCount', { count: section.confidence.on_track })}
-                                                    </Badge>
-                                                    <Badge variant="warning" size="sm">
-                                                        {t('okr.flow.mapAtRiskCount', { count: section.confidence.at_risk })}
-                                                    </Badge>
-                                                    <Badge variant="danger" size="sm">
-                                                        {t('okr.flow.mapOffTrackCount', { count: section.confidence.off_track })}
-                                                    </Badge>
-                                                    <Badge variant="default" size="sm">
-                                                        {t('okr.flow.mapNotSetCount', { count: section.confidence.not_set })}
-                                                    </Badge>
+                                                    {section.confidence.on_track > 0 && (
+                                                        <Badge variant="success" size="sm">{section.confidence.on_track}</Badge>
+                                                    )}
+                                                    {section.confidence.at_risk > 0 && (
+                                                        <Badge variant="warning" size="sm">{section.confidence.at_risk}</Badge>
+                                                    )}
+                                                    {section.confidence.off_track > 0 && (
+                                                        <Badge variant="danger" size="sm">{section.confidence.off_track}</Badge>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {isExpanded && (
-                                        <div className="p-4 md:p-5 space-y-4">
-                                            {section.objectives.map((group) => (
-                                                <div key={group.objective.id} className="space-y-3">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <Badge variant="outline" size="sm">{group.objective.code}</Badge>
-                                                        <p className="text-sm md:text-base font-semibold text-[var(--color-text-primary)]">
-                                                            {group.objective.title}
-                                                        </p>
-                                                        <Badge variant="default" size="sm">
-                                                            {t('okr.flow.mapTotalKRs', { count: group.confidence.total })}
-                                                        </Badge>
-                                                    </div>
-
-                                                    {group.layout.nodes.length > 0 ? (
-                                                        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 overflow-x-auto">
-                                                            <div
-                                                                className="relative"
-                                                                style={{
-                                                                    width: `${group.layout.width}px`,
-                                                                    height: `${group.layout.height}px`,
-                                                                    minWidth: `${group.layout.width}px`,
-                                                                    minHeight: `${group.layout.height}px`,
-                                                                }}
-                                                            >
-                                                                <svg
-                                                                    className="absolute inset-0 w-full h-full pointer-events-none"
-                                                                    viewBox={`0 0 ${group.layout.width} ${group.layout.height}`}
-                                                                    fill="none"
+                                        {/* Objectives and KR trees */}
+                                        {isPillarExpanded && (
+                                            <div className="divide-y divide-[var(--color-border)]">
+                                                {section.objectives.map((group) => {
+                                                    const isObjectiveExpanded = !collapsedObjectiveIds.has(group.objective.id)
+                                                    return (
+                                                        <div key={group.objective.id}>
+                                                            {/* Objective header */}
+                                                            <div className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-surface-hover)]/20">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleObjective(group.objective.id)}
+                                                                    className="w-5 h-5 rounded flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] flex-shrink-0"
                                                                 >
-                                                                    {group.layout.edges.map((edge) => (
-                                                                        <path
-                                                                            key={edge.id}
-                                                                            d={edge.path}
-                                                                            className={cn('stroke-[2.4] fill-none', getEdgeColorClass(edge.confidence))}
-                                                                            strokeLinecap="round"
+                                                                    {isObjectiveExpanded
+                                                                        ? <ChevronDown className="w-3.5 h-3.5" />
+                                                                        : <ChevronRight className="w-3.5 h-3.5" />}
+                                                                </button>
+                                                                <Badge variant="outline" size="sm" className="font-mono flex-shrink-0">
+                                                                    {group.objective.code}
+                                                                </Badge>
+                                                                <span className="text-sm font-semibold text-[var(--color-text-primary)] flex-1 truncate">
+                                                                    {group.objective.title}
+                                                                </span>
+                                                                <Badge variant="default" size="sm" className="flex-shrink-0">
+                                                                    {t('okr.flow.mapTotalKRs', { count: group.confidence.total })}
+                                                                </Badge>
+                                                            </div>
+
+                                                            {/* KR tree */}
+                                                            {isObjectiveExpanded && group.roots.length > 0 && (
+                                                                <div className="px-4 py-2">
+                                                                    {group.roots.map((root, i) => (
+                                                                        <KRTreeNode
+                                                                            key={root.id}
+                                                                            node={root}
+                                                                            pillarId={section.pillar.id}
+                                                                            depth={0}
+                                                                            isLast={i === group.roots.length - 1}
+                                                                            ancestorIsLast={[]}
+                                                                            onNavigate={openKRFocus}
                                                                         />
                                                                     ))}
-                                                                </svg>
+                                                                </div>
+                                                            )}
 
-                                                                {group.layout.nodes.map((item) => (
-                                                                    <button
-                                                                        key={item.id}
-                                                                        type="button"
-                                                                        onClick={() => openKRFocus(section.pillar.id, item.id)}
-                                                                        className={cn(
-                                                                            'absolute text-left rounded-xl border shadow-sm p-3 transition-all hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]',
-                                                                            getNodeAccentClasses(item.node.confidence)
-                                                                        )}
-                                                                        style={{
-                                                                            left: `${item.x}px`,
-                                                                            top: `${item.y}px`,
-                                                                            width: `${FLOW_NODE_WIDTH}px`,
-                                                                            height: `${FLOW_NODE_HEIGHT}px`,
-                                                                        }}
-                                                                    >
-                                                                        <div className="flex items-start justify-between gap-2">
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <Badge variant="outline" size="sm" className="font-mono font-semibold">
-                                                                                    {item.node.code}
-                                                                                </Badge>
-                                                                                {item.node.due_date && (
-                                                                                    <DeadlineIndicatorIcon 
-                                                                                        dueDate={item.node.due_date} 
-                                                                                        isCompleted={item.node.progress === 100 || item.node.is_active === false}
-                                                                                    />
-                                                                                )}
-                                                                            </div>
-                                                                            <ConfidenceIndicator value={item.node.confidence} size="sm" />
-                                                                        </div>
-
-                                                                        <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-2 line-clamp-2">
-                                                                            {item.node.title}
-                                                                        </p>
-
-                                                                        <div className="flex items-center justify-between gap-2 mt-2 text-xs text-[var(--color-text-muted)]">
-                                                                            <span className="truncate">
-                                                                                {item.node.owner_name || t('common.unassigned')}
-                                                                            </span>
-                                                                            <span className="inline-flex items-center gap-1">
-                                                                                <ScanEye className="w-3 h-3" />
-                                                                                {t('okr.flow.openFullScreen')}
-                                                                            </span>
-                                                                        </div>
-                                                                    </button>
-                                                                ))}
-                                                            </div>
+                                                            {isObjectiveExpanded && group.roots.length === 0 && (
+                                                                <div className="px-4 py-3">
+                                                                    <p className="text-sm text-[var(--color-text-muted)]">
+                                                                        {t('okr.flow.noRootForObjective')}
+                                                                    </p>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <p className="text-sm text-[var(--color-text-muted)]">
-                                                            {t('okr.flow.noRootForObjective')}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )
-                    })}
-                </div>
-            )}
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </section>
+                            )
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

@@ -60,7 +60,8 @@
         "tracking": "Acompanhamento",
         "pillars": "Pilares",
         "users": "Usuários",
-        "teams": "Times"
+        "teams": "Times",
+        "mapa": "Mapa"
     },
     "teams": {
         "title": "Times",

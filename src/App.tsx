@@ -16,7 +16,6 @@ import { SettingsPage } from './pages/settings/SettingsPage'
 import { UserManagementPage } from './pages/Admin/UserManagementPage'
 import { TeamsPage } from './pages/teams/TeamsPage'
 import { ProfilePage } from './pages/profile/ProfilePage'
-import { KRTrackingPage } from './pages/kr-tracking/KRTrackingPage'
 import { PillarsPage } from './pages/pillars/PillarsPage'
 import './index.css'
 
@@ -34,10 +33,9 @@ function App() {
               <Route element={<MainLayout />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/okrs" element={<OKRsPage />} />
-                <Route path="/okrs/mapa" element={<OKRConfidenceMapPage />} />
+                <Route path="/mapa" element={<OKRConfidenceMapPage />} />
                 <Route path="/okrs/pillar/:pillarId" element={<PillarOKRsPage />} />
                 <Route path="/okrs/pillar/:pillarId/kr/:krId" element={<OKRFocusPage />} />
-                <Route path="/kr-tracking" element={<KRTrackingPage />} />
                 <Route path="/actions" element={<ActionsPage />} />
                 <Route path="/audit" element={<AuditLogPage />} />
                 <Route path="/settings" element={<SettingsPage />} />

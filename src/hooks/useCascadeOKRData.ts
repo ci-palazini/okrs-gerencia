@@ -42,6 +42,7 @@ export interface CascadeKeyResult {
     title: string
     description: string | null
     owner_name: string | null
+    owner_names: string[] | null
     source: string | null
     metric_type: 'percentage' | 'number' | 'currency' | 'days'
     unit: string

@@ -96,6 +96,7 @@ export function PillarOKRsPage() {
                         root.code.toLowerCase().includes(normalizedSearch)
                         || root.title.toLowerCase().includes(normalizedSearch)
                         || (root.owner_name || '').toLowerCase().includes(normalizedSearch)
+                        || (root.owner_names || []).some((n) => n.toLowerCase().includes(normalizedSearch))
                         || (root.description || '').toLowerCase().includes(normalizedSearch)
                     )
                 })
@@ -431,7 +432,7 @@ export function PillarOKRsPage() {
                                                 <div className="flex items-center gap-4 mt-3 text-xs text-[var(--color-text-muted)] flex-wrap">
                                                     <span className="inline-flex items-center gap-1">
                                                         <User className="w-3 h-3" />
-                                                        {t('quarterlyCard.owner')}: {root.owner_name || t('common.unassigned')}
+                                                        {t('quarterlyCard.owner')}: {(root.owner_names && root.owner_names.length > 0) ? root.owner_names.join(', ') : (root.owner_name || t('common.unassigned'))}
                                                     </span>
                                                     <span className="inline-flex items-center gap-1">
                                                         <GitBranch className="w-3 h-3" />

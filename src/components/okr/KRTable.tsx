@@ -13,6 +13,7 @@ interface KeyResultRow {
     code: string
     title: string
     owner_name: string | null
+    owner_names?: string[] | null
     source: string | null
     metric_type: string
     unit: string
@@ -178,7 +179,9 @@ export function KRTable({
                                     {/* Owner */}
                                     <td className="px-3 py-3">
                                         <span className="text-sm text-[var(--color-text-secondary)]">
-                                            {kr.owner_name || '-'}
+                                            {(kr.owner_names && kr.owner_names.length > 0)
+                                                ? kr.owner_names.join(', ')
+                                                : (kr.owner_name || '-')}
                                         </span>
                                     </td>
 

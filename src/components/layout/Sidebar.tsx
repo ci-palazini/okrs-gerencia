@@ -9,9 +9,9 @@ import {
     ChevronRight,
     History,
     Users,
-    TrendingUp,
     Layers,
     Network,
+    GitBranch,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
@@ -74,7 +74,7 @@ export function Sidebar() {
                 {[
                     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
                     { name: t('sidebar.okrs'), href: '/okrs', icon: Target },
-                    { name: t('sidebar.tracking'), href: '/kr-tracking', icon: TrendingUp },
+                    { name: t('sidebar.mapa', 'Mapa'), href: '/mapa', icon: GitBranch },
                 ].map((item) => {
                     const isActive = isRouteActive(item.href)
                     return (
