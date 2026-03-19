@@ -285,7 +285,7 @@
             "searchPillarsLabel": "Buscar pilar",
             "searchPillarsPlaceholder": "Nome, código ou descrição do pilar...",
             "openPillar": "Entrar no pilar",
-            "openConfidenceMap": "Mapa de confiança",
+
             "pillarObjectives": "{{count}} objetivo(s)",
             "pillarRootKRs": "{{count}} KR(s) de nível",
             "pillarLeafKRs": "{{count}} KR(s) folha",

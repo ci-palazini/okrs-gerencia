@@ -1,7 +1,7 @@
 import { useMemo, useState, type ElementType } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Layers, Map, Search, AlertTriangle } from 'lucide-react'
+import { ArrowRight, Layers, Search, AlertTriangle } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -106,16 +106,7 @@ export function OKRsPage() {
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <Button
-                                variant="primary"
-                                onClick={() => navigate('/okrs/mapa')}
-                                className="shadow-md"
-                            >
-                                <Map className="w-4 h-4 mr-2" />
-                                {t('okr.flow.openConfidenceMap')}
-                            </Button>
-                        </div>
+
                     </div>
 
                     <Input
