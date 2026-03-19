@@ -1,19 +1,46 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calendar, ClipboardList, ListTodo, Pencil, X } from 'lucide-react'
+import { Calendar, CheckCircle2, ChevronDown, Clock, ListTodo, Pencil, Trash2, X } from 'lucide-react'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { Input } from '../../components/ui/Input'
+import { DeadlineBadge } from '../../components/okr/DeadlineBadge'
 import { supabase } from '../../lib/supabase'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
-import { formatDate } from '../../lib/utils'
+import { cn } from '../../lib/utils'
+import { getDeadlineAlert } from '../../lib/dateUtils'
 import * as Dialog from '@radix-ui/react-dialog'
+
+const AVATAR_COLORS = [
+    'bg-blue-500', 'bg-purple-500', 'bg-green-600', 'bg-orange-500',
+    'bg-pink-500', 'bg-teal-500', 'bg-indigo-500', 'bg-red-500',
+]
+
+function getInitials(name: string): string {
+    return name.split(' ').slice(0, 2).map(n => n[0]?.toUpperCase() ?? '').join('')
+}
 
 interface Team {
     id: string
     name: string
     memberNames: string[]
+}
+
+type ActionPlanStatus = 'not_started' | 'in_progress' | 'completed'
+
+const STATUS_CONFIG: Record<ActionPlanStatus, { label: string; className: string }> = {
+    not_started: { label: 'Não iniciado',  className: 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-border)]' },
+    in_progress:  { label: 'Em andamento', className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-800/50' },
+    completed:    { label: 'Concluído',    className: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-800/50' },
+}
+
+interface ActionPlanTask {
+    id: string
+    action_plan_id: string
+    title: string
+    is_done: boolean
+    order_index: number
 }
 
 interface ActionPlanWithRelations {
@@ -22,6 +49,7 @@ interface ActionPlanWithRelations {
     due_date: string | null
     owner_name: string | null
     key_result_id: string
+    status: ActionPlanStatus
     tracking_method?: string | null
     observations?: string | null
     effectiveness?: string | null
@@ -41,6 +69,7 @@ interface ActionPlanWithRelations {
 }
 
 type DueFilter = 'all' | 'overdue' | 'upcoming' | 'no_due'
+type StatusFilter = 'all' | ActionPlanStatus
 
 export function ActionsPage() {
     const { t } = useTranslation()
@@ -48,7 +77,10 @@ export function ActionsPage() {
 
     const [loading, setLoading] = useState(true)
     const [plans, setPlans] = useState<ActionPlanWithRelations[]>([])
+    const [tasksByPlanId, setTasksByPlanId] = useState<Record<string, ActionPlanTask[]>>({})
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
     const [filter, setFilter] = useState<DueFilter>('all')
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
     const [teams, setTeams] = useState<Team[]>([])
     const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
 
@@ -100,6 +132,7 @@ export function ActionsPage() {
                     due_date,
                     owner_name,
                     key_result_id,
+                    status,
                     tracking_method,
                     observations,
                     effectiveness,
@@ -122,11 +155,67 @@ export function ActionsPage() {
             const typed = (data || []) as unknown as ActionPlanWithRelations[]
             const filtered = typed.filter((p) => p?.key_result?.objective?.business_unit_id === selectedUnit)
             setPlans(filtered)
+
+            if (filtered.length > 0) {
+                const { data: tasksData } = await supabase
+                    .from('action_plan_tasks')
+                    .select('id, action_plan_id, title, is_done, order_index')
+                    .in('action_plan_id', filtered.map(p => p.id))
+                    .order('order_index', { ascending: true })
+
+                const grouped: Record<string, ActionPlanTask[]> = {}
+                for (const plan of filtered) grouped[plan.id] = []
+                for (const task of (tasksData || []) as ActionPlanTask[]) {
+                    if (grouped[task.action_plan_id]) grouped[task.action_plan_id].push(task)
+                }
+                setTasksByPlanId(grouped)
+            }
         } catch (e) {
             console.error('Error loading action plans:', e)
             setPlans([])
         } finally {
             setLoading(false)
+        }
+    }
+
+    function toggleExpanded(planId: string) {
+        setExpandedIds(prev => {
+            const next = new Set(prev)
+            next.has(planId) ? next.delete(planId) : next.add(planId)
+            return next
+        })
+    }
+
+    async function toggleTaskDone(planId: string, taskId: string, isDone: boolean) {
+        try {
+            await supabase.from('action_plan_tasks').update({ is_done: isDone }).eq('id', taskId)
+            setTasksByPlanId(prev => ({
+                ...prev,
+                [planId]: (prev[planId] || []).map(t => t.id === taskId ? { ...t, is_done: isDone } : t),
+            }))
+        } catch (e) {
+            console.error('Error toggling task:', e)
+        }
+    }
+
+    async function deleteTask(planId: string, taskId: string) {
+        try {
+            await supabase.from('action_plan_tasks').delete().eq('id', taskId)
+            setTasksByPlanId(prev => ({
+                ...prev,
+                [planId]: (prev[planId] || []).filter(t => t.id !== taskId),
+            }))
+        } catch (e) {
+            console.error('Error deleting task:', e)
+        }
+    }
+
+    async function updatePlanStatus(planId: string, newStatus: ActionPlanStatus) {
+        try {
+            await supabase.from('action_plans').update({ status: newStatus }).eq('id', planId)
+            setPlans(prev => prev.map(p => p.id === planId ? { ...p, status: newStatus } : p))
+        } catch (e) {
+            console.error('Error updating plan status:', e)
         }
     }
 
@@ -191,15 +280,28 @@ export function ActionsPage() {
         }
     }, [plans, teamMemberNames])
 
+    const ownerColorMap = useMemo(() => {
+        const map = new Map<string, string>()
+        let i = 0
+        for (const p of plans) {
+            if (p.owner_name && !map.has(p.owner_name)) {
+                map.set(p.owner_name, AVATAR_COLORS[i % AVATAR_COLORS.length])
+                i++
+            }
+        }
+        return map
+    }, [plans])
+
     const filteredPlans = useMemo(() => {
         const now = new Date()
         let base = teamMemberNames
             ? plans.filter(p => p.owner_name && teamMemberNames.has(p.owner_name))
             : plans
-        if (filter === 'all') return base
-        if (filter === 'no_due') return base.filter(p => !p.due_date)
-        if (filter === 'overdue') return base.filter(p => p.due_date && new Date(p.due_date) < now)
-        return base.filter(p => p.due_date && new Date(p.due_date) >= now)
+        if (filter === 'overdue') base = base.filter(p => p.due_date && new Date(p.due_date) < now)
+        else if (filter === 'no_due') base = base.filter(p => !p.due_date)
+        else if (filter === 'upcoming') base = base.filter(p => p.due_date && new Date(p.due_date) >= now)
+        if (statusFilter !== 'all') base = base.filter(p => p.status === statusFilter)
+        return base
     }, [plans, filter, teamMemberNames])
 
     if (loading) {
@@ -222,95 +324,205 @@ export function ActionsPage() {
                 </Button>
             </div>
 
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap gap-2">
-                    {([
-                        { id: 'all', label: t('actions.status.all'), count: counts.all },
-                        { id: 'overdue', label: t('actions.overdue'), count: counts.overdue },
-                        { id: 'upcoming', label: t('actionPlan.filters.upcoming'), count: counts.upcoming },
-                        { id: 'no_due', label: t('actionPlan.filters.noDueDate'), count: counts.no_due },
-                    ] as { id: DueFilter; label: string; count: number }[]).map(opt => (
-                        <button
-                            key={opt.id}
-                            onClick={() => setFilter(opt.id)}
-                            className={[
-                                'px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2',
-                                filter === opt.id
-                                    ? 'bg-[var(--color-primary)] text-white'
-                                    : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]',
-                            ].join(' ')}
-                        >
-                            <span>{opt.label}</span>
-                            <Badge variant="default" size="sm" className={filter === opt.id ? 'bg-white/20 text-white border-white/20' : ''}>
-                                {opt.count}
-                            </Badge>
-                        </button>
+            <div className="flex flex-wrap items-center gap-2">
+                <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value as DueFilter)}
+                    className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
+                >
+                    <option value="all">{t('actions.status.all')} ({counts.all})</option>
+                    <option value="overdue">{t('actions.overdue')} ({counts.overdue})</option>
+                    <option value="upcoming">{t('actionPlan.filters.upcoming')} ({counts.upcoming})</option>
+                    <option value="no_due">{t('actionPlan.filters.noDueDate')} ({counts.no_due})</option>
+                </select>
+
+                <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                    className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
+                >
+                    <option value="all">Todos os status</option>
+                    {(Object.keys(STATUS_CONFIG) as ActionPlanStatus[]).map(s => (
+                        <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
                     ))}
-                </div>
+                </select>
 
                 {teams.length > 0 && (
-                    <div className="flex items-end gap-2">
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-medium text-[var(--color-text-secondary)]">
-                                {t('okr.flow.mapTeamFilterLabel', 'Time')}
-                            </label>
-                            <select
-                                value={selectedTeamId ?? ''}
-                                onChange={(e) => setSelectedTeamId(e.target.value || null)}
-                                className="h-11 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent hover:border-[var(--color-text-muted)] transition-all duration-200 min-w-[160px]"
-                            >
-                                <option value="">{t('okr.flow.mapTeamFilterAll', 'Todos os times')}</option>
-                                {teams.map((team) => (
-                                    <option key={team.id} value={team.id}>{team.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
+                    <select
+                        value={selectedTeamId ?? ''}
+                        onChange={(e) => setSelectedTeamId(e.target.value || null)}
+                        className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
+                    >
+                        <option value="">{t('okr.flow.mapTeamFilterAll', 'Todos os times')}</option>
+                        {teams.map((team) => (
+                            <option key={team.id} value={team.id}>{team.name}</option>
+                        ))}
+                    </select>
                 )}
             </div>
 
             {filteredPlans.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {filteredPlans.map((p) => (
-                        <Card key={p.id} variant="elevated">
-                            <CardContent className="p-5 space-y-3">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <ClipboardList className="w-4 h-4 text-[var(--color-text-muted)]" />
-                                            <h3 className="font-semibold text-[var(--color-text-primary)] truncate">
+                <div className={cn('grid gap-2.5', expandedIds.size > 0 ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2')}>
+                    {filteredPlans.map((p) => {
+                        const deadlineStatus = p.due_date ? getDeadlineAlert(p.due_date, false, 'pt').status : null
+                        const borderColor = deadlineStatus === 'overdue'
+                            ? 'border-l-red-500'
+                            : deadlineStatus === 'urgent'
+                                ? 'border-l-orange-500'
+                                : deadlineStatus === 'warning'
+                                    ? 'border-l-yellow-400'
+                                    : p.due_date
+                                        ? 'border-l-green-500'
+                                        : 'border-l-[var(--color-border)]'
+                        const ownerColor = p.owner_name ? (ownerColorMap.get(p.owner_name) ?? 'bg-gray-500') : null
+
+                        const isExpanded = expandedIds.has(p.id)
+                        const tasks = tasksByPlanId[p.id] || []
+                        const doneTasks = tasks.filter(t => t.is_done).length
+
+                        return (
+                            <div
+                                key={p.id}
+                                className={cn(
+                                    'group rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] border-l-4 overflow-hidden',
+                                    borderColor
+                                )}
+                            >
+                                {/* Card header - clickable to expand */}
+                                <button
+                                    type="button"
+                                    onClick={() => tasks.length > 0 && toggleExpanded(p.id)}
+                                    className={cn('w-full text-left px-4 pt-3.5 pb-3 space-y-2', tasks.length > 0 && 'hover:bg-[var(--color-surface-hover)] transition-colors')}
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0 flex-1 space-y-1.5">
+                                            <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">
                                                 {p.title}
                                             </h3>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <select
+                                                    value={p.status}
+                                                    onChange={(e) => updatePlanStatus(p.id, e.target.value as ActionPlanStatus)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className={cn(
+                                                        'text-xs font-semibold px-2 py-0.5 rounded-full border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] appearance-none',
+                                                        STATUS_CONFIG[p.status].className
+                                                    )}
+                                                >
+                                                    {(Object.keys(STATUS_CONFIG) as ActionPlanStatus[]).map(s => (
+                                                        <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+                                                    ))}
+                                                </select>
+                                                {tasks.length > 0 && (
+                                                    <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                                                        {doneTasks}/{tasks.length} tarefas
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
-                                        <p className="text-sm text-[var(--color-text-muted)] mt-1 truncate">
-                                            {p.key_result ? `${p.key_result.code} - ${p.key_result.title}` : '-'}
-                                        </p>
-                                        <p className="text-xs text-[var(--color-text-muted)] mt-1 truncate">
-                                            {p.key_result?.objective?.business_unit?.name || ''}
-                                        </p>
+                                        <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                type="button"
+                                                className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                onClick={(e) => { e.stopPropagation(); openEditor(p) }}
+                                                title={t('actionPlan.edit')}
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                            {tasks.length > 0 && (
+                                                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform text-[var(--color-text-muted)]', isExpanded && 'rotate-180')} />
+                                            )}
+                                        </div>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => openEditor(p)}
-                                        className="flex-shrink-0"
-                                    >
-                                        <Pencil className="w-4 h-4" />
-                                    </Button>
-                                </div>
 
-                                <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
-                                    {p.due_date && (
-                                        <span className="flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {formatDate(p.due_date)}
-                                        </span>
+                                    {/* KR reference */}
+                                    {p.key_result && (
+                                        <p className="text-xs text-[var(--color-text-muted)] truncate flex items-center gap-1.5">
+                                            <Badge variant="outline" size="sm" className="font-mono shrink-0">{p.key_result.code}</Badge>
+                                            <span className="truncate">{p.key_result.title}</span>
+                                        </p>
                                     )}
-                                    {p.owner_name && <span className="truncate">{p.owner_name}</span>}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+
+                                    {/* Owner chip + deadline */}
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {ownerColor && p.owner_name && (
+                                            <span className={`inline-flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full text-white text-xs font-medium shrink-0 ${ownerColor}`}>
+                                                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[10px] font-bold">
+                                                    {getInitials(p.owner_name)}
+                                                </span>
+                                                {p.owner_name}
+                                            </span>
+                                        )}
+                                        {p.due_date ? (
+                                            <DeadlineBadge dueDate={p.due_date} size="sm" />
+                                        ) : (
+                                            <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]/50">
+                                                <Calendar className="w-3 h-3" />
+                                                {t('actionPlan.filters.noDueDate')}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+
+                                {/* Progress bar */}
+                                {tasks.length > 0 && (
+                                    <div className="px-4 pb-3 flex items-center gap-2.5">
+                                        <div className="flex-1 h-1 rounded-full bg-[var(--color-border)] overflow-hidden">
+                                            <div
+                                                className={cn('h-full rounded-full transition-all duration-500', doneTasks === tasks.length ? 'bg-green-500' : doneTasks > 0 ? 'bg-blue-500' : 'bg-[var(--color-border)]')}
+                                                style={{ width: `${Math.round((doneTasks / tasks.length) * 100)}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-xs text-[var(--color-text-muted)] shrink-0 tabular-nums">
+                                            {Math.round((doneTasks / tasks.length) * 100)}%
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Expanded tasks */}
+                                {isExpanded && (
+                                    <div className="border-t border-[var(--color-border-subtle)] px-4 py-3 space-y-1">
+                                        {tasks.map((task, index) => (
+                                            <div
+                                                key={task.id}
+                                                className={cn(
+                                                    'flex items-center gap-2.5 py-1.5 group/task',
+                                                    index < tasks.length - 1 && 'border-b border-[var(--color-border-subtle)]'
+                                                )}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    className="shrink-0 transition-colors"
+                                                    onClick={() => toggleTaskDone(p.id, task.id, !task.is_done)}
+                                                >
+                                                    {task.is_done
+                                                        ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                                        : <Clock className="w-4 h-4 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]" />
+                                                    }
+                                                </button>
+                                                <span className={cn(
+                                                    'text-sm flex-1 leading-snug',
+                                                    task.is_done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]'
+                                                )}>
+                                                    {task.title}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    className="p-1 rounded text-transparent group-hover/task:text-[var(--color-text-muted)] hover:!text-[var(--color-danger)] transition-colors"
+                                                    onClick={() => deleteTask(p.id, task.id)}
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {tasks.length === 0 && (
+                                            <p className="text-xs text-[var(--color-text-muted)] py-1">{t('actionPlan.noTasks')}</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
             ) : (
                 <Card variant="elevated">

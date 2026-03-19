@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -19,16 +19,78 @@ import {
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent } from '../../components/ui/Card'
-import { ProgressBar } from '../../components/ui/ProgressBar'
 import { ConfidenceIndicator } from '../../components/ui/ConfidenceIndicator'
+import type { ConfidenceLevel } from '../../components/ui/ConfidenceIndicator'
 import { ActionPlanList } from '../../components/okr/ActionPlanList'
 import { CascadeKRModal } from '../../components/okr/CascadeKRModal'
 import { KRAttachmentsModal } from '../../components/okr/KRAttachmentsPanel'
 import { DeadlineBadge } from '../../components/okr/DeadlineBadge'
 import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import type { CascadeKeyResult, CascadeObjective, CascadeTreeNode } from '../../hooks/useCascadeOKRData'
-import type { ConfidenceLevel } from '../../types'
 import { cn, formatKRCurrency, getNextHierarchicalCode } from '../../lib/utils'
+
+const AVATAR_COLORS = [
+    'bg-blue-500', 'bg-purple-500', 'bg-green-600', 'bg-orange-500',
+    'bg-pink-500', 'bg-teal-500', 'bg-indigo-500', 'bg-red-500',
+]
+
+function getInitials(name: string): string {
+    return name
+        .split(' ')
+        .slice(0, 2)
+        .map((n) => n[0]?.toUpperCase() ?? '')
+        .join('')
+}
+
+interface OwnerChipsProps {
+    owners: string[]
+    colorMap: Map<string, string>
+}
+
+function OwnerChips({ owners, colorMap }: OwnerChipsProps) {
+    if (owners.length === 0) return null
+    return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+            {owners.map((name) => {
+                const color = colorMap.get(name) ?? 'bg-gray-500'
+                return (
+                    <span
+                        key={name}
+                        className={`inline-flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full text-white text-xs font-medium shrink-0 ${color}`}
+                    >
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[10px] font-bold">
+                            {getInitials(name)}
+                        </span>
+                        {name}
+                    </span>
+                )
+            })}
+        </div>
+    )
+}
+
+function getConfidenceBorderColor(confidence: ConfidenceLevel): string {
+    switch (confidence) {
+        case 'on_track': return 'border-l-green-500'
+        case 'at_risk': return 'border-l-yellow-500'
+        case 'off_track': return 'border-l-red-500'
+        default: return 'border-l-[var(--color-border)]'
+    }
+}
+
+function getProgressBarColor(progress: number | null, confidence: ConfidenceLevel): string {
+    if (confidence === 'on_track') return 'bg-green-500'
+    if (confidence === 'at_risk') return 'bg-yellow-500'
+    if (confidence === 'off_track') return 'bg-red-500'
+    if (progress === null) return 'bg-[var(--color-border)]'
+    if (progress >= 70) return 'bg-green-500'
+    if (progress >= 40) return 'bg-yellow-500'
+    return 'bg-red-500'
+}
+
+function collectAllNodes(nodes: CascadeTreeNode[]): CascadeTreeNode[] {
+    return nodes.flatMap((node) => [node, ...collectAllNodes(node.children)])
+}
 
 interface KRModalState {
     open: boolean
@@ -92,6 +154,7 @@ interface AccordionNodeProps {
     selectedNodeId: string
     expandedNodes: Set<string>
     openPlanNodes: Set<string>
+    ownerColorMap: Map<string, string>
     onToggleNode: (krId: string) => void
     onTogglePlan: (krId: string) => void
     onAddChild: (objective: CascadeObjective, parent: CascadeTreeNode) => void
@@ -107,6 +170,7 @@ function AccordionNode({
     selectedNodeId,
     expandedNodes,
     openPlanNodes,
+    ownerColorMap,
     onToggleNode,
     onTogglePlan,
     onAddChild,
@@ -121,22 +185,30 @@ function AccordionNode({
     const isPlanOpen = openPlanNodes.has(node.id)
     const isSelected = node.id === selectedNodeId
 
+    const ownerNames = (node.owner_names && node.owner_names.length > 0)
+        ? node.owner_names
+        : node.owner_name ? [node.owner_name] : []
+    const progress = node.progress !== null ? Math.round(node.progress) : null
+    const borderColor = getConfidenceBorderColor(node.confidence)
+    const barColor = getProgressBarColor(node.progress, node.confidence)
+
     return (
         <div className="space-y-3">
-            <Card
-                variant="default"
+            <div
                 className={cn(
-                    'p-0 overflow-hidden',
+                    'group rounded-lg border border-[var(--color-border)] border-l-4 bg-[var(--color-surface)] overflow-hidden',
+                    borderColor,
                     isSelected && 'ring-2 ring-[var(--color-primary)]'
                 )}
             >
-                <CardContent className="p-4 space-y-4">
+                {/* Header */}
+                <div className="px-4 pt-4 pb-3">
                     <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex items-start gap-2">
+                        <div className="min-w-0 flex items-start gap-2 flex-1">
                             <button
                                 type="button"
                                 className={cn(
-                                    'w-8 h-8 rounded-lg border border-[var(--color-border)] inline-flex items-center justify-center mt-0.5',
+                                    'w-8 h-8 rounded-lg border border-[var(--color-border)] inline-flex items-center justify-center mt-0.5 shrink-0',
                                     node.children.length > 0
                                         ? 'text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
                                         : 'text-[var(--color-text-muted)] bg-[var(--color-surface-hover)]/50 cursor-default'
@@ -152,20 +224,20 @@ function AccordionNode({
                                 )}
                             </button>
 
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge variant="outline" size="sm" className="font-mono font-bold">
-                                        {node.code}
-                                    </Badge>
-                                    <h3 className="text-sm md:text-base font-semibold text-[var(--color-text-primary)] truncate">
+                                    <Badge variant="outline" size="sm" className="font-mono shrink-0">{node.code}</Badge>
+                                    <p className="text-sm md:text-base font-semibold text-[var(--color-text-primary)]">
                                         {node.title}
-                                    </h3>
+                                    </p>
                                     <Badge variant={isLeaf ? 'success' : 'info'} size="sm">
                                         {isLeaf ? t('okr.cascade.leaf') : t('okr.cascade.branch')}
                                     </Badge>
-                                    <Badge variant="default" size="sm">
-                                        {t('okr.flow.nodeChildrenCount', { count: node.children.length })}
-                                    </Badge>
+                                    {node.children.length > 0 && (
+                                        <Badge variant="default" size="sm" className="hidden sm:inline-flex">
+                                            {t('okr.flow.rootChildren', { count: node.children.length })}
+                                        </Badge>
+                                    )}
                                     {isSelected && (
                                         <Badge variant="info" size="sm">
                                             {t('okr.flow.currentFocus')}
@@ -178,123 +250,132 @@ function AccordionNode({
                                             size="sm"
                                         />
                                     )}
+                                    {ownerNames.length > 0 && (
+                                        <OwnerChips owners={ownerNames} colorMap={ownerColorMap} />
+                                    )}
                                 </div>
 
                                 {node.description && (
-                                    <p className="text-sm text-[var(--color-text-muted)] mt-1.5">
+                                    <p className="text-sm text-[var(--color-text-muted)] mt-1.5 line-clamp-2">
                                         {node.description}
                                     </p>
                                 )}
 
-                                <div className="flex items-center gap-4 mt-2 text-xs text-[var(--color-text-muted)] flex-wrap">
-                                    <span>{objective.code}</span>
-                                    <span>{t('quarterlyCard.owner')}: {(node.owner_names && node.owner_names.length > 0) ? node.owner_names.join(', ') : (node.owner_name || t('common.unassigned'))}</span>
-                                    {node.source && <span>{node.source}</span>}
-                                    {node.quarter && <span>Q{node.quarter}</span>}
-                                </div>
+                                {(node.source || node.quarter) && (
+                                    <div className="flex items-center gap-3 mt-1.5 text-xs text-[var(--color-text-muted)]">
+                                        {node.source && <span>{node.source}</span>}
+                                        {node.quarter && <span>Q{node.quarter}</span>}
+                                    </div>
+                                )}
                             </div>
                         </div>
-
-                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            {!isSelected && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => onFocusNode(node.id)}
-                                    className="h-8"
-                                    title={t('okr.flow.openChildFocus')}
-                                >
-                                    <ScanEye className="w-3 h-3 mr-1" />
-                                    {t('okr.flow.openChildFocus')}
-                                </Button>
-                            )}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onAddChild(objective, node)}
-                                className="h-8"
-                                title={t('okr.cascade.newChildKR')}
-                            >
-                                <Plus className="w-3 h-3 mr-1" />
-                                {t('okr.cascade.newChildKR')}
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onEdit(objective, node)}
-                                className="h-8"
-                                title={t('okr.cascade.editKR')}
-                            >
-                                <Pencil className="w-3 h-3 mr-1" />
-                                {t('common.edit')}
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onDelete(node)}
-                                className="h-8 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
-                                title={t('okr.cascade.deleteKR')}
-                            >
-                                <Trash2 className="w-3 h-3 mr-1" />
-                                {t('common.delete')}
-                            </Button>
-                            {isLeaf && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => onTogglePlan(node.id)}
-                                    className="h-8"
-                                >
-                                    <ClipboardList className="w-3 h-3 mr-1" />
-                                    {isPlanOpen ? t('okr.cascade.hideActionPlan') : t('okr.cascade.showActionPlan')}
-                                </Button>
-                            )}
-                        </div>
                     </div>
+                </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                            <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.baseline')}</p>
-                            <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1">
-                                {formatMetricValue(node, node.baseline)}
-                            </p>
-                        </div>
-                        <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                            <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.actual')}</p>
-                            <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1">
-                                {formatMetricValue(node, node.actual)}
-                            </p>
-                        </div>
-                        <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                            <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.target')}</p>
-                            <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1">
-                                {formatMetricValue(node, node.target)}
-                            </p>
-                        </div>
-                        <div className="rounded-lg border border-[var(--color-border)] p-2.5">
-                            <p className="text-xs text-[var(--color-text-muted)]">{t('quarterlyCard.progress')}</p>
-                            <p className="text-sm font-semibold text-[var(--color-text-primary)] mt-1">
-                                {node.progress !== null ? `${Math.round(node.progress)}%` : '-'}
-                            </p>
-                        </div>
+                {/* Metrics row */}
+                <div className="px-4 pb-3 space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] flex-wrap">
+                        <span className="font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wide">
+                            {t('quarterlyCard.baseline')}
+                        </span>
+                        <span className="font-semibold text-[var(--color-text-primary)]">
+                            {formatMetricValue(node, node.baseline)}
+                        </span>
+                        <span className="text-[var(--color-text-muted)]">→</span>
+                        <span className="font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wide">
+                            {t('quarterlyCard.actual')}
+                        </span>
+                        <span className="font-semibold text-[var(--color-text-primary)]">
+                            {formatMetricValue(node, node.actual)}
+                        </span>
+                        <span className="text-[var(--color-text-muted)]">→</span>
+                        <span className="font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wide">
+                            {t('quarterlyCard.target')}
+                        </span>
+                        <span className="font-semibold text-[var(--color-text-primary)]">
+                            {formatMetricValue(node, node.target)}
+                        </span>
                     </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1 h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all ${barColor}`}
+                                style={{ width: `${Math.min(100, Math.max(0, progress ?? 0))}%` }}
+                            />
+                        </div>
+                        <span className="text-sm font-bold text-[var(--color-text-primary)] shrink-0 w-10 text-right">
+                            {progress !== null ? `${progress}%` : '-'}
+                        </span>
+                    </div>
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center">
-                        <ProgressBar value={node.progress || 0} />
+                {/* Actions row */}
+                <div className="px-4 pb-3 flex items-center justify-between gap-2 border-t border-[var(--color-border-subtle)] pt-2.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 flex-wrap">
+                        {!isSelected && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onFocusNode(node.id)}
+                                className="h-8"
+                                title={t('okr.flow.openChildFocus')}
+                            >
+                                <ScanEye className="w-3 h-3 mr-1" />
+                                {t('okr.flow.openChildFocus')}
+                            </Button>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onAddChild(objective, node)}
+                            className="h-8"
+                        >
+                            <Plus className="w-3 h-3 mr-1" />
+                            {t('okr.cascade.newChildKR')}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEdit(objective, node)}
+                            className="h-8"
+                        >
+                            <Pencil className="w-3 h-3 mr-1" />
+                            {t('common.edit')}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onDelete(node)}
+                            className="h-8 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+                        >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            {t('common.delete')}
+                        </Button>
                         <ConfidenceIndicator
                             value={node.confidence}
                             editable
                             onChange={(nextValue) => onUpdateConfidence(node.id, nextValue)}
                         />
+                        {isLeaf && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onTogglePlan(node.id)}
+                                className="h-8"
+                            >
+                                <ClipboardList className="w-3 h-3 mr-1" />
+                                {isPlanOpen ? t('okr.cascade.hideActionPlan') : t('okr.cascade.showActionPlan')}
+                            </Button>
+                        )}
                     </div>
+                </div>
 
-                    {isLeaf && isPlanOpen && (
-                        <div className="pt-2 border-t border-[var(--color-border-subtle)]">
-                            <ActionPlanList krId={node.id} />
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                {isLeaf && isPlanOpen && (
+                    <div className="px-4 pb-4 pt-1 border-t border-[var(--color-border-subtle)]">
+                        <ActionPlanList krId={node.id} />
+                    </div>
+                )}
+            </div>
 
             {node.children.length > 0 && isExpanded && (
                 <div className="ml-4 md:ml-8 pl-4 border-l border-[var(--color-border-subtle)] space-y-3">
@@ -306,6 +387,7 @@ function AccordionNode({
                             selectedNodeId={selectedNodeId}
                             expandedNodes={expandedNodes}
                             openPlanNodes={openPlanNodes}
+                            ownerColorMap={ownerColorMap}
                             onToggleNode={onToggleNode}
                             onTogglePlan={onTogglePlan}
                             onAddChild={onAddChild}
@@ -506,6 +588,26 @@ export function OKRFocusPage() {
         navigate(fallbackPath, { replace: true })
     }
 
+    const selectedChildren = selectedContext?.node.children ?? []
+
+    const ownerColorMap = useMemo(() => {
+        const map = new Map<string, string>()
+        let colorIndex = 0
+        const allNodes = collectAllNodes(selectedChildren)
+        for (const node of allNodes) {
+            const names = (node.owner_names && node.owner_names.length > 0)
+                ? node.owner_names
+                : node.owner_name ? [node.owner_name] : []
+            for (const name of names) {
+                if (!map.has(name)) {
+                    map.set(name, AVATAR_COLORS[colorIndex % AVATAR_COLORS.length])
+                    colorIndex++
+                }
+            }
+        }
+        return map
+    }, [selectedChildren])
+
     if (loading && !selectedContext) {
         return (
             <div className="flex items-center justify-center min-h-[360px]">
@@ -539,7 +641,6 @@ export function OKRFocusPage() {
     }
 
     const selectedNode = selectedContext.node
-    const selectedChildren = selectedNode.children
     const selectedIsLeaf = selectedChildren.length === 0
     const pathCodes = [...selectedContext.ancestry.map((node) => node.code), selectedNode.code].join(' > ')
 
@@ -654,6 +755,7 @@ export function OKRFocusPage() {
                             selectedNodeId={selectedNode.id}
                             expandedNodes={expandedNodes}
                             openPlanNodes={openPlanNodes}
+                            ownerColorMap={ownerColorMap}
                             onToggleNode={handleToggleNode}
                             onTogglePlan={handleTogglePlan}
                             onAddChild={openCreateChildKRModal}

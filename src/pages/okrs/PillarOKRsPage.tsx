@@ -353,7 +353,7 @@ export function PillarOKRsPage() {
                                                 type="button"
                                                 onClick={() => toggleObjectiveCollapse(objective.id)}
                                                 className="mt-0.5 shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-                                                title={isCollapsed ? 'Expandir' : 'Recolher'}
+                                                title={isCollapsed ? t('okr.cascade.expandAll') : t('okr.cascade.collapseAll')}
                                             >
                                                 {isCollapsed
                                                     ? <ChevronRight className="w-4 h-4" />

@@ -10,6 +10,14 @@ import { cn, formatDate } from '../../lib/utils'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Input } from '../ui/Input'
 
+type ActionPlanStatus = 'not_started' | 'in_progress' | 'completed'
+
+const STATUS_CONFIG: Record<ActionPlanStatus, { label: string; className: string }> = {
+    not_started: { label: 'Não iniciado',  className: 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-border)]' },
+    in_progress:  { label: 'Em andamento', className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-800/50' },
+    completed:    { label: 'Concluído',    className: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-800/50' },
+}
+
 interface ActionPlan {
     id: string
     owner_name: string | null
@@ -19,6 +27,7 @@ interface ActionPlan {
     tracking_method: string | null
     observations: string | null
     effectiveness: string | null
+    status: ActionPlanStatus
 }
 
 interface ActionPlanTask {
@@ -80,6 +89,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     const [trackingMethod, setTrackingMethod] = useState('')
     const [observations, setObservations] = useState('')
     const [effectiveness, setEffectiveness] = useState('')
+    const [formStatus, setFormStatus] = useState<ActionPlanStatus>('not_started')
     const [newDraftTaskTitle, setNewDraftTaskTitle] = useState('')
 
     const loadPlans = useCallback(async () => {
@@ -190,6 +200,15 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
         ))
     }
 
+    async function updatePlanStatus(planId: string, newStatus: ActionPlanStatus) {
+        try {
+            await supabase.from('action_plans').update({ status: newStatus }).eq('id', planId)
+            setPlans(prev => prev.map(p => p.id === planId ? { ...p, status: newStatus } : p))
+        } catch (e) {
+            console.error('Error updating plan status:', e)
+        }
+    }
+
     function openEditor(currentPlan: ActionPlan | null) {
         setError(null)
         setEditingPlan(currentPlan)
@@ -201,6 +220,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             setTrackingMethod(currentPlan.tracking_method || '')
             setObservations(currentPlan.observations || '')
             setEffectiveness(currentPlan.effectiveness || '')
+            setFormStatus(currentPlan.status || 'not_started')
             setDraftTasks((tasksByPlanId[currentPlan.id] || []).map(task => ({ ...task })))
         } else {
             const defaultOwner = assigneeOptions.find((option) => option.id === user?.id)?.name || ''
@@ -210,6 +230,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             setTrackingMethod('')
             setObservations('')
             setEffectiveness('')
+            setFormStatus('not_started')
             setDraftTasks([])
         }
 
@@ -239,6 +260,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         tracking_method: trackingMethod.trim() || null,
                         observations: observations.trim() || null,
                         effectiveness: effectiveness.trim() || null,
+                        status: formStatus,
                     })
                     .eq('id', editingPlan.id)
                     .select()
@@ -268,6 +290,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         tracking_method: trackingMethod.trim() || null,
                         observations: observations.trim() || null,
                         effectiveness: effectiveness.trim() || null,
+                        status: formStatus,
                     })
                     .select()
                     .single()
@@ -473,61 +496,109 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         const planTaskCounts = taskCountsByPlanId[planItem.id] || { total: 0, done: 0 }
                         const isExpanded = expandedPlanIds.includes(planItem.id)
                         const newTaskTitle = newTaskByPlanId[planItem.id] || ''
+                        const allDone = planTaskCounts.total > 0 && planTaskCounts.done === planTaskCounts.total
+                        const someDone = planTaskCounts.done > 0 && !allDone
+                        const progressPct = planTaskCounts.total > 0
+                            ? Math.round((planTaskCounts.done / planTaskCounts.total) * 100)
+                            : 0
+                        const borderColor = allDone
+                            ? 'border-l-green-500'
+                            : someDone
+                                ? 'border-l-blue-500'
+                                : 'border-l-[var(--color-border)]'
+                        const barColor = allDone ? 'bg-green-500' : someDone ? 'bg-blue-500' : 'bg-[var(--color-border)]'
 
                         return (
                             <div
                                 key={planItem.id}
-                                className="rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] p-4"
+                                className={cn(
+                                    'group rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] border-l-4 overflow-hidden',
+                                    borderColor
+                                )}
                             >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <ClipboardList className="w-4 h-4 text-[var(--color-text-muted)]" />
-                                            <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
-                                                {planItem.title}
-                                            </p>
-                                            <Badge variant={planTaskCounts.done === planTaskCounts.total && planTaskCounts.total > 0 ? 'success' : 'default'} size="sm">
-                                                {planTaskCounts.done}/{planTaskCounts.total}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex items-center gap-4 mt-2 text-xs text-[var(--color-text-muted)]">
-                                            {planItem.due_date && (
-                                                <span className="flex items-center gap-1">
-                                                    <Calendar className="w-3 h-3" />
-                                                    {formatDate(planItem.due_date)}
-                                                </span>
+                                {/* Plan header */}
+                                <div className="px-4 pt-3.5 pb-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                                    {planItem.title}
+                                                </p>
+                                                {planTaskCounts.total > 0 && (
+                                                    <Badge variant={allDone ? 'success' : someDone ? 'info' : 'default'} size="sm">
+                                                        {planTaskCounts.done}/{planTaskCounts.total}
+                                                    </Badge>
+                                                )}
+                                                <select
+                                                    value={planItem.status}
+                                                    onChange={(e) => updatePlanStatus(planItem.id, e.target.value as ActionPlanStatus)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className={cn(
+                                                        'text-xs font-semibold px-2 py-0.5 rounded-full border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] appearance-none',
+                                                        STATUS_CONFIG[planItem.status].className
+                                                    )}
+                                                >
+                                                    {(Object.keys(STATUS_CONFIG) as ActionPlanStatus[]).map(s => (
+                                                        <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {(planItem.due_date || planItem.owner_name) && (
+                                                <div className="flex items-center gap-4 mt-1.5 text-xs text-[var(--color-text-muted)]">
+                                                    {planItem.due_date && (
+                                                        <span className="flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" />
+                                                            {formatDate(planItem.due_date)}
+                                                        </span>
+                                                    )}
+                                                    {planItem.owner_name && (
+                                                        <span className="flex items-center gap-1">
+                                                            <User className="w-3 h-3" />
+                                                            <span className="truncate max-w-[180px]">{planItem.owner_name}</span>
+                                                        </span>
+                                                    )}
+                                                </div>
                                             )}
-                                            {planItem.owner_name && (
-                                                <span className="flex items-center gap-1">
-                                                    <User className="w-3 h-3" />
-                                                    <span className="truncate max-w-[180px]">{planItem.owner_name}</span>
-                                                </span>
-                                            )}
                                         </div>
-                                    </div>
 
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => togglePlanExpanded(planItem.id)}
-                                        >
-                                            <ChevronDown className={cn('w-4 h-4 mr-1 transition-transform', isExpanded ? 'rotate-180' : '')} />
-                                            {isExpanded ? t('actionPlan.collapsePlan') : t('actionPlan.expandPlan')}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => openEditor(planItem)}
-                                        >
-                                            <Pencil className="w-3 h-3 mr-1.5" />
-                                            {t('actionPlan.edit')}
-                                        </Button>
+                                        <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                type="button"
+                                                className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                onClick={() => openEditor(planItem)}
+                                                title={t('actionPlan.edit')}
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                onClick={() => togglePlanExpanded(planItem.id)}
+                                                title={isExpanded ? t('actionPlan.collapsePlan') : t('actionPlan.expandPlan')}
+                                            >
+                                                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', isExpanded ? 'rotate-180' : '')} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
+                                {/* Progress bar */}
+                                {planTaskCounts.total > 0 && (
+                                    <div className="px-4 pb-3 flex items-center gap-2.5">
+                                        <div className="flex-1 h-1 rounded-full bg-[var(--color-border)] overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                                                style={{ width: `${progressPct}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-xs text-[var(--color-text-muted)] shrink-0 tabular-nums">
+                                            {progressPct}%
+                                        </span>
+                                    </div>
+                                )}
+
                                 {isExpanded && (
-                                    <div className="space-y-2 pt-3 mt-3 border-t border-[var(--color-border)]">
+                                    <div className="space-y-2 pt-3 pb-4 px-4 border-t border-[var(--color-border-subtle)]">
                                         <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
                                             {t('actionPlan.tasksTitle')}
                                         </p>
@@ -680,6 +751,29 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                     onChange={(e) => setDueDate(e.target.value)}
                                     icon={<Calendar className="w-5 h-5" />}
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                    {t('actionPlan.fields.status', 'Status')}
+                                </label>
+                                <div className="flex gap-2 flex-wrap">
+                                    {(Object.keys(STATUS_CONFIG) as ActionPlanStatus[]).map(s => (
+                                        <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => setFormStatus(s)}
+                                            className={cn(
+                                                'text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors',
+                                                formStatus === s
+                                                    ? STATUS_CONFIG[s].className
+                                                    : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-hover)]'
+                                            )}
+                                        >
+                                            {STATUS_CONFIG[s].label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             {!editingPlan && (

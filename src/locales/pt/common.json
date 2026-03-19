@@ -184,7 +184,7 @@
         "defineFirstObjective": "Definir Primeiro Objetivo",
         "noPillars": "Nenhum pilar cadastrado.",
         "cascade": {
-            "subtitle": "Estruture os KRs em cascata, criando desdobramentos até o nível de execução.",
+            "subtitle": "Organize KRs em cascata até o nível de execução.",
             "yearLabel": "Ano",
             "refresh": "Atualizar dados",
             "expandAll": "Expandir tudo",
@@ -222,7 +222,7 @@
             "empty": "Nenhum KR folha encontrado para o filtro atual."
         },
         "workspace": {
-            "description": "Organize o desdobramento em sequência lógica: Pilar > Objetivo > KR > Plano de ação.",
+            "description": "Gerencie o desdobramento: Pilar > Objetivo > KR > Plano de ação",
             "searchLabel": "Buscar no workspace",
             "searchPlaceholder": "Pilar, objetivo, KR, responsável...",
             "summaryPillars": "Pilares visíveis",
@@ -254,11 +254,11 @@
         },
         "fileCenter": {
             "title": "Central de arquivos",
-            "subtitle": "Anexe documentos importantes deste KR para o time consultar e baixar.",
+            "subtitle": "Gerencie documentos deste KR",
             "openModal": "Central de arquivos",
             "fileLabel": "Arquivo",
             "noteLabel": "Observação",
-            "notePlaceholder": "Explique rapidamente o contexto deste arquivo...",
+            "notePlaceholder": "Contexto do arquivo",
             "upload": "Enviar arquivo",
             "uploading": "Enviando...",
             "download": "Baixar",
@@ -292,7 +292,7 @@
             "emptyPillarsTitle": "Nenhum pilar disponível para esta empresa",
             "emptyPillarsDescription": "Cadastre ou ative pilares para iniciar o fluxo de OKRs.",
             "backToPillars": "Voltar para pilares",
-            "pillarPageSubtitle": "Aqui estão todos os OKRs de nível deste pilar. Clique em um OKR para abrir em tela cheia.",
+            "pillarPageSubtitle": "Veja os OKRs de nível deste pilar",
             "searchRootKRsLabel": "Buscar objetivo ou OKR de nível",
             "searchRootKRsPlaceholder": "Código, título, responsável...",
             "noPillarFoundTitle": "Pilar não encontrado",
@@ -301,11 +301,11 @@
             "emptyPillarObjectivesDescription": "Crie um objetivo para começar a estruturar os OKRs deste pilar.",
             "noRootForObjective": "Ainda não há OKR de nível neste objetivo.",
             "openFullScreen": "Abrir tela cheia",
-            "openFullScreenHint": "Abra este OKR para visualizar os desdobramentos em acordeão.",
+            "openFullScreenHint": "Abrir OKR",
             "noKRFoundTitle": "OKR não encontrado",
             "noKRFoundDescription": "O OKR solicitado não está disponível no pilar selecionado.",
             "backToPillar": "Voltar para visão do pilar",
-            "focusSubtitle": "Visualize e desdobre este OKR em tela cheia, com acordeões para os níveis filhos.",
+            "focusSubtitle": "Desdobre este OKR e organize os níveis filhos",
             "expandAllFromHere": "Expandir tudo",
             "collapseAllFromHere": "Recolher tudo",
             "focusPath": "Caminho do desdobramento",
@@ -318,7 +318,7 @@
             "noChildBreakdownsTitle": "Este OKR não possui desdobramentos",
             "noChildBreakdownsDescription": "Crie um KR filho para continuar a cascata ou siga direto com o plano de ação.",
             "mapTitle": "Mapa de desdobramento e confiança",
-            "mapSubtitle": "Visão em árvore por pilar para leitura rápida da confiança de todos os KRs.",
+            "mapSubtitle": "Visão em árvore com confiança por pilar",
             "mapShareHint": "Visual pensado para apresentação e compartilhamento rápido com liderança e times.",
             "mapSearchLabel": "Buscar no mapa",
             "mapSearchPlaceholder": "Pilar, objetivo, código do KR, título ou responsável...",
@@ -387,14 +387,14 @@
         "edit": "Editar plano",
         "createTitle": "Criar plano de ação",
         "editTitle": "Editar plano de ação",
-        "subtitle": "Defina como este OKR será executado e acompanhado",
+        "subtitle": "Planeje a execução e acompanhamento",
         "empty": "Nenhum plano definido para este OKR.",
         "tasksTitle": "Tarefas",
         "noTasks": "Nenhuma tarefa cadastrada.",
         "expandPlan": "Expandir",
         "collapsePlan": "Recolher",
         "newTaskLabel": "Nova tarefa",
-        "newTaskPlaceholder": "Descreva a tarefa essencial...",
+        "newTaskPlaceholder": "Nova tarefa",
         "taskMarkDone": "Marcar tarefa como concluída",
         "taskMarkUndone": "Marcar tarefa como pendente",
         "taskDelete": "Excluir tarefa",
@@ -407,14 +407,14 @@
             "ownerLoading": "Carregando responsáveis...",
             "ownerNoUsers": "Nenhum usuário disponível nesta empresa",
             "dueDate": "Prazo",
-            "essentialTasks": "Tarefas essenciais (como?)",
-            "essentialTasksPlaceholder": "Liste o passo a passo / como será feito...",
+            "essentialTasks": "Tarefas essenciais",
+            "essentialTasksPlaceholder": "Descreva o passo a passo",
             "trackingMethod": "Forma de acompanhamento",
-            "trackingMethodPlaceholder": "Como vamos acompanhar a execução e os resultados?",
+            "trackingMethodPlaceholder": "Método de acompanhamento",
             "observations": "Observações",
-            "observationsPlaceholder": "Informações adicionais relevantes...",
+            "observationsPlaceholder": "Observações adicionais",
             "effectiveness": "Efetividade",
-            "effectivenessPlaceholder": "O resultado se manteve nos meses seguintes?"
+            "effectivenessPlaceholder": "Efetividade do resultado"
         },
         "errors": {
             "titleRequired": "Informe a ação a ser realizada",
@@ -424,6 +424,11 @@
         "filters": {
             "upcoming": "A vencer",
             "noDueDate": "Sem prazo"
+        },
+        "status": {
+            "not_started": "Não iniciado",
+            "in_progress": "Em andamento",
+            "completed": "Concluído"
         }
     },
     "modals": {
