@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, ChevronDown, Clock, ListTodo, Calendar, Plus, Trash2, Pencil, ClipboardList, User } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Clock, ListTodo, Calendar, Plus, Trash2, Pencil, ClipboardList, User, AlertTriangle } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { supabase } from '../../lib/supabase'
@@ -81,6 +81,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     const [error, setError] = useState<string | null>(null)
     const [assigneesLoading, setAssigneesLoading] = useState(true)
     const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([])
+    const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
     // Form state
     const [title, setTitle] = useState('')
@@ -459,6 +461,52 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
         }
     }
 
+    async function deleteActionPlan() {
+        if (!user || !editingPlan) return
+
+        setDeletingPlanId(editingPlan.id)
+        try {
+            const planId = editingPlan.id
+            const planTitle = editingPlan.title
+
+            // Delete all tasks associated with the plan first
+            await supabase.from('action_plan_tasks').delete().eq('action_plan_id', planId)
+
+            // Delete the plan itself
+            const { error: deleteError } = await supabase
+                .from('action_plans')
+                .delete()
+                .eq('id', planId)
+
+            if (deleteError) throw deleteError
+
+            // Log the deletion
+            await supabase.from('audit_logs').insert({
+                user_id: user.id,
+                user_email: user.email || '',
+                action: 'delete',
+                entity_type: 'action_plans',
+                entity_id: planId,
+                entity_name: planTitle,
+                old_value: editingPlan,
+                new_value: null
+            })
+
+            // Close modal and refresh
+            setModalOpen(false)
+            setEditingPlan(null)
+            setShowDeleteConfirm(false)
+            setDraftTasks([])
+            setNewDraftTaskTitle('')
+            await loadPlans()
+        } catch (deleteError) {
+            console.error('Error deleting action plan:', deleteError)
+            setError(t('actionPlan.errors.deleteFailed', 'Erro ao deletar plano de ação'))
+        } finally {
+            setDeletingPlanId(null)
+        }
+    }
+
     const ownerInOptions = assigneeOptions.some((assignee) => assignee.name === ownerName)
 
     if (loading) {
@@ -572,6 +620,18 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                             </button>
                                             <button
                                                 type="button"
+                                                className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setEditingPlan(planItem)
+                                                    setShowDeleteConfirm(true)
+                                                }}
+                                                title={t('actionPlan.delete', 'Deletar')}
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                type="button"
                                                 className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
                                                 onClick={() => togglePlanExpanded(planItem.id)}
                                                 title={isExpanded ? t('actionPlan.collapsePlan') : t('actionPlan.expandPlan')}
@@ -671,6 +731,41 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                     </Button>
                 </div>
             )}
+
+            {/* Delete confirmation modal */}
+            <Dialog.Root open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 p-6">
+                        <div className="flex items-start gap-4 mb-4">
+                            <div className="flex-shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-[var(--color-danger)]" />
+                            </div>
+                            <div className="flex-1">
+                                <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">
+                                    {t('actionPlan.deleteConfirmTitle', 'Deletar plano de ação?')}
+                                </Dialog.Title>
+                                <Dialog.Description className="text-sm text-[var(--color-text-muted)] mt-1">
+                                    {t('actionPlan.deleteConfirmDescription', 'Esta ação não pode ser desfeita. Todas as tarefas associadas também serão deletadas.')}
+                                </Dialog.Description>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3">
+                            <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>
+                                {t('common.cancel')}
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={deleteActionPlan}
+                                loading={deletingPlanId === editingPlan?.id}
+                            >
+                                {t('common.delete', 'Deletar')}
+                            </Button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
 
             {/* Editor modal */}
             <Dialog.Root
@@ -883,13 +978,25 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                             )}
                         </div>
 
-                        <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
-                            <Button variant="ghost" onClick={() => setModalOpen(false)}>
-                                {t('common.cancel')}
-                            </Button>
-                            <Button variant="primary" onClick={savePlan} loading={saving}>
-                                {saving ? t('common.saving') : t('common.save')}
-                            </Button>
+                        <div className="flex items-center justify-between gap-3 p-6 border-t border-[var(--color-border)]">
+                            {editingPlan && (
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    loading={deletingPlanId === editingPlan.id}
+                                >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    {t('common.delete', 'Deletar')}
+                                </Button>
+                            )}
+                            <div className="flex items-center justify-end gap-3 ml-auto">
+                                <Button variant="ghost" onClick={() => setModalOpen(false)}>
+                                    {t('common.cancel')}
+                                </Button>
+                                <Button variant="primary" onClick={savePlan} loading={saving}>
+                                    {saving ? t('common.saving') : t('common.save')}
+                                </Button>
+                            </div>
                         </div>
                     </Dialog.Content>
                 </Dialog.Portal>
