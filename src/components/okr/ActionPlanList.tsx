@@ -609,7 +609,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                             )}
                                         </div>
 
-                                        <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center gap-1 shrink-0">
                                             <button
                                                 type="button"
                                                 className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
