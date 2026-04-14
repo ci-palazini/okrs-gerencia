@@ -756,7 +756,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                 {t('common.cancel')}
                             </Button>
                             <Button
-                                variant="destructive"
+                                variant="danger"
                                 onClick={deleteActionPlan}
                                 loading={deletingPlanId === editingPlan?.id}
                             >
@@ -981,7 +981,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         <div className="flex items-center justify-between gap-3 p-6 border-t border-[var(--color-border)]">
                             {editingPlan && (
                                 <Button
-                                    variant="destructive"
+                                    variant="danger"
                                     onClick={() => setShowDeleteConfirm(true)}
                                     loading={deletingPlanId === editingPlan.id}
                                 >
