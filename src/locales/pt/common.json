@@ -47,7 +47,9 @@
         "createdAt": "Criado em",
         "completedAt": "Concluído em",
         "saving": "Salvando...",
-        "saveChanges": "Salvar Alterações"
+        "saveChanges": "Salvar Alterações",
+        "allStatuses": "Todos os status",
+        "allUsers": "Todos os usuários"
     },
     "sidebar": {
         "managementControl": "Controle de Gestão",
@@ -338,7 +340,8 @@
             "mapConfidenceNotSet": "Sem confiança",
             "mapEmptyTitle": "Nenhum KR encontrado para o mapa",
             "mapEmptyDescription": "Cadastre objetivos e KRs para visualizar o desdobramento completo.",
-            "mapEmptySearchDescription": "Nenhum resultado para a busca atual. Ajuste o termo para continuar."
+            "mapEmptySearchDescription": "Nenhum resultado para a busca atual. Ajuste o termo para continuar.",
+            "mapTeamFilterAll": "Todos os times"
         }
     },
     "objectives": {

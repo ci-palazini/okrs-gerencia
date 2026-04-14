@@ -40,20 +40,28 @@ export function BusinessUnitProvider({ children }: { children: ReactNode }) {
     async function loadUnits() {
         setIsLoading(true)
         try {
-            // Fetch all active units, excluding GSC if it should be hidden from selector?
-            // The user wants a global selector. Usually "GSC" is a special unit.
-            // In OKRsPage we excluded GSC.
-            // If the user wants to switch between SXS, Hiter, etc., we should fetch valid "Plants".
-            // We'll exclude 'GSC' from the generic selector if it's considered "Corporate Admin" view, 
-            // but if the user wants to see "GSC" view, we include it.
-            // Creating a "safe" list for now, similar to OKRsPage.
-
-            const { data: unitsData } = await supabase
+            let query = supabase
                 .from('business_units')
                 .select('*')
                 .eq('is_active', true)
-                .neq('code', 'GSC') // Exclude GSC from the plant selector
+                .neq('code', 'GSC')
                 .order('order_index')
+
+            // Non-admin users can only see their assigned business units
+            if (user?.role !== 'admin') {
+                const allowedIds = (user?.user_business_units || []).map(ubu => ubu.business_unit_id)
+                if (allowedIds.length > 0) {
+                    query = query.in('id', allowedIds)
+                } else {
+                    // User has no assigned units — show nothing
+                    setUnits([])
+                    setSelectedUnit('')
+                    setIsLoading(false)
+                    return
+                }
+            }
+
+            const { data: unitsData } = await query
 
             if (unitsData && unitsData.length > 0) {
                 setUnits(unitsData)

@@ -402,7 +402,7 @@ export function ActionsPage() {
                     onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                     className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
                 >
-                    <option value="all">Todos os status</option>
+                    <option value="all">{t('common.allStatuses', 'Todos os status')}</option>
                     {(Object.keys(STATUS_CONFIG) as ActionPlanStatus[]).map(s => (
                         <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
                     ))}
@@ -412,7 +412,7 @@ export function ActionsPage() {
                 <div className="flex items-center gap-1">
                     {(['annual', 'q1', 'q2', 'q3', 'q4'] as const).map((period) => {
                         const isSelected = selectedPeriods.has(period)
-                        const label = period === 'annual' ? 'Anual' : period.toUpperCase()
+                        const label = period === 'annual' ? t('quarterlyCard.annual') : period.toUpperCase()
                         return (
                             <button
                                 key={period}
@@ -464,7 +464,7 @@ export function ActionsPage() {
                             next.has(name) ? next.delete(name) : next.add(name)
                             return next
                         })}
-                        placeholder="Todos os usuários"
+                        placeholder={t('common.allUsers', 'Todos os usuários')}
                     />
                 )}
 
@@ -478,7 +478,7 @@ export function ActionsPage() {
                             next.has(id) ? next.delete(id) : next.add(id)
                             return next
                         })}
-                        placeholder="Todos os pilares"
+                        placeholder={t('krTracking.allPillars')}
                     />
                 )}
             </div>

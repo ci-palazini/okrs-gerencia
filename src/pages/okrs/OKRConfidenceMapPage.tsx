@@ -723,7 +723,7 @@ export function OKRConfidenceMapPage() {
                         <div className="flex items-center gap-1">
                             {(['annual', 'q1', 'q2', 'q3', 'q4'] as const).map((period) => {
                                 const isSelected = selectedPeriods.has(period)
-                                const label = period === 'annual' ? 'Anual' : period.toUpperCase()
+                                const label = period === 'annual' ? t('quarterlyCard.annual') : period.toUpperCase()
                                 return (
                                     <button
                                         key={period}
@@ -767,7 +767,7 @@ export function OKRConfidenceMapPage() {
                                 options={companyUsers.map((u) => ({ value: u.full_name, label: u.full_name }))}
                                 selected={selectedUserNames}
                                 onToggle={toggleUser}
-                                placeholder="Todos os usuários"
+                                placeholder={t('common.allUsers', 'Todos os usuários')}
                             />
                         )}
                     </div>
