@@ -5,6 +5,7 @@ import { Card, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { Input } from '../../components/ui/Input'
+import { MultiSelectDropdown } from '../../components/ui/MultiSelectDropdown'
 import { DeadlineBadge } from '../../components/okr/DeadlineBadge'
 import { supabase } from '../../lib/supabase'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
@@ -57,10 +58,13 @@ interface ActionPlanWithRelations {
         id: string
         code: string
         title: string
+        scope: 'annual' | 'quarterly'
+        quarter: number | null
         objective: {
             id: string
             title: string
             business_unit_id: string
+            pillar_id: string
             business_unit: {
                 name: string
             } | null
@@ -83,6 +87,11 @@ export function ActionsPage() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
     const [teams, setTeams] = useState<Team[]>([])
     const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
+    const [selectedPeriods, setSelectedPeriods] = useState<Set<string>>(new Set())
+    const [selectedUserNames, setSelectedUserNames] = useState<Set<string>>(new Set())
+    const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
+    const [companyUsers, setCompanyUsers] = useState<{ id: string; full_name: string }[]>([])
+    const [pillars, setPillars] = useState<{ id: string; name: string; color: string }[]>([])
 
     // Modal states
     const [editingPlan, setEditingPlan] = useState<ActionPlanWithRelations | null>(null)
@@ -117,6 +126,36 @@ export function ActionsPage() {
     }, [])
 
     useEffect(() => {
+        if (!selectedUnit) return
+        supabase
+            .from('user_business_units')
+            .select('users(id, full_name)')
+            .eq('business_unit_id', selectedUnit)
+            .then(({ data }) => {
+                if (data) {
+                    const users = (data as any[])
+                        .map((row: any) => row.users)
+                        .filter(Boolean)
+                        .sort((a: any, b: any) => a.full_name.localeCompare(b.full_name, 'pt-BR'))
+                    setCompanyUsers(users)
+                }
+            })
+    }, [selectedUnit])
+
+    useEffect(() => {
+        if (!selectedUnit) return
+        Promise.all([
+            supabase.from('pillar_business_units').select('pillar_id').eq('business_unit_id', selectedUnit),
+            supabase.from('pillars').select('id, name, color').eq('is_active', true).order('order_index'),
+        ]).then(([pivotRes, pillarsRes]) => {
+            const pillarIds = new Set((pivotRes.data || []).map((p: any) => p.pillar_id))
+            const filtered = ((pillarsRes.data || []) as { id: string; name: string; color: string }[])
+                .filter((p) => pillarIds.has(p.id))
+            setPillars(filtered)
+        })
+    }, [selectedUnit])
+
+    useEffect(() => {
         if (selectedUnit) loadPlans()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedUnit])
@@ -140,10 +179,13 @@ export function ActionsPage() {
                         id,
                         code,
                         title,
+                        scope,
+                        quarter,
                         objective:objectives(
                             id,
                             title,
                             business_unit_id,
+                            pillar_id,
                             business_unit:business_units(name)
                         )
                     )
@@ -267,18 +309,39 @@ export function ActionsPage() {
         return new Set(team?.memberNames ?? [])
     }, [selectedTeamId, teams])
 
+    function matchesPeriod(plan: ActionPlanWithRelations, periods: Set<string>): boolean {
+        if (periods.size === 0) return true
+        const kr = plan.key_result
+        if (!kr) return false
+        return (
+            (periods.has('annual') && kr.scope === 'annual')
+            || (periods.has('q1') && kr.scope === 'quarterly' && kr.quarter === 1)
+            || (periods.has('q2') && kr.scope === 'quarterly' && kr.quarter === 2)
+            || (periods.has('q3') && kr.scope === 'quarterly' && kr.quarter === 3)
+            || (periods.has('q4') && kr.scope === 'quarterly' && kr.quarter === 4)
+        )
+    }
+
+    // Base plans after team/period/user/pillar filters (used by counts and filteredPlans)
+    const basePlans = useMemo(() => {
+        let base = plans
+        if (teamMemberNames) base = base.filter(p => p.owner_name && teamMemberNames.has(p.owner_name))
+        if (selectedPeriods.size > 0) base = base.filter(p => matchesPeriod(p, selectedPeriods))
+        if (selectedUserNames.size > 0) base = base.filter(p => p.owner_name && selectedUserNames.has(p.owner_name))
+        if (selectedPillarIds.size > 0) base = base.filter(p => p.key_result?.objective?.pillar_id && selectedPillarIds.has(p.key_result.objective.pillar_id))
+        return base
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plans, teamMemberNames, selectedPeriods, selectedUserNames, selectedPillarIds])
+
     const counts = useMemo(() => {
         const now = new Date()
-        const basePlans = teamMemberNames
-            ? plans.filter(p => p.owner_name && teamMemberNames.has(p.owner_name))
-            : plans
         return {
             all: basePlans.length,
             overdue: basePlans.filter(p => p.due_date && new Date(p.due_date) < now).length,
             upcoming: basePlans.filter(p => p.due_date && new Date(p.due_date) >= now).length,
             no_due: basePlans.filter(p => !p.due_date).length,
         }
-    }, [plans, teamMemberNames])
+    }, [basePlans])
 
     const ownerColorMap = useMemo(() => {
         const map = new Map<string, string>()
@@ -294,15 +357,13 @@ export function ActionsPage() {
 
     const filteredPlans = useMemo(() => {
         const now = new Date()
-        let base = teamMemberNames
-            ? plans.filter(p => p.owner_name && teamMemberNames.has(p.owner_name))
-            : plans
+        let base = basePlans
         if (filter === 'overdue') base = base.filter(p => p.due_date && new Date(p.due_date) < now)
         else if (filter === 'no_due') base = base.filter(p => !p.due_date)
         else if (filter === 'upcoming') base = base.filter(p => p.due_date && new Date(p.due_date) >= now)
         if (statusFilter !== 'all') base = base.filter(p => p.status === statusFilter)
         return base
-    }, [plans, filter, teamMemberNames])
+    }, [basePlans, filter, statusFilter])
 
     if (loading) {
         return (
@@ -328,7 +389,7 @@ export function ActionsPage() {
                 <select
                     value={filter}
                     onChange={(e) => setFilter(e.target.value as DueFilter)}
-                    className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
+                    className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
                 >
                     <option value="all">{t('actions.status.all')} ({counts.all})</option>
                     <option value="overdue">{t('actions.overdue')} ({counts.overdue})</option>
@@ -339,7 +400,7 @@ export function ActionsPage() {
                 <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                    className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
+                    className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
                 >
                     <option value="all">Todos os status</option>
                     {(Object.keys(STATUS_CONFIG) as ActionPlanStatus[]).map(s => (
@@ -347,17 +408,78 @@ export function ActionsPage() {
                     ))}
                 </select>
 
+                {/* Period toggle chips */}
+                <div className="flex items-center gap-1">
+                    {(['annual', 'q1', 'q2', 'q3', 'q4'] as const).map((period) => {
+                        const isSelected = selectedPeriods.has(period)
+                        const label = period === 'annual' ? 'Anual' : period.toUpperCase()
+                        return (
+                            <button
+                                key={period}
+                                type="button"
+                                onClick={() => setSelectedPeriods((prev) => {
+                                    const next = new Set(prev)
+                                    next.has(period) ? next.delete(period) : next.add(period)
+                                    return next
+                                })}
+                                className={cn(
+                                    'h-9 px-3 text-xs font-medium rounded-lg border transition-all duration-200',
+                                    isSelected
+                                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
+                                        : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
+                                )}
+                            >
+                                {label}
+                            </button>
+                        )
+                    })}
+                </div>
+
+                {/* Team dropdown */}
                 {teams.length > 0 && (
                     <select
                         value={selectedTeamId ?? ''}
                         onChange={(e) => setSelectedTeamId(e.target.value || null)}
-                        className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-text-muted)] transition-all"
+                        className={cn(
+                            'h-9 rounded-lg border bg-[var(--color-surface)] px-3 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all',
+                            selectedTeamId
+                                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+                                : 'border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)]'
+                        )}
                     >
                         <option value="">{t('okr.flow.mapTeamFilterAll', 'Todos os times')}</option>
                         {teams.map((team) => (
                             <option key={team.id} value={team.id}>{team.name}</option>
                         ))}
                     </select>
+                )}
+
+                {/* User multi-select */}
+                {companyUsers.length > 0 && (
+                    <MultiSelectDropdown
+                        options={companyUsers.map((u) => ({ value: u.full_name, label: u.full_name }))}
+                        selected={selectedUserNames}
+                        onToggle={(name) => setSelectedUserNames((prev) => {
+                            const next = new Set(prev)
+                            next.has(name) ? next.delete(name) : next.add(name)
+                            return next
+                        })}
+                        placeholder="Todos os usuários"
+                    />
+                )}
+
+                {/* Pillar multi-select */}
+                {pillars.length > 0 && (
+                    <MultiSelectDropdown
+                        options={pillars.map((p) => ({ value: p.id, label: p.name, color: p.color }))}
+                        selected={selectedPillarIds}
+                        onToggle={(id) => setSelectedPillarIds((prev) => {
+                            const next = new Set(prev)
+                            next.has(id) ? next.delete(id) : next.add(id)
+                            return next
+                        })}
+                        placeholder="Todos os pilares"
+                    />
                 )}
             </div>
 

@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, GitBranch, Search } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { MultiSelectDropdown } from '../../components/ui/MultiSelectDropdown'
 import { DeadlineIndicatorIcon } from '../../components/okr/DeadlineIndicator'
 import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import type { CascadeObjective, CascadePillar, CascadeTreeNode } from '../../hooks/useCascadeOKRData'
@@ -92,6 +93,45 @@ function filterTreeByTeam(nodes: CascadeTreeNode[], memberNames: Set<string>): C
         .map((node) => ({
             ...node,
             children: filterTreeByTeam(node.children, memberNames),
+        }))
+}
+
+function nodeMatchesPeriod(node: CascadeTreeNode, periods: Set<string>): boolean {
+    if (periods.size === 0) return true
+    const directMatch =
+        (periods.has('annual') && node.scope === 'annual')
+        || (periods.has('q1') && node.scope === 'quarterly' && node.quarter === 1)
+        || (periods.has('q2') && node.scope === 'quarterly' && node.quarter === 2)
+        || (periods.has('q3') && node.scope === 'quarterly' && node.quarter === 3)
+        || (periods.has('q4') && node.scope === 'quarterly' && node.quarter === 4)
+    if (directMatch) return true
+    return node.children.some((child) => nodeMatchesPeriod(child, periods))
+}
+
+function filterTreeByPeriod(nodes: CascadeTreeNode[], periods: Set<string>): CascadeTreeNode[] {
+    if (periods.size === 0) return nodes
+    return nodes
+        .filter((node) => nodeMatchesPeriod(node, periods))
+        .map((node) => ({
+            ...node,
+            children: filterTreeByPeriod(node.children, periods),
+        }))
+}
+
+function nodeMatchesUser(node: CascadeTreeNode, userNames: Set<string>): boolean {
+    const owners = node.owner_names?.length
+        ? node.owner_names
+        : node.owner_name ? [node.owner_name] : []
+    if (owners.some((o) => userNames.has(o))) return true
+    return node.children.some((child) => nodeMatchesUser(child, userNames))
+}
+
+function filterTreeByUser(nodes: CascadeTreeNode[], userNames: Set<string>): CascadeTreeNode[] {
+    return nodes
+        .filter((node) => nodeMatchesUser(node, userNames))
+        .map((node) => ({
+            ...node,
+            children: filterTreeByUser(node.children, userNames),
         }))
 }
 
@@ -382,7 +422,7 @@ export function OKRConfidenceMapPage() {
     const location = useLocation()
     const currentPath = `${location.pathname}${location.search}${location.hash}`
 
-    const { loading, selectedUnitData, objectives, getVisiblePillars, getObjectiveRoots } = useCascadeOKRData()
+    const { loading, selectedUnit, selectedUnitData, objectives, getVisiblePillars, getObjectiveRoots } = useCascadeOKRData()
 
     const [searchTerm, setSearchTerm] = useState('')
     const [collapsedPillarIds, setCollapsedPillarIds] = useState<Set<string>>(new Set())
@@ -390,6 +430,9 @@ export function OKRConfidenceMapPage() {
     const [activePillarId, setActivePillarId] = useState<string | null>(null)
     const [teams, setTeams] = useState<{ id: string; name: string; memberNames: string[] }[]>([])
     const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
+    const [selectedPeriods, setSelectedPeriods] = useState<Set<string>>(new Set())
+    const [selectedUserNames, setSelectedUserNames] = useState<Set<string>>(new Set())
+    const [companyUsers, setCompanyUsers] = useState<{ id: string; full_name: string }[]>([])
 
     const pillarSectionRefs = useRef<Map<string, HTMLElement>>(new Map())
 
@@ -411,6 +454,23 @@ export function OKRConfidenceMapPage() {
                 }
             })
     }, [])
+
+    useEffect(() => {
+        if (!selectedUnit) return
+        supabase
+            .from('user_business_units')
+            .select('users(id, full_name)')
+            .eq('business_unit_id', selectedUnit)
+            .then(({ data }) => {
+                if (data) {
+                    const users = (data as any[])
+                        .map((row: any) => row.users)
+                        .filter(Boolean)
+                        .sort((a: any, b: any) => a.full_name.localeCompare(b.full_name, 'pt-BR'))
+                    setCompanyUsers(users)
+                }
+            })
+    }, [selectedUnit])
 
     // Build all sections from data
     const allSections = useMemo<PillarSection[]>(() => {
@@ -469,6 +529,18 @@ export function OKRConfidenceMapPage() {
                             if (roots.length === 0) return null
                         }
 
+                        // Apply period filter
+                        if (selectedPeriods.size > 0) {
+                            roots = filterTreeByPeriod(roots, selectedPeriods)
+                            if (roots.length === 0) return null
+                        }
+
+                        // Apply user filter
+                        if (selectedUserNames.size > 0) {
+                            roots = filterTreeByUser(roots, selectedUserNames)
+                            if (roots.length === 0) return null
+                        }
+
                         return {
                             objective: group.objective,
                             roots,
@@ -477,7 +549,8 @@ export function OKRConfidenceMapPage() {
                     })
                     .filter((group): group is ObjectiveGroup => group !== null)
 
-                if ((normalizedSearch || teamMemberNames) && !pillarMatches && objectiveGroups.length === 0) return null
+                const hasActiveFilter = Boolean(normalizedSearch || teamMemberNames || selectedPeriods.size > 0 || selectedUserNames.size > 0)
+                if (hasActiveFilter && !pillarMatches && objectiveGroups.length === 0) return null
 
                 return {
                     pillar: section.pillar,
@@ -486,10 +559,10 @@ export function OKRConfidenceMapPage() {
                 }
             })
             .filter((section): section is PillarSection => section !== null)
-    }, [allSections, normalizedSearch, teamMemberNames])
+    }, [allSections, normalizedSearch, teamMemberNames, selectedPeriods, selectedUserNames])
 
     const globalSummary = useMemo(() => {
-        return allSections.reduce<ConfidenceSummary>((acc, s) => {
+        return filteredSections.reduce<ConfidenceSummary>((acc, s) => {
             acc.total += s.confidence.total
             acc.on_track += s.confidence.on_track
             acc.at_risk += s.confidence.at_risk
@@ -497,15 +570,15 @@ export function OKRConfidenceMapPage() {
             acc.not_set += s.confidence.not_set
             return acc
         }, { total: 0, on_track: 0, at_risk: 0, off_track: 0, not_set: 0 })
-    }, [allSections])
+    }, [filteredSections])
 
-    // Auto-expand everything when searching or filtering by team
+    // Auto-expand everything when searching or filtering
     useEffect(() => {
-        if (normalizedSearch || selectedTeamId) {
+        if (normalizedSearch || selectedTeamId || selectedPeriods.size > 0 || selectedUserNames.size > 0) {
             setCollapsedPillarIds(new Set())
             setCollapsedObjectiveIds(new Set())
         }
-    }, [normalizedSearch, selectedTeamId])
+    }, [normalizedSearch, selectedTeamId, selectedPeriods, selectedUserNames])
 
     // Initialize active pillar to first section
     useEffect(() => {
@@ -547,6 +620,24 @@ export function OKRConfidenceMapPage() {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' })
             setActivePillarId(pillarId)
         }
+    }
+
+    function togglePeriod(period: string) {
+        setSelectedPeriods((prev) => {
+            const next = new Set(prev)
+            if (next.has(period)) next.delete(period)
+            else next.add(period)
+            return next
+        })
+    }
+
+    function toggleUser(userName: string) {
+        setSelectedUserNames((prev) => {
+            const next = new Set(prev)
+            if (next.has(userName)) next.delete(userName)
+            else next.add(userName)
+            return next
+        })
     }
 
     function togglePillar(pillarId: string) {
@@ -619,31 +710,65 @@ export function OKRConfidenceMapPage() {
                     </div>
                 </div>
 
-                {/* Search + Team filter */}
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-[var(--color-text-secondary)]">
-                        {t('okr.flow.mapSearchLabel')}
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="flex-1">
-                            <Input
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder={t('okr.flow.mapSearchPlaceholder')}
-                                icon={<Search className="w-4 h-4" />}
-                            />
+                {/* Search + Filters */}
+                <div className="flex flex-col gap-2">
+                    <Input
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder={t('okr.flow.mapSearchPlaceholder')}
+                        icon={<Search className="w-4 h-4" />}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Period toggle chips */}
+                        <div className="flex items-center gap-1">
+                            {(['annual', 'q1', 'q2', 'q3', 'q4'] as const).map((period) => {
+                                const isSelected = selectedPeriods.has(period)
+                                const label = period === 'annual' ? 'Anual' : period.toUpperCase()
+                                return (
+                                    <button
+                                        key={period}
+                                        type="button"
+                                        onClick={() => togglePeriod(period)}
+                                        className={cn(
+                                            'h-9 px-3 text-xs font-medium rounded-lg border transition-all duration-200',
+                                            isSelected
+                                                ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
+                                                : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
+                                        )}
+                                    >
+                                        {label}
+                                    </button>
+                                )
+                            })}
                         </div>
+
+                        {/* Team dropdown */}
                         {teams.length > 0 && (
                             <select
                                 value={selectedTeamId ?? ''}
                                 onChange={(e) => setSelectedTeamId(e.target.value || null)}
-                                className="h-11 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent hover:border-[var(--color-text-muted)] transition-all duration-200 min-w-[160px]"
+                                className={cn(
+                                    'h-9 rounded-[var(--radius-lg)] border bg-[var(--color-surface)] px-3 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all duration-200 min-w-[140px]',
+                                    selectedTeamId
+                                        ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+                                        : 'border-[var(--color-border)] hover:border-[var(--color-text-muted)]'
+                                )}
                             >
                                 <option value="">{t('okr.flow.mapTeamFilterAll', 'Todos os times')}</option>
                                 {teams.map((team) => (
                                     <option key={team.id} value={team.id}>{team.name}</option>
                                 ))}
                             </select>
+                        )}
+
+                        {/* User multi-select */}
+                        {companyUsers.length > 0 && (
+                            <MultiSelectDropdown
+                                options={companyUsers.map((u) => ({ value: u.full_name, label: u.full_name }))}
+                                selected={selectedUserNames}
+                                onToggle={toggleUser}
+                                placeholder="Todos os usuários"
+                            />
                         )}
                     </div>
                 </div>
