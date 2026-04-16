@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, ChevronDown, Clock, ListTodo, Calendar, Plus, Trash2, Pencil, ClipboardList, User, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Clock, ListTodo, Calendar, Plus, Trash2, Pencil, User, AlertTriangle, FileText, BarChart2, ExternalLink, Link } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { supabase } from '../../lib/supabase'
@@ -18,6 +18,11 @@ const STATUS_CONFIG: Record<ActionPlanStatus, { label: string; className: string
     completed:    { label: 'Concluído',    className: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-800/50' },
 }
 
+interface TrackingLink {
+    url: string
+    label: string
+}
+
 interface ActionPlan {
     id: string
     owner_name: string | null
@@ -25,6 +30,7 @@ interface ActionPlan {
     title: string
     essential_tasks: string | null
     tracking_method: string | null
+    tracking_links: TrackingLink[] | null
     observations: string | null
     effectiveness: string | null
     status: ActionPlanStatus
@@ -35,10 +41,19 @@ interface ActionPlanTask {
     title: string
     is_done: boolean
     order_index: number
+    due_date: string | null
+    owner_name: string | null
+    notes: string | null
 }
 
 interface ActionPlanTaskRow extends ActionPlanTask {
     action_plan_id: string
+}
+
+interface NewTaskDraft {
+    title: string
+    dueDate: string
+    ownerName: string
 }
 
 interface ObjectiveBusinessUnitRow {
@@ -65,6 +80,11 @@ function isUniqueViolation(error: unknown): boolean {
     return (error as { code?: string }).code === '23505'
 }
 
+function formatShortDate(dateStr: string): string {
+    const d = new Date(dateStr + 'T00:00:00')
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
+
 export function ActionPlanList({ krId }: ActionPlanListProps) {
     const { t } = useTranslation()
     const { user } = useAuth()
@@ -75,7 +95,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     const [expandedPlanIds, setExpandedPlanIds] = useState<string[]>([])
     const [editingPlan, setEditingPlan] = useState<ActionPlan | null>(null)
     const [draftTasks, setDraftTasks] = useState<ActionPlanTask[]>([])
-    const [newTaskByPlanId, setNewTaskByPlanId] = useState<Record<string, string>>({})
+    const [newTaskDraftByPlanId, setNewTaskDraftByPlanId] = useState<Record<string, NewTaskDraft>>({})
     const [modalOpen, setModalOpen] = useState(false)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -84,13 +104,26 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-    // Form state
+    // Task modal state
+    const [editingTask, setEditingTask] = useState<ActionPlanTask | null>(null)
+    const [editingTaskPlanId, setEditingTaskPlanId] = useState<string | null>(null)
+    const [taskModalOpen, setTaskModalOpen] = useState(false)
+    const [taskTitle, setTaskTitle] = useState('')
+    const [taskDueDate, setTaskDueDate] = useState('')
+    const [taskOwnerName, setTaskOwnerName] = useState('')
+    const [taskNotes, setTaskNotes] = useState('')
+    const [savingTask, setSavingTask] = useState(false)
+    const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
+
+    // Plan form state
     const [title, setTitle] = useState('')
     const [ownerName, setOwnerName] = useState('')
     const [dueDate, setDueDate] = useState('')
     const [trackingMethod, setTrackingMethod] = useState('')
+    const [trackingLinks, setTrackingLinks] = useState<TrackingLink[]>([])
+    const [newLinkUrl, setNewLinkUrl] = useState('')
+    const [newLinkLabel, setNewLinkLabel] = useState('')
     const [observations, setObservations] = useState('')
-    const [effectiveness, setEffectiveness] = useState('')
     const [formStatus, setFormStatus] = useState<ActionPlanStatus>('not_started')
     const [newDraftTaskTitle, setNewDraftTaskTitle] = useState('')
 
@@ -140,7 +173,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             const planIds = normalizedPlans.map(plan => plan.id)
             const { data: tasksData, error: tasksError } = await supabase
                 .from('action_plan_tasks')
-                .select('id, action_plan_id, title, is_done, order_index')
+                .select('id, action_plan_id, title, is_done, order_index, due_date, owner_name, notes')
                 .in('action_plan_id', planIds)
                 .order('order_index', { ascending: true })
 
@@ -160,15 +193,14 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                     title: task.title,
                     is_done: task.is_done,
                     order_index: task.order_index,
+                    due_date: task.due_date,
+                    owner_name: task.owner_name,
+                    notes: task.notes,
                 })
             }
 
             setTasksByPlanId(groupedTasks)
-            setExpandedPlanIds((prev) => {
-                const validExpandedIds = prev.filter(id => planIds.includes(id))
-                if (validExpandedIds.length > 0) return validExpandedIds
-                return planIds.length > 0 ? [planIds[0]] : []
-            })
+            setExpandedPlanIds((prev) => prev.filter(id => planIds.includes(id)))
         } catch (loadError) {
             console.error('Error loading action plans:', loadError)
             setAssigneeOptions([])
@@ -220,8 +252,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             setOwnerName(currentPlan.owner_name || '')
             setDueDate(currentPlan.due_date || '')
             setTrackingMethod(currentPlan.tracking_method || '')
+            setTrackingLinks(currentPlan.tracking_links || [])
             setObservations(currentPlan.observations || '')
-            setEffectiveness(currentPlan.effectiveness || '')
             setFormStatus(currentPlan.status || 'not_started')
             setDraftTasks((tasksByPlanId[currentPlan.id] || []).map(task => ({ ...task })))
         } else {
@@ -230,8 +262,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             setOwnerName(defaultOwner)
             setDueDate('')
             setTrackingMethod('')
+            setTrackingLinks([])
             setObservations('')
-            setEffectiveness('')
             setFormStatus('not_started')
             setDraftTasks([])
         }
@@ -260,8 +292,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         owner_name: ownerName.trim() || null,
                         due_date: dueDate || null,
                         tracking_method: trackingMethod.trim() || null,
+                        tracking_links: trackingLinks,
                         observations: observations.trim() || null,
-                        effectiveness: effectiveness.trim() || null,
                         status: formStatus,
                     })
                     .eq('id', editingPlan.id)
@@ -290,8 +322,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         due_date: dueDate || null,
                         essential_tasks: null,
                         tracking_method: trackingMethod.trim() || null,
+                        tracking_links: trackingLinks,
                         observations: observations.trim() || null,
-                        effectiveness: effectiveness.trim() || null,
                         status: formStatus,
                     })
                     .select()
@@ -388,16 +420,19 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     }
 
     function addDraftTask() {
-        const taskTitle = newDraftTaskTitle.trim()
-        if (!taskTitle) return
+        const taskT = newDraftTaskTitle.trim()
+        if (!taskT) return
 
         setDraftTasks(prev => [
             ...prev,
             {
                 id: `draft-${Date.now()}-${prev.length}`,
-                title: taskTitle,
+                title: taskT,
                 is_done: false,
-                order_index: prev.length
+                order_index: prev.length,
+                due_date: null,
+                owner_name: null,
+                notes: null,
             }
         ])
         setNewDraftTaskTitle('')
@@ -411,9 +446,21 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
         ))
     }
 
+    function getNewTaskDraft(planId: string): NewTaskDraft {
+        return newTaskDraftByPlanId[planId] || { title: '', dueDate: '', ownerName: '' }
+    }
+
+    function updateNewTaskDraft(planId: string, patch: Partial<NewTaskDraft>) {
+        setNewTaskDraftByPlanId(prev => ({
+            ...prev,
+            [planId]: { ...getNewTaskDraft(planId), ...patch }
+        }))
+    }
+
     async function addTask(planId: string) {
-        const taskTitle = (newTaskByPlanId[planId] || '').trim()
-        if (!taskTitle) return
+        const draft = getNewTaskDraft(planId)
+        const taskT = draft.title.trim()
+        if (!taskT) return
 
         try {
             const planTasks = tasksByPlanId[planId] || []
@@ -425,20 +472,22 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 .from('action_plan_tasks')
                 .insert({
                     action_plan_id: planId,
-                    title: taskTitle,
+                    title: taskT,
                     is_done: false,
-                    order_index: nextIndex
+                    order_index: nextIndex,
+                    due_date: draft.dueDate || null,
+                    owner_name: draft.ownerName || null,
                 })
-                .select('id, title, is_done, order_index')
+                .select('id, title, is_done, order_index, due_date, owner_name, notes')
                 .single()
 
             if (insertError) throw insertError
 
             const insertedTask = data as ActionPlanTask
 
-            setNewTaskByPlanId(prev => ({
+            setNewTaskDraftByPlanId(prev => ({
                 ...prev,
-                [planId]: ''
+                [planId]: { title: '', dueDate: '', ownerName: '' }
             }))
             setTasksByPlanId(prev => ({
                 ...prev,
@@ -449,15 +498,71 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
         }
     }
 
+    function openTaskEditor(task: ActionPlanTask, planId: string) {
+        setEditingTask(task)
+        setEditingTaskPlanId(planId)
+        setTaskTitle(task.title)
+        setTaskDueDate(task.due_date || '')
+        setTaskOwnerName(task.owner_name || '')
+        setTaskNotes(task.notes || '')
+        setTaskModalOpen(true)
+    }
+
+    async function saveTask() {
+        if (!editingTask || !taskTitle.trim()) return
+
+        setSavingTask(true)
+        try {
+            const { data, error: updateError } = await supabase
+                .from('action_plan_tasks')
+                .update({
+                    title: taskTitle.trim(),
+                    due_date: taskDueDate || null,
+                    owner_name: taskOwnerName || null,
+                    notes: taskNotes.trim() || null,
+                })
+                .eq('id', editingTask.id)
+                .select('id, title, is_done, order_index, due_date, owner_name, notes')
+                .single()
+
+            if (updateError) throw updateError
+
+            if (editingTaskPlanId) {
+                setTasksByPlanId(prev => ({
+                    ...prev,
+                    [editingTaskPlanId]: (prev[editingTaskPlanId] || []).map(t =>
+                        t.id === editingTask.id ? (data as ActionPlanTask) : t
+                    )
+                }))
+            }
+
+            setTaskModalOpen(false)
+            setEditingTask(null)
+            setEditingTaskPlanId(null)
+        } catch (e) {
+            console.error('Error saving task:', e)
+        } finally {
+            setSavingTask(false)
+        }
+    }
+
     async function deleteTask(planId: string, taskId: string) {
+        setDeletingTaskId(taskId)
         try {
             await supabase.from('action_plan_tasks').delete().eq('id', taskId)
             setTasksByPlanId(prev => ({
                 ...prev,
                 [planId]: (prev[planId] || []).filter(task => task.id !== taskId)
             }))
+            if (taskModalOpen && editingTask?.id === taskId) {
+                setTaskModalOpen(false)
+                setEditingTask(null)
+                setEditingTaskPlanId(null)
+            }
         } catch (deleteError) {
             console.error('Error deleting task:', deleteError)
+        } finally {
+            setDeletingTaskId(null)
         }
     }
 
@@ -469,10 +574,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             const planId = editingPlan.id
             const planTitle = editingPlan.title
 
-            // Delete all tasks associated with the plan first
             await supabase.from('action_plan_tasks').delete().eq('action_plan_id', planId)
 
-            // Delete the plan itself
             const { error: deleteError } = await supabase
                 .from('action_plans')
                 .delete()
@@ -480,7 +583,6 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
 
             if (deleteError) throw deleteError
 
-            // Log the deletion
             await supabase.from('audit_logs').insert({
                 user_id: user.id,
                 user_email: user.email || '',
@@ -492,7 +594,6 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 new_value: null
             })
 
-            // Close modal and refresh
             setModalOpen(false)
             setEditingPlan(null)
             setShowDeleteConfirm(false)
@@ -543,7 +644,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         const planTasks = tasksByPlanId[planItem.id] || []
                         const planTaskCounts = taskCountsByPlanId[planItem.id] || { total: 0, done: 0 }
                         const isExpanded = expandedPlanIds.includes(planItem.id)
-                        const newTaskTitle = newTaskByPlanId[planItem.id] || ''
+                        const newTaskDraft = getNewTaskDraft(planItem.id)
                         const allDone = planTaskCounts.total > 0 && planTaskCounts.done === planTaskCounts.total
                         const someDone = planTaskCounts.done > 0 && !allDone
                         const progressPct = planTaskCounts.total > 0
@@ -565,7 +666,10 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                 )}
                             >
                                 {/* Plan header */}
-                                <div className="px-4 pt-3.5 pb-3">
+                                <div
+                                    className="px-4 pt-3.5 pb-3 cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors"
+                                    onClick={() => togglePlanExpanded(planItem.id)}
+                                >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 flex-wrap">
@@ -579,7 +683,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                 )}
                                                 <select
                                                     value={planItem.status}
-                                                    onChange={(e) => updatePlanStatus(planItem.id, e.target.value as ActionPlanStatus)}
+                                                    onChange={(e) => { e.stopPropagation(); updatePlanStatus(planItem.id, e.target.value as ActionPlanStatus) }}
                                                     onClick={(e) => e.stopPropagation()}
                                                     className={cn(
                                                         'text-xs font-semibold px-2 py-0.5 rounded-full border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] appearance-none',
@@ -592,15 +696,15 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                 </select>
                                             </div>
                                             {(planItem.due_date || planItem.owner_name) && (
-                                                <div className="flex items-center gap-4 mt-1.5 text-xs text-[var(--color-text-muted)]">
+                                                <div className="flex items-center gap-2 mt-1.5">
                                                     {planItem.due_date && (
-                                                        <span className="flex items-center gap-1">
+                                                        <span className="flex items-center gap-1 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-2 py-0.5 rounded-md">
                                                             <Calendar className="w-3 h-3" />
                                                             {formatDate(planItem.due_date)}
                                                         </span>
                                                     )}
                                                     {planItem.owner_name && (
-                                                        <span className="flex items-center gap-1">
+                                                        <span className="flex items-center gap-1 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-2 py-0.5 rounded-md">
                                                             <User className="w-3 h-3" />
                                                             <span className="truncate max-w-[180px]">{planItem.owner_name}</span>
                                                         </span>
@@ -613,7 +717,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                             <button
                                                 type="button"
                                                 className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-                                                onClick={() => openEditor(planItem)}
+                                                onClick={(e) => { e.stopPropagation(); openEditor(planItem) }}
                                                 title={t('actionPlan.edit')}
                                             >
                                                 <Pencil className="w-3.5 h-3.5" />
@@ -621,23 +725,12 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                             <button
                                                 type="button"
                                                 className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    setEditingPlan(planItem)
-                                                    setShowDeleteConfirm(true)
-                                                }}
+                                                onClick={(e) => { e.stopPropagation(); setEditingPlan(planItem); setShowDeleteConfirm(true) }}
                                                 title={t('actionPlan.delete', 'Deletar')}
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </button>
-                                            <button
-                                                type="button"
-                                                className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-                                                onClick={() => togglePlanExpanded(planItem.id)}
-                                                title={isExpanded ? t('actionPlan.collapsePlan') : t('actionPlan.expandPlan')}
-                                            >
-                                                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', isExpanded ? 'rotate-180' : '')} />
-                                            </button>
+                                            <ChevronDown className={cn('w-3.5 h-3.5 transition-transform text-[var(--color-text-muted)]', isExpanded ? 'rotate-180' : '')} />
                                         </div>
                                     </div>
                                 </div>
@@ -658,7 +751,47 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                 )}
 
                                 {isExpanded && (
-                                    <div className="space-y-2 pt-3 pb-4 px-4 border-t border-[var(--color-border-subtle)]">
+                                    <div className="pt-3 pb-4 px-4 border-t border-[var(--color-border-subtle)] space-y-3">
+                                        {/* Observations & tracking method */}
+                                        {(planItem.observations || planItem.tracking_method || (planItem.tracking_links && planItem.tracking_links.length > 0)) && (
+                                            <div className="space-y-2 pb-1">
+                                                {planItem.observations && (
+                                                    <div className="flex gap-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-subtle)]/60 rounded-lg px-3 py-2">
+                                                        <FileText className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--color-text-muted)]" />
+                                                        <p className="leading-relaxed">{planItem.observations}</p>
+                                                    </div>
+                                                )}
+                                                {(planItem.tracking_method || (planItem.tracking_links && planItem.tracking_links.length > 0)) && (
+                                                    <div className="flex gap-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-subtle)]/60 rounded-lg px-3 py-2">
+                                                        <BarChart2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--color-text-muted)]" />
+                                                        <div className="flex-1 space-y-2">
+                                                            {planItem.tracking_method && (
+                                                                <p className="leading-relaxed">{planItem.tracking_method}</p>
+                                                            )}
+                                                            {planItem.tracking_links && planItem.tracking_links.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {planItem.tracking_links.map((link, i) => (
+                                                                        <a
+                                                                            key={i}
+                                                                            href={link.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-surface)] border border-[var(--color-border)] px-2 py-1 rounded-md hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                                        >
+                                                                            <ExternalLink className="w-3 h-3 shrink-0" />
+                                                                            {link.label || link.url}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Tasks section */}
                                         <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
                                             {t('actionPlan.tasksTitle')}
                                         </p>
@@ -668,12 +801,12 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                 {planTasks.map(task => (
                                                     <div
                                                         key={task.id}
-                                                        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]/40"
+                                                        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]/40 group/task"
                                                     >
                                                         <button
                                                             type="button"
                                                             className={cn(
-                                                                'flex items-center justify-center w-7 h-7 rounded-lg border transition-colors',
+                                                                'flex items-center justify-center w-7 h-7 rounded-lg border transition-colors shrink-0',
                                                                 task.is_done
                                                                     ? 'bg-[var(--color-success-muted)] border-[var(--color-success)]/40 text-[var(--color-success)]'
                                                                     : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
@@ -683,17 +816,40 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                         >
                                                             {task.is_done ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                                                         </button>
-                                                        <span className={cn('text-sm flex-1', task.is_done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]')}>
+                                                        <span className={cn('text-sm flex-1 min-w-0', task.is_done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]')}>
                                                             {task.title}
                                                         </span>
-                                                        <button
-                                                            type="button"
-                                                            className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
-                                                            onClick={() => deleteTask(planItem.id, task.id)}
-                                                            aria-label={t('actionPlan.taskDelete')}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                        {/* Task metadata badges */}
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            {task.due_date && (
+                                                                <span className="flex items-center gap-0.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-1.5 py-0.5 rounded">
+                                                                    <Calendar className="w-3 h-3" />
+                                                                    {formatShortDate(task.due_date)}
+                                                                </span>
+                                                            )}
+                                                            {task.owner_name && (
+                                                                <span className="flex items-center gap-0.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-1.5 py-0.5 rounded max-w-[110px]">
+                                                                    <User className="w-3 h-3 shrink-0" />
+                                                                    <span className="truncate">{task.owner_name}</span>
+                                                                </span>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors opacity-0 group-hover/task:opacity-100"
+                                                                onClick={() => openTaskEditor(task, planItem.id)}
+                                                                aria-label="Editar tarefa"
+                                                            >
+                                                                <Pencil className="w-3 h-3" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors opacity-0 group-hover/task:opacity-100"
+                                                                onClick={() => deleteTask(planItem.id, task.id)}
+                                                                aria-label={t('actionPlan.taskDelete')}
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -703,18 +859,52 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                             </div>
                                         )}
 
-                                        <div className="flex items-end gap-2 pt-1">
-                                            <div className="flex-1">
-                                                <Input
-                                                    label={t('actionPlan.newTaskLabel')}
-                                                    value={newTaskTitle}
-                                                    onChange={(e) => setNewTaskByPlanId(prev => ({ ...prev, [planItem.id]: e.target.value }))}
-                                                    placeholder={t('actionPlan.newTaskPlaceholder')}
-                                                />
+                                        {/* Add task form — expanded with title + date + owner */}
+                                        <div className="space-y-2 pt-1">
+                                            <div className="flex items-end gap-2">
+                                                <div className="flex-1">
+                                                    <Input
+                                                        label={t('actionPlan.newTaskLabel')}
+                                                        value={newTaskDraft.title}
+                                                        onChange={(e) => updateNewTaskDraft(planItem.id, { title: e.target.value })}
+                                                        placeholder={t('actionPlan.newTaskPlaceholder')}
+                                                        onKeyDown={(e) => { if (e.key === 'Enter') addTask(planItem.id) }}
+                                                    />
+                                                </div>
+                                                <Button variant="outline" onClick={() => addTask(planItem.id)} disabled={!newTaskDraft.title.trim()}>
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
                                             </div>
-                                            <Button variant="outline" onClick={() => addTask(planItem.id)} disabled={!newTaskTitle.trim()}>
-                                                <Plus className="w-4 h-4" />
-                                            </Button>
+                                            {newTaskDraft.title.trim() && (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
+                                                            Prazo (opcional)
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            value={newTaskDraft.dueDate}
+                                                            onChange={(e) => updateNewTaskDraft(planItem.id, { dueDate: e.target.value })}
+                                                            className="w-full h-9 px-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
+                                                            Responsável (opcional)
+                                                        </label>
+                                                        <select
+                                                            value={newTaskDraft.ownerName}
+                                                            onChange={(e) => updateNewTaskDraft(planItem.id, { ownerName: e.target.value })}
+                                                            className="w-full h-9 px-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                                        >
+                                                            <option value="">Sem responsável</option>
+                                                            {assigneeOptions.map((a) => (
+                                                                <option key={a.id} value={a.name}>{a.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -732,7 +922,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 </div>
             )}
 
-            {/* Delete confirmation modal */}
+            {/* Delete plan confirmation modal */}
             <Dialog.Root open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
@@ -767,7 +957,104 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 </Dialog.Portal>
             </Dialog.Root>
 
-            {/* Editor modal */}
+            {/* Task editor modal */}
+            <Dialog.Root
+                open={taskModalOpen}
+                onOpenChange={(open) => {
+                    setTaskModalOpen(open)
+                    if (!open) {
+                        setEditingTask(null)
+                        setEditingTaskPlanId(null)
+                    }
+                }}
+            >
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95">
+                        <div className="flex items-center justify-between p-5 border-b border-[var(--color-border)]">
+                            <Dialog.Title className="text-base font-semibold text-[var(--color-text-primary)]">
+                                Editar tarefa
+                            </Dialog.Title>
+                            <Dialog.Close asChild>
+                                <button className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors">
+                                    ✕
+                                </button>
+                            </Dialog.Close>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            <Input
+                                label="Título *"
+                                value={taskTitle}
+                                onChange={(e) => setTaskTitle(e.target.value)}
+                                placeholder="Descrição da tarefa"
+                            />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input
+                                    type="date"
+                                    label="Prazo"
+                                    value={taskDueDate}
+                                    onChange={(e) => setTaskDueDate(e.target.value)}
+                                    icon={<Calendar className="w-4 h-4" />}
+                                />
+                                <div>
+                                    <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                        Responsável
+                                    </label>
+                                    <select
+                                        value={taskOwnerName}
+                                        onChange={(e) => setTaskOwnerName(e.target.value)}
+                                        className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                    >
+                                        <option value="">Sem responsável</option>
+                                        {taskOwnerName && !assigneeOptions.some(a => a.name === taskOwnerName) && (
+                                            <option value={taskOwnerName}>{taskOwnerName}</option>
+                                        )}
+                                        {assigneeOptions.map((a) => (
+                                            <option key={a.id} value={a.name}>{a.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                    Notas
+                                </label>
+                                <textarea
+                                    value={taskNotes}
+                                    onChange={(e) => setTaskNotes(e.target.value)}
+                                    placeholder="Observações sobre esta tarefa..."
+                                    rows={2}
+                                    className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 p-5 border-t border-[var(--color-border)]">
+                            <Button
+                                variant="danger"
+                                onClick={() => editingTask && editingTaskPlanId && deleteTask(editingTaskPlanId, editingTask.id)}
+                                loading={deletingTaskId === editingTask?.id}
+                            >
+                                <Trash2 className="w-4 h-4 mr-1.5" />
+                                Deletar
+                            </Button>
+                            <div className="flex items-center gap-3">
+                                <Button variant="ghost" onClick={() => setTaskModalOpen(false)}>
+                                    {t('common.cancel')}
+                                </Button>
+                                <Button variant="primary" onClick={saveTask} loading={savingTask} disabled={!taskTitle.trim()}>
+                                    {t('common.save')}
+                                </Button>
+                            </div>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+
+            {/* Plan editor modal */}
             <Dialog.Root
                 open={modalOpen}
                 onOpenChange={(open) => {
@@ -923,6 +1210,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                 value={newDraftTaskTitle}
                                                 onChange={(e) => setNewDraftTaskTitle(e.target.value)}
                                                 placeholder={t('actionPlan.newTaskPlaceholder')}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') addDraftTask() }}
                                             />
                                         </div>
                                         <Button variant="outline" onClick={addDraftTask} disabled={!newDraftTaskTitle.trim()}>
@@ -932,17 +1220,93 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                    {t('actionPlan.fields.trackingMethod')}
-                                </label>
-                                <textarea
-                                    value={trackingMethod}
-                                    onChange={(e) => setTrackingMethod(e.target.value)}
-                                    placeholder={t('actionPlan.fields.trackingMethodPlaceholder')}
-                                    rows={2}
-                                    className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
-                                />
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                                        {t('actionPlan.fields.trackingMethod')}
+                                    </label>
+                                    <textarea
+                                        value={trackingMethod}
+                                        onChange={(e) => setTrackingMethod(e.target.value)}
+                                        placeholder={t('actionPlan.fields.trackingMethodPlaceholder')}
+                                        rows={2}
+                                        className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+                                    />
+                                </div>
+
+                                {/* Tracking links */}
+                                <div className="space-y-2">
+                                    <p className="text-xs font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
+                                        <Link className="w-3.5 h-3.5" />
+                                        Links de acompanhamento
+                                    </p>
+
+                                    {trackingLinks.length > 0 && (
+                                        <div className="space-y-1.5">
+                                            {trackingLinks.map((link, i) => (
+                                                <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]/40">
+                                                    <ExternalLink className="w-3.5 h-3.5 shrink-0 text-[var(--color-primary)]" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{link.label || link.url}</p>
+                                                        {link.label && (
+                                                            <p className="text-xs text-[var(--color-text-muted)] truncate">{link.url}</p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setTrackingLinks(prev => prev.filter((_, idx) => idx !== i))}
+                                                        className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors shrink-0"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="url"
+                                            value={newLinkUrl}
+                                            onChange={(e) => setNewLinkUrl(e.target.value)}
+                                            placeholder="https://..."
+                                            className="flex-1 h-9 px-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && newLinkUrl.trim()) {
+                                                    setTrackingLinks(prev => [...prev, { url: newLinkUrl.trim(), label: newLinkLabel.trim() }])
+                                                    setNewLinkUrl('')
+                                                    setNewLinkLabel('')
+                                                }
+                                            }}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={newLinkLabel}
+                                            onChange={(e) => setNewLinkLabel(e.target.value)}
+                                            placeholder="Rótulo (opcional)"
+                                            className="w-36 h-9 px-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && newLinkUrl.trim()) {
+                                                    setTrackingLinks(prev => [...prev, { url: newLinkUrl.trim(), label: newLinkLabel.trim() }])
+                                                    setNewLinkUrl('')
+                                                    setNewLinkLabel('')
+                                                }
+                                            }}
+                                        />
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => {
+                                                if (!newLinkUrl.trim()) return
+                                                setTrackingLinks(prev => [...prev, { url: newLinkUrl.trim(), label: newLinkLabel.trim() }])
+                                                setNewLinkUrl('')
+                                                setNewLinkLabel('')
+                                            }}
+                                            disabled={!newLinkUrl.trim()}
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
@@ -953,19 +1317,6 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                     value={observations}
                                     onChange={(e) => setObservations(e.target.value)}
                                     placeholder={t('actionPlan.fields.observationsPlaceholder')}
-                                    rows={2}
-                                    className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                    {t('actionPlan.fields.effectiveness')}
-                                </label>
-                                <textarea
-                                    value={effectiveness}
-                                    onChange={(e) => setEffectiveness(e.target.value)}
-                                    placeholder={t('actionPlan.fields.effectivenessPlaceholder')}
                                     rows={2}
                                     className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
                                 />

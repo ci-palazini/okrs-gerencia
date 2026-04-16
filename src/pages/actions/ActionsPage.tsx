@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calendar, CheckCircle2, ChevronDown, Clock, ListTodo, Pencil, Trash2, X } from 'lucide-react'
+import { BarChart2, Calendar, CheckCircle2, ChevronDown, Clock, ExternalLink, FileText, ListTodo, Pencil, Trash2, User, X } from 'lucide-react'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
@@ -12,6 +12,11 @@ import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 import { cn } from '../../lib/utils'
 import { getDeadlineAlert } from '../../lib/dateUtils'
 import * as Dialog from '@radix-ui/react-dialog'
+
+function formatShortDate(dateStr: string): string {
+    const d = new Date(dateStr + 'T00:00:00')
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-purple-500', 'bg-green-600', 'bg-orange-500',
@@ -42,6 +47,8 @@ interface ActionPlanTask {
     title: string
     is_done: boolean
     order_index: number
+    due_date: string | null
+    owner_name: string | null
 }
 
 interface ActionPlanWithRelations {
@@ -52,6 +59,7 @@ interface ActionPlanWithRelations {
     key_result_id: string
     status: ActionPlanStatus
     tracking_method?: string | null
+    tracking_links?: Array<{ url: string; label: string }> | null
     observations?: string | null
     effectiveness?: string | null
     key_result: {
@@ -103,7 +111,6 @@ export function ActionsPage() {
         due_date: '',
         tracking_method: '',
         observations: '',
-        effectiveness: '',
     })
 
     useEffect(() => {
@@ -173,6 +180,7 @@ export function ActionsPage() {
                     key_result_id,
                     status,
                     tracking_method,
+                    tracking_links,
                     observations,
                     effectiveness,
                     key_result:key_results(
@@ -201,7 +209,7 @@ export function ActionsPage() {
             if (filtered.length > 0) {
                 const { data: tasksData } = await supabase
                     .from('action_plan_tasks')
-                    .select('id, action_plan_id, title, is_done, order_index')
+                    .select('id, action_plan_id, title, is_done, order_index, due_date, owner_name')
                     .in('action_plan_id', filtered.map(p => p.id))
                     .order('order_index', { ascending: true })
 
@@ -269,7 +277,6 @@ export function ActionsPage() {
             due_date: plan.due_date || '',
             tracking_method: (plan as any).tracking_method || '',
             observations: (plan as any).observations || '',
-            effectiveness: (plan as any).effectiveness || '',
         })
         setModalOpen(true)
     }
@@ -287,7 +294,6 @@ export function ActionsPage() {
                     due_date: editFormData.due_date || null,
                     tracking_method: editFormData.tracking_method.trim() || null,
                     observations: editFormData.observations.trim() || null,
-                    effectiveness: editFormData.effectiveness.trim() || null,
                 })
                 .eq('id', editingPlan.id)
 
@@ -601,9 +607,49 @@ export function ActionsPage() {
                                     </div>
                                 )}
 
-                                {/* Expanded tasks */}
+                                {/* Expanded content: observations + tasks */}
                                 {isExpanded && (
-                                    <div className="border-t border-[var(--color-border-subtle)] px-4 py-3 space-y-1">
+                                    <div className="border-t border-[var(--color-border-subtle)] px-4 py-3 space-y-2">
+                                        {/* Observations & tracking method */}
+                                        {(p.observations || p.tracking_method || (p.tracking_links && p.tracking_links.length > 0)) && (
+                                            <div className="space-y-1.5 pb-1">
+                                                {p.observations && (
+                                                    <div className="flex gap-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-subtle)]/60 rounded-lg px-3 py-2">
+                                                        <FileText className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--color-text-muted)]" />
+                                                        <p className="leading-relaxed">{p.observations}</p>
+                                                    </div>
+                                                )}
+                                                {(p.tracking_method || (p.tracking_links && p.tracking_links.length > 0)) && (
+                                                    <div className="flex gap-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-subtle)]/60 rounded-lg px-3 py-2">
+                                                        <BarChart2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--color-text-muted)]" />
+                                                        <div className="flex-1 space-y-2">
+                                                            {p.tracking_method && (
+                                                                <p className="leading-relaxed">{p.tracking_method}</p>
+                                                            )}
+                                                            {p.tracking_links && p.tracking_links.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {p.tracking_links.map((link, i) => (
+                                                                        <a
+                                                                            key={i}
+                                                                            href={link.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-surface)] border border-[var(--color-border)] px-2 py-1 rounded-md hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                                        >
+                                                                            <ExternalLink className="w-3 h-3 shrink-0" />
+                                                                            {link.label || link.url}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Tasks */}
                                         {tasks.map((task, index) => (
                                             <div
                                                 key={task.id}
@@ -623,18 +669,32 @@ export function ActionsPage() {
                                                     }
                                                 </button>
                                                 <span className={cn(
-                                                    'text-sm flex-1 leading-snug',
+                                                    'text-sm flex-1 leading-snug min-w-0',
                                                     task.is_done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]'
                                                 )}>
                                                     {task.title}
                                                 </span>
-                                                <button
-                                                    type="button"
-                                                    className="p-1 rounded text-transparent group-hover/task:text-[var(--color-text-muted)] hover:!text-[var(--color-danger)] transition-colors"
-                                                    onClick={() => deleteTask(p.id, task.id)}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    {task.due_date && (
+                                                        <span className="flex items-center gap-0.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-1.5 py-0.5 rounded">
+                                                            <Calendar className="w-3 h-3" />
+                                                            {formatShortDate(task.due_date)}
+                                                        </span>
+                                                    )}
+                                                    {task.owner_name && (
+                                                        <span className="flex items-center gap-0.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-1.5 py-0.5 rounded max-w-[110px]">
+                                                            <User className="w-3 h-3 shrink-0" />
+                                                            <span className="truncate">{task.owner_name}</span>
+                                                        </span>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        className="p-1 rounded text-transparent group-hover/task:text-[var(--color-text-muted)] hover:!text-[var(--color-danger)] transition-colors"
+                                                        onClick={() => deleteTask(p.id, task.id)}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                         {tasks.length === 0 && (
@@ -739,18 +799,6 @@ export function ActionsPage() {
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                    {t('actionPlan.fields.effectiveness')}
-                                </label>
-                                <textarea
-                                    value={editFormData.effectiveness}
-                                    onChange={(e) => setEditFormData(p => ({ ...p, effectiveness: e.target.value }))}
-                                    placeholder={t('actionPlan.fields.effectivenessPlaceholder')}
-                                    rows={2}
-                                    className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
-                                />
-                            </div>
                         </div>
 
                         <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border)]">
