@@ -345,6 +345,14 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
                         {node.code}
                     </span>
 
+                    <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] min-w-[30px] text-center">
+                        {node.scope === 'annual'
+                            ? 'Anual'
+                            : node.quarter
+                            ? `Q${node.quarter}`
+                            : '—'}
+                    </span>
+
                     <span className="flex-1 text-sm text-[var(--color-text-primary)] truncate">
                         {node.title}
                     </span>

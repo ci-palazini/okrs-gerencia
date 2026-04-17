@@ -56,10 +56,10 @@ export function OKRsPage() {
                 // Calculate deadline statistics for active objectives
                 const activeObjectives = pillarObjectives.filter((obj) => obj.is_active !== false)
                 const overdueCount = activeObjectives.filter(obj => 
-                    obj.due_date && calculateDeadlineStatus(obj.due_date, obj.is_active === false) === 'overdue'
+                    obj.due_date && calculateDeadlineStatus(obj.due_date, obj.is_completed) === 'overdue'
                 ).length
                 const urgentCount = activeObjectives.filter(obj => 
-                    obj.due_date && calculateDeadlineStatus(obj.due_date, obj.is_active === false) === 'urgent'
+                    obj.due_date && calculateDeadlineStatus(obj.due_date, obj.is_completed) === 'urgent'
                 ).length
 
                 return {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Plus, Search, Trash2, Pencil } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Plus, Search, Trash2, Pencil, CheckCircle2, Circle } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
@@ -125,6 +125,8 @@ export function PillarOKRsPage() {
         getSubtreeSize,
         deleteKR,
         loadData,
+        toggleKRComplete,
+        toggleObjectiveComplete,
     } = useCascadeOKRData(pillarId)
 
     const [searchTerm, setSearchTerm] = useState('')
@@ -369,7 +371,7 @@ export function PillarOKRsPage() {
                                                     {objective.due_date && (
                                                         <DeadlineBadge
                                                             dueDate={objective.due_date}
-                                                            isCompleted={objective.is_active === false}
+                                                            isCompleted={objective.is_completed}
                                                             size="sm"
                                                         />
                                                     )}
@@ -391,6 +393,17 @@ export function PillarOKRsPage() {
                                         </div>
 
                                         <div className="flex items-center gap-2 flex-wrap justify-end">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className={objective.is_completed ? "text-[var(--color-success)]" : ""}
+                                                onClick={() => toggleObjectiveComplete(objective.id, !objective.is_completed)}
+                                            >
+                                                {objective.is_completed
+                                                    ? <><CheckCircle2 className="w-3 h-3 mr-1" />{t('okr.completed')}</>
+                                                    : <><Circle className="w-3 h-3 mr-1" />{t('okr.markComplete')}</>
+                                                }
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -461,7 +474,7 @@ export function PillarOKRsPage() {
                                                                         {root.due_date && (
                                                                             <DeadlineBadge
                                                                                 dueDate={root.due_date}
-                                                                                isCompleted={root.is_active === false || (root.progress ?? 0) >= 100}
+                                                                                isCompleted={root.is_completed}
                                                                                 size="sm"
                                                                             />
                                                                         )}
@@ -525,6 +538,17 @@ export function PillarOKRsPage() {
                                                         {/* Actions row — visible on hover (desktop) or always (mobile) */}
                                                         <div className="px-4 pb-3 flex items-center justify-between gap-2 border-t border-[var(--color-border-subtle)] pt-2.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                             <div className="flex items-center gap-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className={root.is_completed ? "text-[var(--color-success)]" : ""}
+                                                                    onClick={() => toggleKRComplete(root.id, !root.is_completed)}
+                                                                >
+                                                                    {root.is_completed
+                                                                        ? <><CheckCircle2 className="w-3 h-3 mr-1" />{t('okr.completed')}</>
+                                                                        : <><Circle className="w-3 h-3 mr-1" />{t('okr.markComplete')}</>
+                                                                    }
+                                                                </Button>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"

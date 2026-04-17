@@ -72,7 +72,7 @@ export function useDeadlineAlerts(
     objectives.forEach(objective => {
       if (!objective.due_date) return
       
-      const isCompleted = !objective.is_active
+      const isCompleted = objective.is_completed
       if (!includeCompleted && isCompleted) return
 
       const alert = getDeadlineAlert(objective.due_date, isCompleted, locale)
@@ -93,7 +93,7 @@ export function useDeadlineAlerts(
     keyResults.forEach(kr => {
       if (!kr.due_date) return
       
-      const isCompleted = !kr.is_active
+      const isCompleted = kr.is_completed
       if (!includeCompleted && isCompleted) return
 
       const alert = getDeadlineAlert(kr.due_date, isCompleted, locale)

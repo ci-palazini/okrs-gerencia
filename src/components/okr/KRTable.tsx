@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Edit3, Trash2, X, ChevronDown, CalendarRange } from 'lucide-react'
+import { Edit3, Trash2, X, ChevronDown, CalendarRange, CheckCircle2, Circle } from 'lucide-react'
 import { ProgressBar } from '../ui/ProgressBar'
 import { Badge } from '../ui/Badge'
 import { ConfidenceEmoji } from '../ui/ConfidenceIndicator'
@@ -25,6 +25,7 @@ interface KeyResultRow {
     objective_id?: string
     due_date?: string | null
     is_active?: boolean
+    is_completed?: boolean
     // Quarterly data
     baseline?: number | null
     target?: number | null
@@ -37,6 +38,7 @@ interface KRTableProps {
     onDelete?: (krId: string) => void
     onUpdateConfidence?: (krId: string, confidence: ConfidenceLevel) => void
     onUpdateValue?: (krId: string, field: 'baseline' | 'target' | 'actual', value: number | null) => void
+    onToggleComplete?: (krId: string, isCompleted: boolean) => void
     compact?: boolean
     showDataColumns?: boolean // Show Baseline, Target, Real columns
 }
@@ -48,7 +50,8 @@ export function KRTable({
     onDelete,
     onUpdateConfidence,
     onUpdateValue,
-    renderExpandedRow, // New prop
+    onToggleComplete,
+    renderExpandedRow,
     compact = false,
     showDataColumns = true
 }: KRTableProps & { renderExpandedRow?: (kr: KeyResultRow) => React.ReactNode }) {
@@ -57,7 +60,7 @@ export function KRTable({
     const [editValue, setEditValue] = useState<string>('')
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
     const { t } = useTranslation()
-    const hasActions = Boolean(onEdit || onDelete)
+    const hasActions = Boolean(onEdit || onDelete || onToggleComplete)
     const expandedColSpan = (showDataColumns ? 10 : 7) + (hasActions ? 1 : 0)
 
     const toggleExpand = (krId: string) => {
@@ -137,6 +140,7 @@ export function KRTable({
                                 <tr
                                     className={cn(
                                         "group transition-colors",
+                                        kr.is_completed && "opacity-60",
                                         isExpanded ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
                                     )}
                                 >
@@ -171,7 +175,7 @@ export function KRTable({
 
                                     {/* Title */}
                                     <td className="px-3 py-3">
-                                        <p className="font-medium text-[var(--color-text-primary)] text-sm cursor-pointer hover:text-[var(--color-primary)]" onClick={() => renderExpandedRow && toggleExpand(kr.id)}>
+                                        <p className={cn("font-medium text-[var(--color-text-primary)] text-sm cursor-pointer hover:text-[var(--color-primary)]", kr.is_completed && "line-through text-[var(--color-text-muted)]")} onClick={() => renderExpandedRow && toggleExpand(kr.id)}>
                                             {kr.title}
                                         </p>
                                     </td>
@@ -339,9 +343,9 @@ export function KRTable({
                                     {/* Deadline */}
                                     <td className="px-3 py-3 text-center">
                                         {kr.due_date ? (
-                                            <DeadlineIndicator 
-                                                dueDate={kr.due_date} 
-                                                isCompleted={kr.progress === 100 || kr.is_active === false}
+                                            <DeadlineIndicator
+                                                dueDate={kr.due_date}
+                                                isCompleted={kr.is_completed === true}
                                                 variant="both"
                                             />
                                         ) : (
@@ -352,6 +356,23 @@ export function KRTable({
                                     {/* Actions */}
                                     {hasActions && (
                                         <td className="px-3 py-3 text-right whitespace-nowrap">
+                                            {onToggleComplete && (
+                                                <button
+                                                    onClick={() => onToggleComplete(kr.id, !kr.is_completed)}
+                                                    className={cn(
+                                                        "p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all mr-1",
+                                                        kr.is_completed
+                                                            ? "text-[var(--color-success)] hover:bg-[var(--color-success)]/10"
+                                                            : "text-[var(--color-text-muted)] hover:text-[var(--color-success)] hover:bg-[var(--color-success)]/10"
+                                                    )}
+                                                    title={kr.is_completed ? t('okr.markIncomplete') : t('okr.markComplete')}
+                                                >
+                                                    {kr.is_completed
+                                                        ? <CheckCircle2 className="w-4 h-4" />
+                                                        : <Circle className="w-4 h-4" />
+                                                    }
+                                                </button>
+                                            )}
                                             {onEdit && (
                                                 <button
                                                     onClick={() => onEdit(kr)}

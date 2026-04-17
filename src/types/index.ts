@@ -43,6 +43,7 @@ export interface Objective {
     year: number
     due_date: string | null
     is_active: boolean
+    is_completed: boolean
     created_at?: string
     updated_at?: string
 }
@@ -76,6 +77,7 @@ export interface KeyResult {
     confidence: ConfidenceLevel
     notes?: string | null
     due_date: string | null
+    is_completed: boolean
     created_at?: string
     updated_at?: string
 }

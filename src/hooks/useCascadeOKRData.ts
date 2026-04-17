@@ -26,6 +26,7 @@ export interface CascadeObjective {
     year: number
     due_date: string | null
     is_active: boolean
+    is_completed: boolean
 }
 
 export interface CascadeObjectiveWithRelations {
@@ -61,6 +62,7 @@ export interface CascadeKeyResult {
     confidence: ConfidenceLevel
     notes: string | null
     due_date: string | null
+    is_completed: boolean
 }
 
 export interface CascadeTreeNode extends CascadeKeyResult {
@@ -541,6 +543,68 @@ export function useCascadeOKRData(filterPillar?: string | null) {
         }
     }, [objectives, user])
 
+    const toggleKRComplete = useCallback(async (krId: string, isCompleted: boolean) => {
+        try {
+            const kr = keyResults.find((item) => item.id === krId)
+            const { error } = await supabase
+                .from('key_results')
+                .update({ is_completed: isCompleted })
+                .eq('id', krId)
+
+            if (error) throw error
+
+            setKeyResults((prev) => prev.map((item) => (
+                item.id === krId ? { ...item, is_completed: isCompleted } : item
+            )))
+
+            if (user && kr) {
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email,
+                    action: 'update',
+                    entity_type: 'key_results',
+                    entity_id: krId,
+                    entity_name: `${kr.title} - is_completed`,
+                    old_value: { is_completed: kr.is_completed },
+                    new_value: { is_completed: isCompleted },
+                })
+            }
+        } catch (error) {
+            console.error('Error toggling KR completion:', error)
+        }
+    }, [keyResults, user])
+
+    const toggleObjectiveComplete = useCallback(async (objectiveId: string, isCompleted: boolean) => {
+        try {
+            const objective = objectives.find((item) => item.id === objectiveId)
+            const { error } = await supabase
+                .from('objectives')
+                .update({ is_completed: isCompleted })
+                .eq('id', objectiveId)
+
+            if (error) throw error
+
+            setObjectives((prev) => prev.map((item) => (
+                item.id === objectiveId ? { ...item, is_completed: isCompleted } : item
+            )))
+
+            if (user && objective) {
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email,
+                    action: 'update',
+                    entity_type: 'objectives',
+                    entity_id: objectiveId,
+                    entity_name: `${objective.title} - is_completed`,
+                    old_value: { is_completed: objective.is_completed },
+                    new_value: { is_completed: isCompleted },
+                })
+            }
+        } catch (error) {
+            console.error('Error toggling objective completion:', error)
+        }
+    }, [objectives, user])
+
     const upsertMonthlyData = useCallback(async (
         krId: string,
         month: number,
@@ -628,5 +692,7 @@ export function useCascadeOKRData(filterPillar?: string | null) {
         upsertMonthlyData,
         deleteKR,
         deleteObjective,
+        toggleKRComplete,
+        toggleObjectiveComplete,
     }
 }
