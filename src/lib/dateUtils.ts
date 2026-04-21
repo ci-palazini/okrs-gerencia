@@ -16,7 +16,7 @@ export function calculateDeadlineStatus(
   isCompleted: boolean = false
 ): DeadlineStatus {
   if (isCompleted) {
-    return 'on-track'
+    return 'completed'
   }
 
   const days = getDaysUntilDeadline(dueDate)

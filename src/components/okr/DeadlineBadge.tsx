@@ -5,7 +5,7 @@
  */
 
 import { useTranslation } from 'react-i18next'
-import { Calendar, Clock, AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react'
+import { Calendar, Clock, AlertTriangle, XCircle, CheckCircle2, BadgeCheck } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { getDeadlineAlert, formatDeadlineDate } from '../../lib/dateUtils'
 import type { DeadlineStatus } from '../../types'
@@ -26,6 +26,14 @@ const statusConfig: Record<DeadlineStatus, {
   borderColor: string
   label: string
 }> = {
+  'completed': {
+    icon: BadgeCheck,
+    bgColor: 'bg-blue-50 dark:bg-blue-500/10',
+    textColor: 'text-blue-700 dark:text-blue-400',
+    iconColor: 'text-blue-600 dark:text-blue-500',
+    borderColor: 'border-blue-200 dark:border-blue-800/50',
+    label: 'Concluído'
+  },
   'on-track': {
     icon: CheckCircle2,
     bgColor: 'bg-green-50 dark:bg-green-500/10',

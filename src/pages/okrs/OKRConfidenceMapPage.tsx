@@ -383,7 +383,7 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
                     {node.due_date && (
                         <DeadlineIndicatorIcon
                             dueDate={node.due_date}
-                            isCompleted={node.progress === 100 || node.is_active === false}
+                            isCompleted={node.is_completed || node.progress === 100 || node.is_active === false}
                         />
                     )}
                 </button>

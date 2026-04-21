@@ -232,7 +232,7 @@ export type { ConfidenceLevel as ConfidenceLevelType }
 // TIPOS PARA DEADLINE MANAGEMENT
 // =====================================================
 
-export type DeadlineStatus = 'on-track' | 'warning' | 'urgent' | 'overdue'
+export type DeadlineStatus = 'completed' | 'on-track' | 'warning' | 'urgent' | 'overdue'
 
 export interface DeadlineAlert {
     status: DeadlineStatus
