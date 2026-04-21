@@ -582,7 +582,7 @@ export function ActionsPage() {
                                             </span>
                                         )}
                                         {p.due_date ? (
-                                            <DeadlineBadge dueDate={p.due_date} size="sm" />
+                                            <DeadlineBadge dueDate={p.due_date} isCompleted={p.status === 'completed'} size="sm" />
                                         ) : (
                                             <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]/50">
                                                 <Calendar className="w-3 h-3" />
