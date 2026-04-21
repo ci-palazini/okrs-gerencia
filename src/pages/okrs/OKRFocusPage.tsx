@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
     ArrowLeft,
+    CheckCircle2,
     ChevronDown,
     ChevronRight,
+    Circle,
     ClipboardList,
     GitBranch,
     Layers,
@@ -162,6 +164,7 @@ interface AccordionNodeProps {
     onDelete: (kr: CascadeTreeNode) => void
     onUpdateConfidence: (krId: string, confidence: ConfidenceLevel) => void
     onFocusNode: (krId: string) => void
+    onToggleComplete: (krId: string, isCompleted: boolean) => void
 }
 
 function AccordionNode({
@@ -178,6 +181,7 @@ function AccordionNode({
     onDelete,
     onUpdateConfidence,
     onFocusNode,
+    onToggleComplete,
 }: AccordionNodeProps) {
     const { t } = useTranslation()
     const isExpanded = expandedNodes.has(node.id)
@@ -246,7 +250,7 @@ function AccordionNode({
                                     {node.due_date && (
                                         <DeadlineBadge
                                             dueDate={node.due_date}
-                                            isCompleted={node.progress === 100 || node.is_active === false}
+                                            isCompleted={node.is_completed}
                                             size="sm"
                                         />
                                     )}
@@ -312,6 +316,17 @@ function AccordionNode({
                 {/* Actions row */}
                 <div className="px-4 pb-3 flex items-center justify-between gap-2 border-t border-[var(--color-border-subtle)] pt-2.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <div className="flex items-center gap-1 flex-wrap">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn("h-8", node.is_completed && "text-[var(--color-success)]")}
+                            onClick={() => onToggleComplete(node.id, !node.is_completed)}
+                        >
+                            {node.is_completed
+                                ? <><CheckCircle2 className="w-3 h-3 mr-1" />{t('okr.completed')}</>
+                                : <><Circle className="w-3 h-3 mr-1" />{t('okr.markComplete')}</>
+                            }
+                        </Button>
                         {!isSelected && (
                             <Button
                                 variant="ghost"
@@ -395,6 +410,7 @@ function AccordionNode({
                             onDelete={onDelete}
                             onUpdateConfidence={onUpdateConfidence}
                             onFocusNode={onFocusNode}
+                            onToggleComplete={onToggleComplete}
                         />
                     ))}
                 </div>
@@ -422,6 +438,7 @@ export function OKRFocusPage() {
         deleteKR,
         updateConfidence,
         loadData,
+        toggleKRComplete,
     } = useCascadeOKRData(pillarId)
 
     const [expandedState, setExpandedState] = useState<{ nodeId: string; ids: Set<string> }>({
@@ -673,9 +690,9 @@ export function OKRFocusPage() {
                                     {t('quarterlyCard.owner')}: {(selectedNode.owner_names && selectedNode.owner_names.length > 0) ? selectedNode.owner_names.join(', ') : (selectedNode.owner_name || t('common.unassigned'))}
                                 </Badge>
                                 {selectedNode.due_date && (
-                                    <DeadlineBadge 
-                                        dueDate={selectedNode.due_date} 
-                                        isCompleted={selectedNode.progress === 100 || selectedNode.is_active === false}
+                                    <DeadlineBadge
+                                        dueDate={selectedNode.due_date}
+                                        isCompleted={selectedNode.is_completed}
                                         size="md"
                                     />
                                 )}
@@ -683,6 +700,16 @@ export function OKRFocusPage() {
                         </div>
 
                         <div className="flex items-center gap-2 flex-wrap justify-end">
+                            <Button
+                                variant="ghost"
+                                className={selectedNode.is_completed ? "text-[var(--color-success)]" : ""}
+                                onClick={() => toggleKRComplete(selectedNode.id, !selectedNode.is_completed)}
+                            >
+                                {selectedNode.is_completed
+                                    ? <><CheckCircle2 className="w-4 h-4 mr-2" />{t('okr.completed')}</>
+                                    : <><Circle className="w-4 h-4 mr-2" />{t('okr.markComplete')}</>
+                                }
+                            </Button>
                             {!selectedIsLeaf && (
                                 <>
                                     <Button variant="outline" onClick={handleExpandAll}>
@@ -766,6 +793,7 @@ export function OKRFocusPage() {
                                 `/okrs/pillar/${pillarId}/kr/${nextKrId}`,
                                 { state: { backTo: preservedBackTo } }
                             )}
+                            onToggleComplete={toggleKRComplete}
                         />
                     ))}
                 </div>
