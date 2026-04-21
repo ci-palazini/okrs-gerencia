@@ -117,7 +117,7 @@ export function useDeadlineAlerts(
       switch (sortBy) {
         case 'status':
           // Priority: overdue > urgent > warning > on-track
-          const statusOrder = { 'overdue': 0, 'urgent': 1, 'warning': 2, 'on-track': 3 }
+          const statusOrder = { 'overdue': 0, 'urgent': 1, 'warning': 2, 'on-track': 3, 'completed': 4 }
           comparison = statusOrder[a.alert.status] - statusOrder[b.alert.status]
           break
         
