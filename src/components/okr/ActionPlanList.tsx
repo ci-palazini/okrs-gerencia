@@ -126,6 +126,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     const [observations, setObservations] = useState('')
     const [formStatus, setFormStatus] = useState<ActionPlanStatus>('not_started')
     const [newDraftTaskTitle, setNewDraftTaskTitle] = useState('')
+    const [newDraftTaskDueDate, setNewDraftTaskDueDate] = useState('')
+    const [newDraftTaskOwnerName, setNewDraftTaskOwnerName] = useState('')
 
     const loadPlans = useCallback(async () => {
         setLoading(true)
@@ -269,6 +271,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
         }
 
         setNewDraftTaskTitle('')
+        setNewDraftTaskDueDate('')
+        setNewDraftTaskOwnerName('')
         setModalOpen(true)
     }
 
@@ -430,12 +434,18 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 title: taskT,
                 is_done: false,
                 order_index: prev.length,
-                due_date: null,
-                owner_name: null,
+                due_date: newDraftTaskDueDate || null,
+                owner_name: newDraftTaskOwnerName || null,
                 notes: null,
             }
         ])
         setNewDraftTaskTitle('')
+        setNewDraftTaskDueDate('')
+        setNewDraftTaskOwnerName('')
+    }
+
+    function updateDraftTask(taskId: string, patch: Partial<Pick<ActionPlanTask, 'due_date' | 'owner_name'>>) {
+        setDraftTasks(prev => prev.map(task => task.id === taskId ? { ...task, ...patch } : task))
     }
 
     function deleteDraftTask(taskId: string) {
@@ -599,6 +609,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             setShowDeleteConfirm(false)
             setDraftTasks([])
             setNewDraftTaskTitle('')
+            setNewDraftTaskDueDate('')
+            setNewDraftTaskOwnerName('')
             await loadPlans()
         } catch (deleteError) {
             console.error('Error deleting action plan:', deleteError)
@@ -1064,6 +1076,8 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         setEditingPlan(null)
                         setDraftTasks([])
                         setNewDraftTaskTitle('')
+                        setNewDraftTaskDueDate('')
+                        setNewDraftTaskOwnerName('')
                     }
                 }}
             >
@@ -1168,12 +1182,12 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                             {draftTasks.map(task => (
                                                 <div
                                                     key={task.id}
-                                                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]/40"
+                                                    className="flex items-start gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]/40"
                                                 >
                                                     <button
                                                         type="button"
                                                         className={cn(
-                                                            'flex items-center justify-center w-7 h-7 rounded-lg border transition-colors',
+                                                            'flex items-center justify-center w-7 h-7 rounded-lg border transition-colors shrink-0 mt-0.5',
                                                             task.is_done
                                                                 ? 'bg-[var(--color-success-muted)] border-[var(--color-success)]/40 text-[var(--color-success)]'
                                                                 : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
@@ -1183,12 +1197,32 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                     >
                                                         {task.is_done ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                                                     </button>
-                                                    <span className={cn('text-sm flex-1', task.is_done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]')}>
-                                                        {task.title}
-                                                    </span>
+                                                    <div className="flex-1 min-w-0 space-y-1.5">
+                                                        <span className={cn('text-sm block', task.is_done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]')}>
+                                                            {task.title}
+                                                        </span>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <input
+                                                                type="date"
+                                                                value={task.due_date ?? ''}
+                                                                onChange={(e) => updateDraftTask(task.id, { due_date: e.target.value || null })}
+                                                                className="w-full h-7 px-2 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                                            />
+                                                            <select
+                                                                value={task.owner_name ?? ''}
+                                                                onChange={(e) => updateDraftTask(task.id, { owner_name: e.target.value || null })}
+                                                                className="w-full h-7 px-2 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                                            >
+                                                                <option value="">Sem responsável</option>
+                                                                {assigneeOptions.map((a) => (
+                                                                    <option key={a.id} value={a.name}>{a.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
                                                     <button
                                                         type="button"
-                                                        className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
+                                                        className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors shrink-0 mt-0.5"
                                                         onClick={() => deleteDraftTask(task.id)}
                                                         aria-label={t('actionPlan.taskDelete')}
                                                     >
@@ -1203,19 +1237,51 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                         </p>
                                     )}
 
-                                    <div className="flex items-end gap-2 pt-1">
-                                        <div className="flex-1">
-                                            <Input
-                                                label={t('actionPlan.newTaskLabel')}
-                                                value={newDraftTaskTitle}
-                                                onChange={(e) => setNewDraftTaskTitle(e.target.value)}
-                                                placeholder={t('actionPlan.newTaskPlaceholder')}
-                                                onKeyDown={(e) => { if (e.key === 'Enter') addDraftTask() }}
-                                            />
+                                    <div className="space-y-2 pt-1">
+                                        <div className="flex items-end gap-2">
+                                            <div className="flex-1">
+                                                <Input
+                                                    label={t('actionPlan.newTaskLabel')}
+                                                    value={newDraftTaskTitle}
+                                                    onChange={(e) => setNewDraftTaskTitle(e.target.value)}
+                                                    placeholder={t('actionPlan.newTaskPlaceholder')}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') addDraftTask() }}
+                                                />
+                                            </div>
+                                            <Button variant="outline" onClick={addDraftTask} disabled={!newDraftTaskTitle.trim()}>
+                                                <Plus className="w-4 h-4" />
+                                            </Button>
                                         </div>
-                                        <Button variant="outline" onClick={addDraftTask} disabled={!newDraftTaskTitle.trim()}>
-                                            <Plus className="w-4 h-4" />
-                                        </Button>
+                                        {newDraftTaskTitle.trim() && (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
+                                                        Prazo (opcional)
+                                                    </label>
+                                                    <input
+                                                        type="date"
+                                                        value={newDraftTaskDueDate}
+                                                        onChange={(e) => setNewDraftTaskDueDate(e.target.value)}
+                                                        className="w-full h-9 px-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
+                                                        Responsável (opcional)
+                                                    </label>
+                                                    <select
+                                                        value={newDraftTaskOwnerName}
+                                                        onChange={(e) => setNewDraftTaskOwnerName(e.target.value)}
+                                                        className="w-full h-9 px-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                                    >
+                                                        <option value="">Sem responsável</option>
+                                                        {assigneeOptions.map((a) => (
+                                                            <option key={a.id} value={a.name}>{a.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
