@@ -492,16 +492,19 @@ export function ActionsPage() {
             {filteredPlans.length > 0 ? (
                 <div className={cn('grid gap-2.5', expandedIds.size > 0 ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2')}>
                     {filteredPlans.map((p) => {
-                        const deadlineStatus = p.due_date ? getDeadlineAlert(p.due_date, false, 'pt').status : null
-                        const borderColor = deadlineStatus === 'overdue'
-                            ? 'border-l-red-500'
-                            : deadlineStatus === 'urgent'
-                                ? 'border-l-orange-500'
-                                : deadlineStatus === 'warning'
-                                    ? 'border-l-yellow-400'
-                                    : p.due_date
-                                        ? 'border-l-green-500'
-                                        : 'border-l-[var(--color-border)]'
+                        const isCompleted = p.status === 'completed'
+                        const deadlineStatus = p.due_date ? getDeadlineAlert(p.due_date, isCompleted, 'pt').status : null
+                        const borderColor = isCompleted
+                            ? 'border-l-blue-500'
+                            : deadlineStatus === 'overdue'
+                                ? 'border-l-red-500'
+                                : deadlineStatus === 'urgent'
+                                    ? 'border-l-orange-500'
+                                    : deadlineStatus === 'warning'
+                                        ? 'border-l-yellow-400'
+                                        : p.due_date
+                                            ? 'border-l-green-500'
+                                            : 'border-l-[var(--color-border)]'
                         const ownerColor = p.owner_name ? (ownerColorMap.get(p.owner_name) ?? 'bg-gray-500') : null
 
                         const isExpanded = expandedIds.has(p.id)
