@@ -317,7 +317,12 @@ export function useCascadeOKRData(filterPillar?: string | null) {
             const { data: objectivesData, error: objectivesError } = await objectivesQuery
             if (objectivesError) throw objectivesError
 
-            const typedObjectives = (objectivesData || []) as CascadeObjective[]
+            const typedObjectives = ((objectivesData || []) as CascadeObjective[])
+                .sort((a, b) => {
+                    const numA = parseInt(a.code.split('-').pop() || '0', 10)
+                    const numB = parseInt(b.code.split('-').pop() || '0', 10)
+                    return numA - numB
+                })
             setObjectives(typedObjectives)
 
             const { data: objectivesWithRel } = await supabase
