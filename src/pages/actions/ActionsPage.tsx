@@ -151,15 +151,15 @@ export function ActionsPage() {
 
     useEffect(() => {
         if (!selectedUnit) return
-        Promise.all([
-            supabase.from('pillar_business_units').select('pillar_id').eq('business_unit_id', selectedUnit),
-            supabase.from('pillars').select('id, name, color').eq('is_active', true).order('order_index'),
-        ]).then(([pivotRes, pillarsRes]) => {
-            const pillarIds = new Set((pivotRes.data || []).map((p: any) => p.pillar_id))
-            const filtered = ((pillarsRes.data || []) as { id: string; name: string; color: string }[])
-                .filter((p) => pillarIds.has(p.id))
-            setPillars(filtered)
-        })
+        supabase
+            .from('pillars')
+            .select('id, name, color')
+            .eq('is_active', true)
+            .eq('business_unit_id', selectedUnit)
+            .order('order_index')
+            .then(({ data }) => {
+                setPillars((data || []) as { id: string; name: string; color: string }[])
+            })
     }, [selectedUnit])
 
     useEffect(() => {

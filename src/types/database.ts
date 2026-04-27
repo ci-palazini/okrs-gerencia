@@ -83,6 +83,7 @@ export interface Database {
                     icon: string
                     color: string
                     order_index: number
+                    business_unit_id: string
                     is_active: boolean
                     created_at: string
                     updated_at: string
@@ -95,6 +96,7 @@ export interface Database {
                     icon?: string
                     color?: string
                     order_index?: number
+                    business_unit_id: string
                     is_active?: boolean
                     created_at?: string
                     updated_at?: string
@@ -106,25 +108,9 @@ export interface Database {
                     icon?: string
                     color?: string
                     order_index?: number
+                    business_unit_id?: string
                     is_active?: boolean
                     updated_at?: string
-                }
-            }
-            pillar_business_units: {
-                Row: {
-                    pillar_id: string
-                    business_unit_id: string
-                    created_at: string
-                }
-                Insert: {
-                    pillar_id: string
-                    business_unit_id: string
-                    created_at?: string
-                }
-                Update: {
-                    pillar_id?: string
-                    business_unit_id?: string
-                    created_at?: string
                 }
             }
             objectives: {

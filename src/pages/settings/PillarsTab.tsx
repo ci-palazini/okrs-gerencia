@@ -5,9 +5,9 @@ import { Plus, Pencil, Trash2, X, Check, Save, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
-import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 
 interface Pillar {
     id: string
@@ -17,70 +17,47 @@ interface Pillar {
     icon: string
     color: string
     order_index: number
-    business_unit_ids: string[]
-    is_active: boolean
-}
-
-interface PillarBusinessUnit {
-    pillar_id: string
     business_unit_id: string
-}
-
-interface BusinessUnit {
-    id: string
-    code: string
-    name: string
+    is_active: boolean
 }
 
 // Helper to render icon by name
 function DynamicIcon({ name, className }: { name: string, className?: string }) {
-    // Convert kebab-case (target) to PascalCase (Target)
     const iconName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('') as keyof typeof LucideIcons
     const IconComponent = LucideIcons[iconName] as React.ElementType
 
-    if (!IconComponent) return <div className={className} /> // Fallback placeholder
+    if (!IconComponent) return <div className={className} />
     return <IconComponent className={className} />
 }
 
 export function PillarsTab() {
     const { t } = useTranslation()
     const { user } = useAuth()
+    const { selectedUnit } = useBusinessUnit()
     const [loading, setLoading] = useState(true)
     const [pillars, setPillars] = useState<Pillar[]>([])
-    const [units, setUnits] = useState<BusinessUnit[]>([])
 
-    // Edit/Create State
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editForm, setEditForm] = useState<Partial<Pillar>>({})
     const [saving, setSaving] = useState(false)
     const [isCreating, setIsCreating] = useState(false)
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (selectedUnit) loadData()
+    }, [selectedUnit])
 
     async function loadData() {
         setLoading(true)
         try {
-            const [pillarsRes, unitsRes, pivotRes] = await Promise.all([
-                supabase.from('pillars').select('*').order('order_index'),
-                supabase.from('business_units').select('*').eq('is_active', true),
-                supabase.from('pillar_business_units').select('*')
-            ])
+            const { data } = await supabase
+                .from('pillars')
+                .select('*')
+                .eq('business_unit_id', selectedUnit)
+                .order('order_index')
 
-            if (pillarsRes.data && pivotRes.data) {
-                // Map pivot table to pillars
-                const pillarsWithUnits = pillarsRes.data.map(p => ({
-                    ...p,
-                    business_unit_ids: pivotRes.data
-                        .filter((r: any) => r.pillar_id === p.id)
-                        .map((r: any) => r.business_unit_id)
-                }))
-                setPillars(pillarsWithUnits)
-            }
-            if (unitsRes.data) setUnits(unitsRes.data)
+            setPillars(data || [])
         } catch (error) {
-            console.error('Error loading data:', error)
+            console.error('Error loading pillars:', error)
         } finally {
             setLoading(false)
         }
@@ -93,27 +70,26 @@ export function PillarsTab() {
     }
 
     async function handleCreate() {
-        // Get next order_index from database (MAX + 1)
         const { data } = await supabase
             .from('pillars')
             .select('order_index')
+            .eq('business_unit_id', selectedUnit)
             .order('order_index', { ascending: false })
             .limit(1)
 
         const nextOrderIndex = (data?.[0]?.order_index || 0) + 1
 
-        const newPillar: Partial<Pillar> = {
+        setEditingId('new')
+        setEditForm({
             code: '',
             name: '',
             description: '',
             icon: 'circle',
             color: '#3b82f6',
             order_index: nextOrderIndex,
-            business_unit_ids: [],
+            business_unit_id: selectedUnit,
             is_active: true
-        }
-        setEditingId('new')
-        setEditForm(newPillar)
+        })
         setIsCreating(true)
     }
 
@@ -124,7 +100,7 @@ export function PillarsTab() {
     }
 
     async function handleSave() {
-        if (!editForm.code || !editForm.name) return // Basic validation
+        if (!editForm.code || !editForm.name) return
 
         setSaving(true)
         try {
@@ -135,50 +111,22 @@ export function PillarsTab() {
                 icon: editForm.icon,
                 color: editForm.color,
                 order_index: editForm.order_index,
+                business_unit_id: selectedUnit,
                 is_active: editForm.is_active
             }
 
-            let savedPillarId = editingId
-
             if (isCreating) {
-                const { data, error } = await supabase
-                    .from('pillars')
-                    .insert(dataToSave)
-                    .select()
-                    .single()
-
+                const { error } = await supabase.from('pillars').insert(dataToSave)
                 if (error) throw error
-                if (data) {
-                    savedPillarId = data.id
-                }
             } else {
                 const { error } = await supabase
                     .from('pillars')
                     .update(dataToSave)
                     .eq('id', editingId)
-
                 if (error) throw error
             }
 
-            // Update associations
-            if (savedPillarId) {
-                // Delete existing
-                await supabase.from('pillar_business_units').delete().eq('pillar_id', savedPillarId)
-
-                // Insert new (if any)
-                if (editForm.business_unit_ids && editForm.business_unit_ids.length > 0) {
-                    const associations = editForm.business_unit_ids.map(uid => ({
-                        pillar_id: savedPillarId,
-                        business_unit_id: uid
-                    }))
-                    const { error: assocError } = await supabase.from('pillar_business_units').insert(associations)
-                    if (assocError) throw assocError
-                }
-
-                // Reload data to reflect changes
-                await loadData()
-            }
-
+            await loadData()
             setEditingId(null)
             setIsCreating(false)
         } catch (error) {
@@ -193,13 +141,8 @@ export function PillarsTab() {
         if (!confirm(t('settings.page.pillars.delete.confirm'))) return
 
         try {
-            const { error } = await supabase
-                .from('pillars')
-                .delete()
-                .eq('id', id)
-
+            const { error } = await supabase.from('pillars').delete().eq('id', id)
             if (error) throw error
-
             setPillars(pillars.filter(p => p.id !== id))
         } catch (error) {
             console.error('Error deleting pillar:', error)
@@ -244,7 +187,7 @@ export function PillarsTab() {
                                 value={editForm.code || ''}
                                 onChange={e => setEditForm({ ...editForm, code: e.target.value })}
                                 placeholder={t('settings.page.pillars.form.codePlaceholder')}
-                                disabled={!isCreating} // Usually code shouldn't change to avoid breaking refs, but maybe ok.
+                                disabled={!isCreating}
                             />
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium text-[var(--color-text-secondary)]">
@@ -293,59 +236,12 @@ export function PillarsTab() {
                                                 }`}
                                             title={iconName}
                                         >
-                                            {/* We need a dynamic icon renderer here. 
-                                                Since we can't easily dynamic import in this context without 
-                                                loading all icons, and we want to keep it simple, 
-                                                we will use a class mismatch or a helper if available. 
-                                                But for now, to make "preview" work, we might need to import these.
-                                                However, standard Lucide usage in this codebase seems to be explicit imports.
-                                                
-                                                Wait, the user wants a PREVIEW. 
-                                                If I just put the name, it's not a preview.
-                                                
-                                                I need to import 'Icon' from lucide-react or create a map.
-                                                For this user request to be "wowed", I should import the icons I listed.
-                                             */}
                                             <DynamicIcon name={iconName} className="w-5 h-5" />
                                         </button>
                                     ))}
                                 </div>
                                 <p className="text-xs text-[var(--color-text-muted)]">
                                     {t('settings.page.pillars.form.iconSelected')} <span className="font-mono text-[var(--color-text-primary)]">{editForm.icon || t('settings.page.pillars.form.none')}</span>
-                                </p>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-[var(--color-text-secondary)]">
-                                    {t('settings.page.pillars.form.unit')}
-                                </label>
-                                <div className="grid grid-cols-2 gap-2 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-                                    {units.map(u => {
-                                        const isSelected = editForm.business_unit_ids?.includes(u.id)
-                                        return (
-                                            <label key={u.id} className="flex items-center space-x-2 cursor-pointer p-1 hover:bg-[var(--color-surface-hover)] rounded">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isSelected}
-                                                    onChange={e => {
-                                                        const current = editForm.business_unit_ids || []
-                                                        if (e.target.checked) {
-                                                            setEditForm({ ...editForm, business_unit_ids: [...current, u.id] })
-                                                        } else {
-                                                            setEditForm({ ...editForm, business_unit_ids: current.filter(id => id !== u.id) })
-                                                        }
-                                                    }}
-                                                    className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                                                />
-                                                <span className="text-sm text-[var(--color-text-primary)]">{u.name} ({u.code})</span>
-                                            </label>
-                                        )
-                                    })}
-                                </div>
-                                <p className="text-xs text-[var(--color-text-muted)]">
-                                    {editForm.business_unit_ids?.length === units.length
-                                        ? t('settings.page.pillars.list.global')
-                                        : t('settings.page.pillars.form.selectedCount', { count: editForm.business_unit_ids?.length || 0 })}
                                 </p>
                             </div>
 
@@ -380,8 +276,7 @@ export function PillarsTab() {
                     <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
                         <div className="col-span-1">{t('settings.page.pillars.list.order')}</div>
                         <div className="col-span-1">{t('settings.page.pillars.list.color')}</div>
-                        <div className="col-span-3">{t('settings.page.pillars.list.nameCode')}</div>
-                        <div className="col-span-3">{t('settings.page.pillars.list.unit')}</div>
+                        <div className="col-span-6">{t('settings.page.pillars.list.nameCode')}</div>
                         <div className="col-span-2">{t('settings.page.pillars.list.status')}</div>
                         <div className="col-span-2 text-right">{t('settings.page.pillars.list.actions')}</div>
                     </div>
@@ -400,26 +295,9 @@ export function PillarsTab() {
                                 <div className="col-span-1">
                                     <div className="w-8 h-8 rounded-lg shadow-sm" style={{ backgroundColor: pillar.color }} />
                                 </div>
-                                <div className="col-span-3">
+                                <div className="col-span-6">
                                     <p className="font-semibold text-[var(--color-text-primary)]">{pillar.name}</p>
                                     <p className="text-xs text-[var(--color-text-muted)]">{pillar.code}</p>
-                                </div>
-                                <div className="col-span-3">
-                                    {pillar.business_unit_ids && pillar.business_unit_ids.length > 0 ? (
-                                        pillar.business_unit_ids.length === units.length ? (
-                                            <Badge variant="success">{t('settings.page.pillars.list.global')}</Badge>
-                                        ) : (
-                                            <div className="flex flex-wrap gap-1">
-                                                {pillar.business_unit_ids.map(uid => (
-                                                    <Badge key={uid} variant="outline" size="sm">
-                                                        {units.find(u => u.id === uid)?.code || '???'}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        )
-                                    ) : (
-                                        <Badge variant="warning">{t('settings.page.pillars.form.none')}</Badge>
-                                    )}
                                 </div>
                                 <div className="col-span-2">
                                     {pillar.is_active ? (

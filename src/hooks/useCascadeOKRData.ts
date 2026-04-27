@@ -13,7 +13,7 @@ export interface CascadePillar {
     color: string
     order_index: number
     is_active: boolean
-    business_unit_ids: string[]
+    business_unit_id: string
 }
 
 export interface CascadeObjective {
@@ -253,9 +253,8 @@ export function useCascadeOKRData(filterPillar?: string | null) {
     }, [leafNodesByObjective])
 
     const getVisiblePillars = useCallback(() => {
-        if (!selectedUnit) return []
-        return pillars.filter((pillar) => pillar.business_unit_ids.includes(selectedUnit))
-    }, [pillars, selectedUnit])
+        return pillars
+    }, [pillars])
 
     const getObjectiveRoots = useCallback((objectiveId: string): CascadeTreeNode[] => {
         return treeByObjective.get(objectiveId) || []
@@ -294,22 +293,14 @@ export function useCascadeOKRData(filterPillar?: string | null) {
         setLoading(true)
 
         try {
-            const [pillarsRes, pivotRes] = await Promise.all([
-                supabase.from('pillars').select('*').eq('is_active', true).order('order_index'),
-                supabase.from('pillar_business_units').select('pillar_id,business_unit_id'),
-            ])
+            const { data: pillarsData } = await supabase
+                .from('pillars')
+                .select('*')
+                .eq('is_active', true)
+                .eq('business_unit_id', selectedUnit)
+                .order('order_index')
 
-            const pillarsData = (pillarsRes.data || []) as Omit<CascadePillar, 'business_unit_ids'>[]
-            const pivotData = (pivotRes.data || []) as { pillar_id: string; business_unit_id: string }[]
-
-            const mappedPillars: CascadePillar[] = pillarsData.map((pillar) => ({
-                ...pillar,
-                business_unit_ids: pivotData
-                    .filter((pivot) => pivot.pillar_id === pillar.id)
-                    .map((pivot) => pivot.business_unit_id),
-            }))
-
-            setPillars(mappedPillars)
+            setPillars((pillarsData || []) as CascadePillar[])
 
             let objectivesQuery = supabase
                 .from('objectives')

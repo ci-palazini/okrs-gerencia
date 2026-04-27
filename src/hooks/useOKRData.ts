@@ -18,7 +18,7 @@ export interface Pillar {
     icon: string
     color: string
     order_index: number
-    business_unit_ids?: string[]
+    business_unit_id: string
 }
 
 export interface Objective {
@@ -91,25 +91,15 @@ export function useOKRData(filterPillar?: string | null) {
         if (!selectedUnit) return
         setLoading(true)
         try {
-            // 1. Load pillars and associations
-            const [pillarsRes, pivotRes] = await Promise.all([
-                supabase.from('pillars').select('*').eq('is_active', true).order('order_index'),
-                supabase.from('pillar_business_units').select('*')
-            ])
+            // 1. Load pillars for the selected business unit
+            const { data: pillarsData } = await supabase
+                .from('pillars')
+                .select('*')
+                .eq('is_active', true)
+                .eq('business_unit_id', selectedUnit)
+                .order('order_index')
 
-            let pillarsData = pillarsRes.data || []
-            const pivotData = pivotRes.data || []
-
-            if (pillarsData.length > 0 && pivotData.length > 0) {
-                pillarsData = pillarsData.map(p => ({
-                    ...p,
-                    business_unit_ids: pivotData
-                        .filter((r: any) => r.pillar_id === p.id)
-                        .map((r: any) => r.business_unit_id)
-                }))
-            }
-
-            setPillars(pillarsData)
+            setPillars(pillarsData || [])
 
             // 2. Load Objectives for selected unit
             let objectivesQuery = supabase
@@ -192,11 +182,8 @@ export function useOKRData(filterPillar?: string | null) {
 
     /** Get pillars visible for the current unit */
     const getVisiblePillars = useCallback((): Pillar[] => {
-        return pillars.filter(p => {
-            const ids = p.business_unit_ids || []
-            return ids.includes(selectedUnit)
-        })
-    }, [pillars, selectedUnit])
+        return pillars
+    }, [pillars])
 
     /** Format a value based on metric type */
     const formatValue = useCallback((v: number | null, metricType: string, unit: string, currencyType?: string | null): string => {
