@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronRight, GitBranch, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, GitBranch, Search, ClipboardList, Pencil, Check, X } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
@@ -14,6 +14,14 @@ import { cn } from '../../lib/utils'
 import { supabase } from '../../lib/supabase'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+interface ActionPlanBrief {
+    id: string
+    title: string
+    status: 'not_started' | 'in_progress' | 'completed'
+    owner_name: string | null
+    due_date: string | null
+}
 
 interface ConfidenceSummary {
     total: number
@@ -36,6 +44,11 @@ interface PillarSection {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatShortDate(dateStr: string): string {
+    const d = new Date(dateStr + 'T00:00:00')
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
 
 function flattenNodes(nodes: CascadeTreeNode[]): CascadeTreeNode[] {
     return nodes.flatMap((node) => [node, ...flattenNodes(node.children)])
@@ -142,6 +155,19 @@ function getProgressColor(progress: number | null): string {
     return 'var(--color-danger)'
 }
 
+function formatKRValue(value: number | null, metricType: string, unit: string, currencyType?: string | null): string {
+    if (value === null) return '—'
+    const formatted = value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+    if (metricType === 'currency') {
+        const locale = currencyType === 'BRL' ? 'pt-BR' : 'en-US'
+        const currency = currencyType || 'BRL'
+        return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(value)
+    }
+    if (metricType === 'percentage') return `${formatted}%`
+    if (metricType === 'days') return `${formatted} ${unit || 'dias'}`
+    return unit ? `${formatted} ${unit}` : formatted
+}
+
 // ─── ConfidenceDot ────────────────────────────────────────────────────────────
 
 function ConfidenceDot({ confidence }: { confidence: ConfidenceLevel }) {
@@ -155,6 +181,30 @@ function ConfidenceDot({ confidence }: { confidence: ConfidenceLevel }) {
             className="flex-shrink-0 rounded-full"
             style={{ width: '10px', height: '10px', backgroundColor: color, boxShadow: `0 0 0 3px ${color}30` }}
         />
+    )
+}
+
+// ─── ActionPlanStatusBadge ────────────────────────────────────────────────────
+
+function ActionPlanStatusBadge({ status }: { status: ActionPlanBrief['status'] }) {
+    if (status === 'completed') {
+        return (
+            <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border flex-shrink-0 bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-800/50">
+                Concluído
+            </span>
+        )
+    }
+    if (status === 'in_progress') {
+        return (
+            <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border flex-shrink-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-800/50">
+                Em andamento
+            </span>
+        )
+    }
+    return (
+        <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border flex-shrink-0 bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-border)]">
+            Não iniciado
+        </span>
     )
 }
 
@@ -274,11 +324,17 @@ interface KRTreeNodeProps {
     isLast: boolean
     ancestorIsLast: boolean[]
     onNavigate: (pillarId: string, krId: string) => void
+    showActionPlans: boolean
+    actionPlansByKrId: Record<string, ActionPlanBrief[]>
+    onUpdateActual: (krId: string, value: number | null) => void
 }
 
-function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate }: KRTreeNodeProps) {
+function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate, showActionPlans, actionPlansByKrId, onUpdateActual }: KRTreeNodeProps) {
     const { t } = useTranslation()
     const [collapsed, setCollapsed] = useState(false)
+    const [editingActual, setEditingActual] = useState(false)
+    const [actualDraft, setActualDraft] = useState('')
+
     const hasChildren = node.children.length > 0
     const progress = node.progress !== null ? Math.max(0, Math.min(100, node.progress)) : null
     const progressColor = getProgressColor(progress)
@@ -288,9 +344,34 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
         : node.confidence === 'off_track' ? 'var(--color-danger)'
         : 'transparent'
 
+    function startEdit() {
+        setActualDraft(node.actual !== null ? String(node.actual) : '')
+        setEditingActual(true)
+    }
+
+    function saveActual() {
+        const trimmed = actualDraft.trim()
+        const parsed = trimmed === '' ? null : parseFloat(trimmed.replace(',', '.'))
+        if (trimmed !== '' && (parsed === null || isNaN(parsed))) {
+            setEditingActual(false)
+            return
+        }
+        onUpdateActual(node.id, parsed)
+        setEditingActual(false)
+    }
+
+    function cancelEdit() {
+        setEditingActual(false)
+    }
+
+    function handleActualKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === 'Enter') { e.preventDefault(); saveActual() }
+        if (e.key === 'Escape') cancelEdit()
+    }
+
     return (
         <div>
-            <div className="flex items-center group min-h-[38px]">
+            <div className="flex items-center group min-h-[40px]">
                 {/* Vertical continuation lines for ancestor levels */}
                 {Array.from({ length: depth }, (_, i) => (
                     <div
@@ -332,61 +413,148 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
                     </div>
                 )}
 
-                {/* Row content */}
-                <button
-                    type="button"
-                    onClick={() => onNavigate(pillarId, node.id)}
-                    className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-left min-w-0 transition-colors border-l-2"
-                    style={{ borderLeftColor: confidenceBorderColor }}
-                >
-                    <ConfidenceDot confidence={node.confidence} />
-
-                    <span className="font-mono text-[11px] font-semibold text-[var(--color-text-muted)] flex-shrink-0 min-w-[52px]">
-                        {node.code}
-                    </span>
-
-                    <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] min-w-[30px] text-center">
-                        {node.scope === 'annual'
-                            ? 'Anual'
-                            : node.quarter
-                            ? `Q${node.quarter}`
-                            : '—'}
-                    </span>
-
-                    <span className="flex-1 text-sm text-[var(--color-text-primary)] truncate">
-                        {node.title}
-                    </span>
-
-                    {/* Progress bar */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <div className="w-20 h-2 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
-                            {progress !== null && (
-                                <div
-                                    className="h-full rounded-full transition-all duration-300"
-                                    style={{ width: `${progress}%`, backgroundColor: progressColor }}
-                                />
-                            )}
-                        </div>
-                        <span className="text-xs font-medium text-[var(--color-text-muted)] w-7 text-right flex-shrink-0">
-                            {progress !== null ? `${progress}%` : '—'}
+                {/* Edit mode panel — replaces nav button entirely to avoid nested interactives */}
+                {editingActual ? (
+                    <div
+                        className="flex-1 flex items-center gap-2 px-2 py-1 rounded-lg min-w-0 border border-[var(--color-primary)]/25 bg-[var(--color-primary)]/[0.05]"
+                    >
+                        <ConfidenceDot confidence={node.confidence} />
+                        <span className="font-mono text-[11px] font-semibold text-[var(--color-text-muted)] flex-shrink-0 hidden md:block">
+                            {node.code}
                         </span>
+                        <span className="flex-1 text-sm text-[var(--color-text-primary)] truncate min-w-0">
+                            {node.title}
+                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-[10px] text-[var(--color-text-muted)] whitespace-nowrap hidden sm:block">
+                                Valor atual
+                            </span>
+                            <input
+                                type="number"
+                                value={actualDraft}
+                                onChange={(e) => setActualDraft(e.target.value)}
+                                onBlur={saveActual}
+                                onKeyDown={handleActualKeyDown}
+                                autoFocus
+                                step="any"
+                                className="w-20 text-xs text-right bg-[var(--color-surface)] border border-[var(--color-primary)] rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                            />
+                            <button
+                                type="button"
+                                onClick={saveActual}
+                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--color-surface-hover)] transition-colors"
+                                style={{ color: 'var(--color-success)' }}
+                                title="Salvar"
+                            >
+                                <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={cancelEdit}
+                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] transition-colors"
+                                title="Cancelar"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
                     </div>
+                ) : (
+                    /* Normal navigation button */
+                    <button
+                        type="button"
+                        onClick={() => onNavigate(pillarId, node.id)}
+                        className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-left min-w-0 transition-colors border-l-2"
+                        style={{ borderLeftColor: confidenceBorderColor }}
+                    >
+                        <ConfidenceDot confidence={node.confidence} />
 
-                    {/* Owner (hidden on smaller screens) */}
-                    <span className="hidden xl:block text-xs text-[var(--color-text-muted)] w-28 truncate flex-shrink-0">
-                        {(node.owner_names && node.owner_names.length > 0)
-                            ? node.owner_names.join(', ')
-                            : (node.owner_name || t('common.unassigned'))}
-                    </span>
+                        <span className="font-mono text-[11px] font-semibold text-[var(--color-text-muted)] flex-shrink-0 min-w-[52px]">
+                            {node.code}
+                        </span>
 
-                    {/* Deadline */}
-                    {node.due_date && (
-                        <DeadlineIndicatorIcon
-                            dueDate={node.due_date}
-                            isCompleted={node.is_completed || node.progress === 100 || node.is_active === false}
-                        />
-                    )}
-                </button>
+                        <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] min-w-[30px] text-center">
+                            {node.scope === 'annual'
+                                ? 'Anual'
+                                : node.quarter
+                                ? `Q${node.quarter}`
+                                : '—'}
+                        </span>
+
+                        <span className="flex-1 text-sm text-[var(--color-text-primary)] truncate">
+                            {node.title}
+                        </span>
+
+                        {/* Metric section: baseline → atual / meta + barra */}
+                        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                            <div className="flex items-center gap-1">
+                                {node.baseline !== null && (
+                                    <>
+                                        <span className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
+                                            {formatKRValue(node.baseline, node.metric_type, node.unit, node.currency_type)}
+                                        </span>
+                                        <span className="text-[10px] text-[var(--color-text-muted)]">→</span>
+                                    </>
+                                )}
+                                <span className={cn(
+                                    'text-xs font-semibold tabular-nums',
+                                    node.actual !== null
+                                        ? 'text-[var(--color-text-primary)]'
+                                        : 'text-[var(--color-text-muted)]'
+                                )}>
+                                    {formatKRValue(node.actual, node.metric_type, node.unit, node.currency_type)}
+                                </span>
+                                {node.target !== null && (
+                                    <>
+                                        <span className="text-[10px] text-[var(--color-text-muted)]">/</span>
+                                        <span className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
+                                            {formatKRValue(node.target, node.metric_type, node.unit, node.currency_type)}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-20 h-1.5 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
+                                    {progress !== null && (
+                                        <div
+                                            className="h-full rounded-full transition-all duration-300"
+                                            style={{ width: `${progress}%`, backgroundColor: progressColor }}
+                                        />
+                                    )}
+                                </div>
+                                <span className="text-[10px] font-medium text-[var(--color-text-muted)] w-7 text-right flex-shrink-0">
+                                    {node.progress !== null ? `${node.progress}%` : '—'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Owner (hidden on smaller screens) */}
+                        <span className="hidden xl:block text-xs text-[var(--color-text-muted)] w-28 truncate flex-shrink-0">
+                            {(node.owner_names && node.owner_names.length > 0)
+                                ? node.owner_names.join(', ')
+                                : (node.owner_name || t('common.unassigned'))}
+                        </span>
+
+                        {/* Deadline */}
+                        {node.due_date && (
+                            <DeadlineIndicatorIcon
+                                dueDate={node.due_date}
+                                isCompleted={node.is_completed || node.progress === 100 || node.is_active === false}
+                            />
+                        )}
+                    </button>
+                )}
+
+                {/* Pencil: editar valor atual — visível no hover do grupo */}
+                {!editingActual && (
+                    <button
+                        type="button"
+                        onClick={startEdit}
+                        className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] opacity-0 group-hover:opacity-100 transition-all ml-0.5"
+                        title="Editar valor atual"
+                    >
+                        <Pencil className="w-3 h-3" />
+                    </button>
+                )}
 
                 {/* Expand/collapse children */}
                 {hasChildren && (
@@ -402,6 +570,60 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
                 )}
             </div>
 
+            {/* Action Plans */}
+            {showActionPlans && (actionPlansByKrId[node.id]?.length ?? 0) > 0 && (
+                <div
+                    className="pb-1.5"
+                    style={{
+                        paddingLeft: `${depth === 0 ? 4 : (depth + 1) * 20 + 4}px`,
+                        paddingRight: '4px',
+                    }}
+                >
+                    <div className="rounded-lg border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/[0.04] overflow-hidden">
+                        <div
+                            className="flex items-center gap-1.5 px-3 py-1 border-b border-[var(--color-primary)]/15"
+                        >
+                            <ClipboardList
+                                className="w-3 h-3 flex-shrink-0"
+                                style={{ color: 'var(--color-primary)', opacity: 0.65 }}
+                            />
+                            <span
+                                className="text-[10px] font-semibold uppercase tracking-widest"
+                                style={{ color: 'var(--color-primary)', opacity: 0.65 }}
+                            >
+                                Planos de Ação
+                            </span>
+                            <span
+                                className="ml-auto text-[10px] font-medium flex-shrink-0 tabular-nums"
+                                style={{ color: 'var(--color-primary)', opacity: 0.45 }}
+                            >
+                                {actionPlansByKrId[node.id].length}
+                            </span>
+                        </div>
+                        <div className="divide-y divide-[var(--color-primary)]/10">
+                            {actionPlansByKrId[node.id].map((plan) => (
+                                <div key={plan.id} className="flex items-center gap-2 px-3 py-1.5 min-w-0">
+                                    <ActionPlanStatusBadge status={plan.status} />
+                                    <span className="flex-1 text-xs text-[var(--color-text-primary)] truncate min-w-0">
+                                        {plan.title}
+                                    </span>
+                                    {plan.owner_name && (
+                                        <span className="hidden sm:block text-[10px] text-[var(--color-text-muted)] truncate max-w-[100px] flex-shrink-0">
+                                            {plan.owner_name}
+                                        </span>
+                                    )}
+                                    {plan.due_date && (
+                                        <span className="text-[10px] text-[var(--color-text-muted)] flex-shrink-0">
+                                            {formatShortDate(plan.due_date)}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Children */}
             {hasChildren && !collapsed && (
                 <div>
@@ -414,6 +636,9 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate 
                             isLast={i === node.children.length - 1}
                             ancestorIsLast={[...ancestorIsLast, isLast]}
                             onNavigate={onNavigate}
+                            showActionPlans={showActionPlans}
+                            actionPlansByKrId={actionPlansByKrId}
+                            onUpdateActual={onUpdateActual}
                         />
                     ))}
                 </div>
@@ -430,7 +655,7 @@ export function OKRConfidenceMapPage() {
     const location = useLocation()
     const currentPath = `${location.pathname}${location.search}${location.hash}`
 
-    const { loading, selectedUnit, selectedUnitData, objectives, getVisiblePillars, getObjectiveRoots } = useCascadeOKRData()
+    const { loading, selectedUnit, selectedUnitData, objectives, getVisiblePillars, getObjectiveRoots, updateValue } = useCascadeOKRData()
 
     const [searchTerm, setSearchTerm] = useState('')
     const [collapsedPillarIds, setCollapsedPillarIds] = useState<Set<string>>(new Set())
@@ -441,6 +666,9 @@ export function OKRConfidenceMapPage() {
     const [selectedPeriods, setSelectedPeriods] = useState<Set<string>>(new Set())
     const [selectedUserNames, setSelectedUserNames] = useState<Set<string>>(new Set())
     const [companyUsers, setCompanyUsers] = useState<{ id: string; full_name: string }[]>([])
+    const [showActionPlans, setShowActionPlans] = useState(false)
+    const [actionPlansByKrId, setActionPlansByKrId] = useState<Record<string, ActionPlanBrief[]>>({})
+    const [loadingActionPlans, setLoadingActionPlans] = useState(false)
 
     const pillarSectionRefs = useRef<Map<string, HTMLElement>>(new Map())
 
@@ -500,6 +728,36 @@ export function OKRConfidenceMapPage() {
             }
         })
     }, [getObjectiveRoots, getVisiblePillars, objectives])
+
+    useEffect(() => {
+        if (!showActionPlans || allSections.length === 0) return
+        const allKrIds = allSections.flatMap((s) =>
+            s.objectives.flatMap((g) => flattenNodes(g.roots).map((n) => n.id))
+        )
+        if (allKrIds.length === 0) return
+        setLoadingActionPlans(true)
+        supabase
+            .from('action_plans')
+            .select('id, key_result_id, title, status, owner_name, due_date')
+            .in('key_result_id', allKrIds)
+            .then(({ data }) => {
+                if (data) {
+                    const byKrId: Record<string, ActionPlanBrief[]> = {}
+                    for (const plan of data as any[]) {
+                        if (!byKrId[plan.key_result_id]) byKrId[plan.key_result_id] = []
+                        byKrId[plan.key_result_id].push({
+                            id: plan.id,
+                            title: plan.title,
+                            status: plan.status,
+                            owner_name: plan.owner_name,
+                            due_date: plan.due_date,
+                        })
+                    }
+                    setActionPlansByKrId(byKrId)
+                }
+                setLoadingActionPlans(false)
+            })
+    }, [showActionPlans, allSections])
 
     const normalizedSearch = searchTerm.trim().toLowerCase()
 
@@ -709,6 +967,23 @@ export function OKRConfidenceMapPage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setShowActionPlans((prev) => !prev)}
+                            className={cn(
+                                'flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-medium transition-all duration-200',
+                                showActionPlans
+                                    ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/40 text-[var(--color-primary)]'
+                                    : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)]'
+                            )}
+                        >
+                            <ClipboardList className="w-3.5 h-3.5 flex-shrink-0" />
+                            {loadingActionPlans
+                                ? 'Carregando…'
+                                : showActionPlans
+                                ? 'Ocultar planos'
+                                : 'Planos de ação'}
+                        </button>
                         <Button variant="outline" onClick={() => setCollapsedPillarIds(new Set())}>
                             {t('okr.cascade.expandAll')}
                         </Button>
@@ -922,6 +1197,9 @@ export function OKRConfidenceMapPage() {
                                                                             isLast={i === group.roots.length - 1}
                                                                             ancestorIsLast={[]}
                                                                             onNavigate={openKRFocus}
+                                                                            showActionPlans={showActionPlans}
+                                                                            actionPlansByKrId={actionPlansByKrId}
+                                                                            onUpdateActual={(krId, value) => updateValue(krId, 'actual', value)}
                                                                         />
                                                                     ))}
                                                                 </div>
