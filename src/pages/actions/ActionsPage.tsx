@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BarChart2, Calendar, CheckCircle2, ChevronDown, Clock, ExternalLink, FileText, ListTodo, Pencil, Trash2, User, X } from 'lucide-react'
+import { Calendar, ListTodo, Pencil, X } from 'lucide-react'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
@@ -9,14 +9,11 @@ import { MultiSelectDropdown } from '../../components/ui/MultiSelectDropdown'
 import { DeadlineBadge } from '../../components/okr/DeadlineBadge'
 import { supabase } from '../../lib/supabase'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
+import { listAssigneesForBusinessUnit, type AssigneeOption } from '../../lib/assignees'
 import { cn } from '../../lib/utils'
 import { getDeadlineAlert } from '../../lib/dateUtils'
 import * as Dialog from '@radix-ui/react-dialog'
-
-function formatShortDate(dateStr: string): string {
-    const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-}
+import { ActionPlanDetailModal } from '../../components/okr/ActionPlanDetailModal'
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-purple-500', 'bg-green-600', 'bg-orange-500',
@@ -90,7 +87,8 @@ export function ActionsPage() {
     const [loading, setLoading] = useState(true)
     const [plans, setPlans] = useState<ActionPlanWithRelations[]>([])
     const [tasksByPlanId, setTasksByPlanId] = useState<Record<string, ActionPlanTask[]>>({})
-    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+    const [selectedPlan, setSelectedPlan] = useState<ActionPlanWithRelations | null>(null)
+    const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([])
     const [filter, setFilter] = useState<DueFilter>('all')
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
     const [teams, setTeams] = useState<Team[]>([])
@@ -147,6 +145,11 @@ export function ActionsPage() {
                     setCompanyUsers(users)
                 }
             })
+    }, [selectedUnit])
+
+    useEffect(() => {
+        if (!selectedUnit) return
+        listAssigneesForBusinessUnit(selectedUnit).then(setAssigneeOptions)
     }, [selectedUnit])
 
     useEffect(() => {
@@ -225,38 +228,6 @@ export function ActionsPage() {
             setPlans([])
         } finally {
             setLoading(false)
-        }
-    }
-
-    function toggleExpanded(planId: string) {
-        setExpandedIds(prev => {
-            const next = new Set(prev)
-            next.has(planId) ? next.delete(planId) : next.add(planId)
-            return next
-        })
-    }
-
-    async function toggleTaskDone(planId: string, taskId: string, isDone: boolean) {
-        try {
-            await supabase.from('action_plan_tasks').update({ is_done: isDone }).eq('id', taskId)
-            setTasksByPlanId(prev => ({
-                ...prev,
-                [planId]: (prev[planId] || []).map(t => t.id === taskId ? { ...t, is_done: isDone } : t),
-            }))
-        } catch (e) {
-            console.error('Error toggling task:', e)
-        }
-    }
-
-    async function deleteTask(planId: string, taskId: string) {
-        try {
-            await supabase.from('action_plan_tasks').delete().eq('id', taskId)
-            setTasksByPlanId(prev => ({
-                ...prev,
-                [planId]: (prev[planId] || []).filter(t => t.id !== taskId),
-            }))
-        } catch (e) {
-            console.error('Error deleting task:', e)
         }
     }
 
@@ -490,7 +461,7 @@ export function ActionsPage() {
             </div>
 
             {filteredPlans.length > 0 ? (
-                <div className={cn('grid gap-2.5', expandedIds.size > 0 ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2')}>
+                <div className="grid gap-2.5 grid-cols-1 lg:grid-cols-2">
                     {filteredPlans.map((p) => {
                         const isCompleted = p.status === 'completed'
                         const deadlineStatus = p.due_date ? getDeadlineAlert(p.due_date, isCompleted, 'pt').status : null
@@ -507,7 +478,6 @@ export function ActionsPage() {
                                             : 'border-l-[var(--color-border)]'
                         const ownerColor = p.owner_name ? (ownerColorMap.get(p.owner_name) ?? 'bg-gray-500') : null
 
-                        const isExpanded = expandedIds.has(p.id)
                         const tasks = tasksByPlanId[p.id] || []
                         const doneTasks = tasks.filter(t => t.is_done).length
 
@@ -519,11 +489,11 @@ export function ActionsPage() {
                                     borderColor
                                 )}
                             >
-                                {/* Card header - clickable to expand */}
+                                {/* Card header - click to open detail modal */}
                                 <button
                                     type="button"
-                                    onClick={() => tasks.length > 0 && toggleExpanded(p.id)}
-                                    className={cn('w-full text-left px-4 pt-3.5 pb-3 space-y-2', tasks.length > 0 && 'hover:bg-[var(--color-surface-hover)] transition-colors')}
+                                    onClick={() => setSelectedPlan(p)}
+                                    className="w-full text-left px-4 pt-3.5 pb-3 space-y-2 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0 flex-1 space-y-1.5">
@@ -560,9 +530,6 @@ export function ActionsPage() {
                                             >
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </button>
-                                            {tasks.length > 0 && (
-                                                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform text-[var(--color-text-muted)]', isExpanded && 'rotate-180')} />
-                                            )}
                                         </div>
                                     </div>
 
@@ -610,101 +577,6 @@ export function ActionsPage() {
                                     </div>
                                 )}
 
-                                {/* Expanded content: observations + tasks */}
-                                {isExpanded && (
-                                    <div className="border-t border-[var(--color-border-subtle)] px-4 py-3 space-y-2">
-                                        {/* Observations & tracking method */}
-                                        {(p.observations || p.tracking_method || (p.tracking_links && p.tracking_links.length > 0)) && (
-                                            <div className="space-y-1.5 pb-1">
-                                                {p.observations && (
-                                                    <div className="flex gap-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-subtle)]/60 rounded-lg px-3 py-2">
-                                                        <FileText className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--color-text-muted)]" />
-                                                        <p className="leading-relaxed">{p.observations}</p>
-                                                    </div>
-                                                )}
-                                                {(p.tracking_method || (p.tracking_links && p.tracking_links.length > 0)) && (
-                                                    <div className="flex gap-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-subtle)]/60 rounded-lg px-3 py-2">
-                                                        <BarChart2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--color-text-muted)]" />
-                                                        <div className="flex-1 space-y-2">
-                                                            {p.tracking_method && (
-                                                                <p className="leading-relaxed">{p.tracking_method}</p>
-                                                            )}
-                                                            {p.tracking_links && p.tracking_links.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1.5">
-                                                                    {p.tracking_links.map((link, i) => (
-                                                                        <a
-                                                                            key={i}
-                                                                            href={link.url}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-surface)] border border-[var(--color-border)] px-2 py-1 rounded-md hover:bg-[var(--color-surface-hover)] transition-colors"
-                                                                        >
-                                                                            <ExternalLink className="w-3 h-3 shrink-0" />
-                                                                            {link.label || link.url}
-                                                                        </a>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Tasks */}
-                                        {tasks.map((task, index) => (
-                                            <div
-                                                key={task.id}
-                                                className={cn(
-                                                    'flex items-center gap-2.5 py-1.5 group/task',
-                                                    index < tasks.length - 1 && 'border-b border-[var(--color-border-subtle)]'
-                                                )}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    className="shrink-0 transition-colors"
-                                                    onClick={() => toggleTaskDone(p.id, task.id, !task.is_done)}
-                                                >
-                                                    {task.is_done
-                                                        ? <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                                        : <Clock className="w-4 h-4 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]" />
-                                                    }
-                                                </button>
-                                                <span className={cn(
-                                                    'text-sm flex-1 leading-snug min-w-0',
-                                                    task.is_done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]'
-                                                )}>
-                                                    {task.title}
-                                                </span>
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    {task.due_date && (
-                                                        <span className="flex items-center gap-0.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-1.5 py-0.5 rounded">
-                                                            <Calendar className="w-3 h-3" />
-                                                            {formatShortDate(task.due_date)}
-                                                        </span>
-                                                    )}
-                                                    {task.owner_name && (
-                                                        <span className="flex items-center gap-0.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-1.5 py-0.5 rounded max-w-[110px]">
-                                                            <User className="w-3 h-3 shrink-0" />
-                                                            <span className="truncate">{task.owner_name}</span>
-                                                        </span>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        className="p-1 rounded text-transparent group-hover/task:text-[var(--color-text-muted)] hover:!text-[var(--color-danger)] transition-colors"
-                                                        onClick={() => deleteTask(p.id, task.id)}
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {tasks.length === 0 && (
-                                            <p className="text-xs text-[var(--color-text-muted)] py-1">{t('actionPlan.noTasks')}</p>
-                                        )}
-                                    </div>
-                                )}
                             </div>
                         )
                     })}
@@ -734,8 +606,8 @@ export function ActionsPage() {
                 }}
             >
                 <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
-                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 max-h-[90vh] flex flex-col">
+                    <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[70] w-full max-w-2xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 max-h-[90vh] flex flex-col">
                         <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
                             <div>
                                 <Dialog.Title className="text-xl font-semibold text-[var(--color-text-primary)]">
@@ -815,6 +687,26 @@ export function ActionsPage() {
                     </Dialog.Content>
                 </Dialog.Portal>
             </Dialog.Root>
+
+            {/* Detail modal */}
+            <ActionPlanDetailModal
+                plan={selectedPlan}
+                tasks={selectedPlan ? (tasksByPlanId[selectedPlan.id] ?? []) : []}
+                assigneeOptions={assigneeOptions}
+                onClose={() => setSelectedPlan(null)}
+                onPlanUpdated={(updated) => {
+                    setPlans(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
+                    setSelectedPlan(prev => prev?.id === updated.id ? { ...prev, ...updated } : prev)
+                }}
+                onTasksChanged={(planId, newTasks) =>
+                    setTasksByPlanId(prev => ({ ...prev, [planId]: newTasks }))
+                }
+                onEditPlan={(plan) => {
+                    const full = plans.find(p => p.id === plan.id)
+                    if (full) { setSelectedPlan(null); openEditor(full) }
+                }}
+                onDeletePlan={() => { setSelectedPlan(null) }}
+            />
         </div>
     )
 }

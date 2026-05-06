@@ -7,7 +7,6 @@ import {
     ChevronDown,
     ChevronRight,
     Circle,
-    ClipboardList,
     GitBranch,
     Layers,
     ListTree,
@@ -155,10 +154,8 @@ interface AccordionNodeProps {
     objective: CascadeObjective
     selectedNodeId: string
     expandedNodes: Set<string>
-    openPlanNodes: Set<string>
     ownerColorMap: Map<string, string>
     onToggleNode: (krId: string) => void
-    onTogglePlan: (krId: string) => void
     onAddChild: (objective: CascadeObjective, parent: CascadeTreeNode) => void
     onEdit: (objective: CascadeObjective, kr: CascadeTreeNode) => void
     onDelete: (kr: CascadeTreeNode) => void
@@ -172,10 +169,8 @@ function AccordionNode({
     objective,
     selectedNodeId,
     expandedNodes,
-    openPlanNodes,
     ownerColorMap,
     onToggleNode,
-    onTogglePlan,
     onAddChild,
     onEdit,
     onDelete,
@@ -186,7 +181,6 @@ function AccordionNode({
     const { t } = useTranslation()
     const isExpanded = expandedNodes.has(node.id)
     const isLeaf = node.children.length === 0
-    const isPlanOpen = openPlanNodes.has(node.id)
     const isSelected = node.id === selectedNodeId
 
     const ownerNames = (node.owner_names && node.owner_names.length > 0)
@@ -371,21 +365,10 @@ function AccordionNode({
                             editable
                             onChange={(nextValue) => onUpdateConfidence(node.id, nextValue)}
                         />
-                        {isLeaf && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onTogglePlan(node.id)}
-                                className="h-8"
-                            >
-                                <ClipboardList className="w-3 h-3 mr-1" />
-                                {isPlanOpen ? t('okr.cascade.hideActionPlan') : t('okr.cascade.showActionPlan')}
-                            </Button>
-                        )}
                     </div>
                 </div>
 
-                {isLeaf && isPlanOpen && (
+                {isLeaf && (
                     <div className="px-4 pb-4 pt-1 border-t border-[var(--color-border-subtle)]">
                         <ActionPlanList krId={node.id} />
                     </div>
@@ -401,10 +384,8 @@ function AccordionNode({
                             objective={objective}
                             selectedNodeId={selectedNodeId}
                             expandedNodes={expandedNodes}
-                            openPlanNodes={openPlanNodes}
                             ownerColorMap={ownerColorMap}
                             onToggleNode={onToggleNode}
-                            onTogglePlan={onTogglePlan}
                             onAddChild={onAddChild}
                             onEdit={onEdit}
                             onDelete={onDelete}
@@ -442,10 +423,6 @@ export function OKRFocusPage() {
     } = useCascadeOKRData(pillarId)
 
     const [expandedState, setExpandedState] = useState<{ nodeId: string; ids: Set<string> }>({
-        nodeId: '',
-        ids: new Set(),
-    })
-    const [openPlanState, setOpenPlanState] = useState<{ nodeId: string; ids: Set<string> }>({
         nodeId: '',
         ids: new Set(),
     })
@@ -490,31 +467,10 @@ export function OKRFocusPage() {
         ? expandedState.ids
         : defaultExpandedNodes
 
-    const openPlanNodes = selectedContext && openPlanState.nodeId === selectedContext.node.id
-        ? openPlanState.ids
-        : new Set<string>()
-
     function handleToggleNode(nodeId: string) {
         if (!selectedContext) return
         setExpandedState((prev) => {
             const base = prev.nodeId === selectedContext?.node.id ? prev.ids : defaultExpandedNodes
-            const next = new Set(base)
-            if (next.has(nodeId)) {
-                next.delete(nodeId)
-            } else {
-                next.add(nodeId)
-            }
-            return {
-                nodeId: selectedContext.node.id,
-                ids: next,
-            }
-        })
-    }
-
-    function handleTogglePlan(nodeId: string) {
-        if (!selectedContext) return
-        setOpenPlanState((prev) => {
-            const base = prev.nodeId === selectedContext?.node.id ? prev.ids : new Set<string>()
             const next = new Set(base)
             if (next.has(nodeId)) {
                 next.delete(nodeId)
@@ -781,10 +737,8 @@ export function OKRFocusPage() {
                             objective={selectedContext.objective}
                             selectedNodeId={selectedNode.id}
                             expandedNodes={expandedNodes}
-                            openPlanNodes={openPlanNodes}
                             ownerColorMap={ownerColorMap}
                             onToggleNode={handleToggleNode}
-                            onTogglePlan={handleTogglePlan}
                             onAddChild={openCreateChildKRModal}
                             onEdit={openEditKRModal}
                             onDelete={handleDeleteKR}
