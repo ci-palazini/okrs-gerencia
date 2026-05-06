@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, GitBranch, Search, ClipboardList, Pencil, Check, X } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -205,6 +205,92 @@ function ActionPlanStatusBadge({ status }: { status: ActionPlanBrief['status'] }
         <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border flex-shrink-0 bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-border)]">
             Não iniciado
         </span>
+    )
+}
+
+// ─── QuickStatCards ───────────────────────────────────────────────────────────
+
+interface QuickStats {
+    total: number
+    avgProgress: number | null
+    noActual: number
+    dueSoon: number
+}
+
+function computeQuickStats(sections: PillarSection[]): QuickStats {
+    const today = new Date()
+    const soon = new Date(today)
+    soon.setDate(soon.getDate() + 14)
+
+    const allNodes = sections.flatMap((s) => s.objectives.flatMap((g) => flattenNodes(g.roots)))
+    const total = allNodes.length
+    if (total === 0) return { total: 0, avgProgress: null, noActual: 0, dueSoon: 0 }
+
+    const withProgress = allNodes.filter((n) => n.progress !== null)
+    const avgProgress = withProgress.length > 0
+        ? Math.round(withProgress.reduce((sum, n) => sum + n.progress!, 0) / withProgress.length)
+        : null
+
+    const noActual = allNodes.filter((n) => n.actual === null).length
+
+    const dueSoon = allNodes.filter((n) => {
+        if (!n.due_date) return false
+        if (n.is_completed || n.progress === 100 || n.is_active === false) return false
+        const due = new Date(n.due_date + 'T00:00:00')
+        return due >= today && due <= soon
+    }).length
+
+    return { total, avgProgress, noActual, dueSoon }
+}
+
+function QuickStatCards({ stats }: { stats: QuickStats }) {
+    if (stats.total === 0) return null
+
+    const cards = [
+        {
+            label: 'Total de KRs',
+            value: String(stats.total),
+            accent: 'var(--color-primary)',
+        },
+        {
+            label: 'Progresso médio',
+            value: stats.avgProgress !== null ? `${stats.avgProgress}%` : '—',
+            accent: stats.avgProgress === null ? 'var(--color-text-muted)'
+                : stats.avgProgress >= 70 ? 'var(--color-success)'
+                : stats.avgProgress >= 40 ? 'var(--color-warning)'
+                : 'var(--color-danger)',
+        },
+        {
+            label: 'Sem valor real',
+            value: String(stats.noActual),
+            accent: stats.noActual === 0 ? 'var(--color-success)' : 'var(--color-warning)',
+        },
+        {
+            label: 'Vencendo em breve',
+            value: String(stats.dueSoon),
+            accent: stats.dueSoon === 0 ? 'var(--color-text-muted)' : 'var(--color-danger)',
+        },
+    ]
+
+    return (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {cards.map((card) => (
+                <div
+                    key={card.label}
+                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 flex flex-col gap-1"
+                >
+                    <span className="text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wide leading-none">
+                        {card.label}
+                    </span>
+                    <span
+                        className="text-2xl font-bold tabular-nums leading-tight"
+                        style={{ color: card.accent }}
+                    >
+                        {card.value}
+                    </span>
+                </div>
+            ))}
+        </div>
     )
 }
 
@@ -653,24 +739,41 @@ export function OKRConfidenceMapPage() {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const location = useLocation()
+    const [searchParams, setSearchParams] = useSearchParams()
     const currentPath = `${location.pathname}${location.search}${location.hash}`
 
     const { loading, selectedUnit, selectedUnitData, objectives, getVisiblePillars, getObjectiveRoots, updateValue } = useCascadeOKRData()
 
-    const [searchTerm, setSearchTerm] = useState('')
+    const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') ?? '')
     const [collapsedPillarIds, setCollapsedPillarIds] = useState<Set<string>>(new Set())
     const [collapsedObjectiveIds, setCollapsedObjectiveIds] = useState<Set<string>>(new Set())
     const [activePillarId, setActivePillarId] = useState<string | null>(null)
     const [teams, setTeams] = useState<{ id: string; name: string; memberNames: string[] }[]>([])
-    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
-    const [selectedPeriods, setSelectedPeriods] = useState<Set<string>>(new Set())
-    const [selectedUserNames, setSelectedUserNames] = useState<Set<string>>(new Set())
+    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(() => searchParams.get('team'))
+    const [selectedPeriods, setSelectedPeriods] = useState<Set<string>>(() => {
+        const p = searchParams.get('periods')
+        return p ? new Set(p.split(',').filter(Boolean)) : new Set()
+    })
+    const [selectedUserNames, setSelectedUserNames] = useState<Set<string>>(() => {
+        const u = searchParams.get('users')
+        return u ? new Set(u.split(',').filter(Boolean)) : new Set()
+    })
     const [companyUsers, setCompanyUsers] = useState<{ id: string; full_name: string }[]>([])
     const [showActionPlans, setShowActionPlans] = useState(false)
     const [actionPlansByKrId, setActionPlansByKrId] = useState<Record<string, ActionPlanBrief[]>>({})
     const [loadingActionPlans, setLoadingActionPlans] = useState(false)
 
     const pillarSectionRefs = useRef<Map<string, HTMLElement>>(new Map())
+
+    // Persist filters in URL so they survive navigation to KR detail and back
+    useEffect(() => {
+        const params = new URLSearchParams()
+        if (searchTerm) params.set('q', searchTerm)
+        if (selectedTeamId) params.set('team', selectedTeamId)
+        if (selectedPeriods.size > 0) params.set('periods', [...selectedPeriods].join(','))
+        if (selectedUserNames.size > 0) params.set('users', [...selectedUserNames].join(','))
+        setSearchParams(params, { replace: true })
+    }, [searchTerm, selectedTeamId, selectedPeriods, selectedUserNames, setSearchParams])
 
     useEffect(() => {
         supabase
@@ -837,6 +940,8 @@ export function OKRConfidenceMapPage() {
             return acc
         }, { total: 0, on_track: 0, at_risk: 0, off_track: 0, not_set: 0 })
     }, [filteredSections])
+
+    const quickStats = useMemo(() => computeQuickStats(filteredSections), [filteredSections])
 
     // Auto-expand everything when searching or filtering
     useEffect(() => {
@@ -1055,6 +1160,9 @@ export function OKRConfidenceMapPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Quick stat cards */}
+                <QuickStatCards stats={quickStats} />
 
                 {/* Global confidence bar */}
                 <GlobalSummaryBar summary={globalSummary} />
