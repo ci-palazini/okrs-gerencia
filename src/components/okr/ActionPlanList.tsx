@@ -599,7 +599,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                             </Button>
                             <Button
                                 variant="danger"
-                                onClick={deleteActionPlan}
+                                onClick={() => deleteActionPlan()}
                                 loading={deletingPlanId === editingPlan?.id}
                             >
                                 {t('common.delete', 'Deletar')}

@@ -40,12 +40,13 @@ const STATUS_CONFIG: Record<ActionPlanStatus, { label: string; className: string
 
 interface ActionPlanTask {
     id: string
-    action_plan_id: string
+    action_plan_id?: string
     title: string
     is_done: boolean
     order_index: number
     due_date: string | null
     owner_name: string | null
+    notes: string | null
 }
 
 interface ActionPlanWithRelations {
@@ -212,14 +213,15 @@ export function ActionsPage() {
             if (filtered.length > 0) {
                 const { data: tasksData } = await supabase
                     .from('action_plan_tasks')
-                    .select('id, action_plan_id, title, is_done, order_index, due_date, owner_name')
+                    .select('id, action_plan_id, title, is_done, order_index, due_date, owner_name, notes')
                     .in('action_plan_id', filtered.map(p => p.id))
                     .order('order_index', { ascending: true })
 
                 const grouped: Record<string, ActionPlanTask[]> = {}
                 for (const plan of filtered) grouped[plan.id] = []
                 for (const task of (tasksData || []) as ActionPlanTask[]) {
-                    if (grouped[task.action_plan_id]) grouped[task.action_plan_id].push(task)
+                    const planId = task.action_plan_id!
+                    if (grouped[planId]) grouped[planId].push(task)
                 }
                 setTasksByPlanId(grouped)
             }
