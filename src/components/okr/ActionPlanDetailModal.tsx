@@ -12,6 +12,8 @@ import { Input } from '../ui/Input'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { cn, formatDate } from '../../lib/utils'
+import { getEffectiveDeadline, formatDeadlineDate } from '../../lib/dateUtils'
+import { DeadlineBadge } from './DeadlineBadge'
 import { type AssigneeOption } from '../../lib/assignees'
 
 // ── Shared types ──────────────────────────────────────────────────────────────
@@ -294,6 +296,10 @@ export function ActionPlanDetailModal({
     const allDone = totalTasks > 0 && doneTasks === totalTasks
     const someDone = doneTasks > 0 && !allDone
 
+    const effectiveDeadline = plan
+        ? getEffectiveDeadline(plan.due_date, tasks)
+        : null
+
     function getInitials(name: string): string {
         return name.split(' ').slice(0, 2).map(n => n[0]?.toUpperCase() ?? '').join('')
     }
@@ -352,10 +358,13 @@ export function ActionPlanDetailModal({
                                                 {plan.owner_name}
                                             </span>
                                         )}
-                                        {plan?.due_date && (
+                                        {effectiveDeadline && (
                                             <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
                                                 <Calendar className="w-3 h-3" />
-                                                {formatDate(plan.due_date)}
+                                                {formatDeadlineDate(effectiveDeadline.effectiveDate)}
+                                                {effectiveDeadline.isFromTask && plan?.due_date && (
+                                                    <span className="opacity-60">· orig. {formatShortDate(plan.due_date)}</span>
+                                                )}
                                             </span>
                                         )}
                                         {totalTasks > 0 && (
@@ -643,13 +652,33 @@ export function ActionPlanDetailModal({
                                         )}
 
                                         {/* Prazo */}
-                                        {plan?.due_date && (
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-medium text-[var(--color-text-muted)]">Prazo</p>
-                                                <div className="flex items-center gap-1.5 text-sm text-[var(--color-text-primary)]">
-                                                    <Calendar className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                                                    {formatDate(plan.due_date)}
+                                        {effectiveDeadline && (
+                                            <div className="space-y-1.5">
+                                                <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                                                    {effectiveDeadline.isFromTask ? 'Prazo atual' : 'Prazo'}
+                                                </p>
+                                                <div className="space-y-1">
+                                                    <DeadlineBadge
+                                                        dueDate={effectiveDeadline.effectiveDate}
+                                                        isCompleted={plan?.status === 'completed'}
+                                                        size="sm"
+                                                        showDaysRemaining={plan?.status !== 'completed'}
+                                                    />
+                                                    {effectiveDeadline.isFromTask && (
+                                                        <p className="text-xs text-[var(--color-text-muted)] opacity-70 pl-0.5">
+                                                            via tarefa pendente
+                                                        </p>
+                                                    )}
                                                 </div>
+                                                {effectiveDeadline.isFromTask && plan?.due_date && (
+                                                    <div className="space-y-1 pt-1 border-t border-[var(--color-border)]">
+                                                        <p className="text-xs font-medium text-[var(--color-text-muted)] opacity-70">Prazo original</p>
+                                                        <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                                                            <Calendar className="w-3 h-3 opacity-60" />
+                                                            {formatDate(plan.due_date)}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

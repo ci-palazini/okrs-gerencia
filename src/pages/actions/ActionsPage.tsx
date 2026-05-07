@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 import { listAssigneesForBusinessUnit, type AssigneeOption } from '../../lib/assignees'
 import { cn } from '../../lib/utils'
-import { getDeadlineAlert } from '../../lib/dateUtils'
+import { getDeadlineAlert, getEffectiveDeadline } from '../../lib/dateUtils'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ActionPlanDetailModal } from '../../components/okr/ActionPlanDetailModal'
 
@@ -469,7 +469,10 @@ export function ActionsPage() {
                 <div className="grid gap-2.5 grid-cols-1 lg:grid-cols-2">
                     {filteredPlans.map((p) => {
                         const isCompleted = p.status === 'completed'
-                        const deadlineStatus = p.due_date ? getDeadlineAlert(p.due_date, isCompleted, 'pt').status : null
+                        const tasks = tasksByPlanId[p.id] || []
+                        const doneTasks = tasks.filter(t => t.is_done).length
+                        const effectiveDeadline = getEffectiveDeadline(p.due_date, tasks)
+                        const deadlineStatus = effectiveDeadline ? getDeadlineAlert(effectiveDeadline.effectiveDate, isCompleted, 'pt').status : null
                         const borderColor = isCompleted
                             ? 'border-l-blue-500'
                             : deadlineStatus === 'overdue'
@@ -478,13 +481,10 @@ export function ActionsPage() {
                                     ? 'border-l-orange-500'
                                     : deadlineStatus === 'warning'
                                         ? 'border-l-yellow-400'
-                                        : p.due_date
+                                        : effectiveDeadline
                                             ? 'border-l-green-500'
                                             : 'border-l-[var(--color-border)]'
                         const ownerColor = p.owner_name ? (ownerColorMap.get(p.owner_name) ?? 'bg-gray-500') : null
-
-                        const tasks = tasksByPlanId[p.id] || []
-                        const doneTasks = tasks.filter(t => t.is_done).length
 
                         return (
                             <div
@@ -556,8 +556,8 @@ export function ActionsPage() {
                                                 {p.owner_name}
                                             </span>
                                         )}
-                                        {p.due_date ? (
-                                            <DeadlineBadge dueDate={p.due_date} isCompleted={p.status === 'completed'} size="sm" />
+                                        {effectiveDeadline ? (
+                                            <DeadlineBadge dueDate={effectiveDeadline.effectiveDate} isCompleted={p.status === 'completed'} size="sm" />
                                         ) : (
                                             <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]/50">
                                                 <Calendar className="w-3 h-3" />

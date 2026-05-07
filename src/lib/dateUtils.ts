@@ -194,6 +194,31 @@ export function isFutureDate(date: string): boolean {
 }
 
 /**
+ * Computes the effective deadline for an action plan considering task deadlines.
+ * If a pending task has an earlier deadline than the plan, that task date becomes effective.
+ */
+export function getEffectiveDeadline(
+  planDueDate: string | null,
+  tasks: { due_date: string | null; is_done: boolean }[]
+): { effectiveDate: string; isFromTask: boolean } | null {
+  const pendingDates = tasks
+    .filter(t => !t.is_done && t.due_date)
+    .map(t => t.due_date as string)
+    .sort()
+
+  const earliestTaskDate = pendingDates[0] ?? null
+
+  if (!planDueDate && !earliestTaskDate) return null
+  if (!planDueDate && earliestTaskDate) return { effectiveDate: earliestTaskDate, isFromTask: true }
+  if (planDueDate && !earliestTaskDate) return { effectiveDate: planDueDate, isFromTask: false }
+
+  const taskIsEarlier = earliestTaskDate! < planDueDate!
+  return taskIsEarlier
+    ? { effectiveDate: earliestTaskDate!, isFromTask: true }
+    : { effectiveDate: planDueDate!, isFromTask: false }
+}
+
+/**
  * Validates a date string format (YYYY-MM-DD)
  * @param date - Date string to validate
  * @returns true if valid format

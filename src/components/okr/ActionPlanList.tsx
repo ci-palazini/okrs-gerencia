@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { listAssigneesForBusinessUnit, type AssigneeOption } from '../../lib/assignees'
 import { useAuth } from '../../hooks/useAuth'
 import { cn, formatDate } from '../../lib/utils'
+import { getEffectiveDeadline } from '../../lib/dateUtils'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Input } from '../ui/Input'
 import {
@@ -467,6 +468,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                 ? 'border-l-blue-500'
                                 : 'border-l-[var(--color-border)]'
                         const barColor = allDone ? 'bg-green-500' : someDone ? 'bg-blue-500' : 'bg-[var(--color-border)]'
+                        const effectiveDL = getEffectiveDeadline(planItem.due_date, planTasks)
 
                         return (
                             <div
@@ -506,12 +508,15 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                                     ))}
                                                 </select>
                                             </div>
-                                            {(planItem.due_date || planItem.owner_name) && (
+                                            {(effectiveDL || planItem.owner_name) && (
                                                 <div className="flex items-center gap-2 mt-1.5">
-                                                    {planItem.due_date && (
+                                                    {effectiveDL && (
                                                         <span className="flex items-center gap-1 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-2 py-0.5 rounded-md">
                                                             <Calendar className="w-3 h-3" />
-                                                            {formatDate(planItem.due_date)}
+                                                            {formatDate(effectiveDL.effectiveDate)}
+                                                            {effectiveDL.isFromTask && planItem.due_date && (
+                                                                <span className="opacity-50 font-normal">· orig. {formatShortDate(planItem.due_date)}</span>
+                                                            )}
                                                         </span>
                                                     )}
                                                     {planItem.owner_name && (

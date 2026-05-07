@@ -10,6 +10,7 @@ import { DeadlineBadgeMinimal } from '../../components/okr/DeadlineBadge'
 import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import { useDeadlineAlerts } from '../../hooks/useDeadlineAlerts'
 import { supabase } from '../../lib/supabase'
+import { getEffectiveDeadline } from '../../lib/dateUtils'
 import type { ConfidenceLevel } from '../../types'
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'outline'
@@ -25,6 +26,7 @@ interface ActionPlanTaskRow {
     id: string
     action_plan_id: string
     is_done: boolean
+    due_date: string | null
 }
 
 interface DashboardKR {
@@ -148,7 +150,7 @@ export function DashboardPage() {
             const planIds = typedPlans.map((plan) => plan.id)
             const { data: tasksData, error: tasksError } = await supabase
                 .from('action_plan_tasks')
-                .select('id, action_plan_id, is_done')
+                .select('id, action_plan_id, is_done, due_date')
                 .in('action_plan_id', planIds)
 
             if (tasksError) throw tasksError
@@ -263,12 +265,13 @@ export function DashboardPage() {
         const overdue = new Set<string>()
 
         actionPlans.forEach((plan) => {
-            if (!plan.due_date) return
-
-            const dueDate = plan.due_date.slice(0, 10)
-            if (dueDate >= todayIso) return
-
             const tasks = tasksByPlanId[plan.id] || []
+            const effectiveDL = getEffectiveDeadline(plan.due_date, tasks)
+            if (!effectiveDL) return
+
+            const effectiveDate = effectiveDL.effectiveDate.slice(0, 10)
+            if (effectiveDate >= todayIso) return
+
             const hasPendingTasks = tasks.length === 0 || tasks.some((task) => !task.is_done)
             if (hasPendingTasks) {
                 overdue.add(plan.id)
