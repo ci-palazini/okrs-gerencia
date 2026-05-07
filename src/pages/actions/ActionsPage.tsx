@@ -306,11 +306,14 @@ export function ActionsPage() {
         let base = plans
         if (teamMemberNames) base = base.filter(p => p.owner_name && teamMemberNames.has(p.owner_name))
         if (selectedPeriods.size > 0) base = base.filter(p => matchesPeriod(p, selectedPeriods))
-        if (selectedUserNames.size > 0) base = base.filter(p => p.owner_name && selectedUserNames.has(p.owner_name))
+        if (selectedUserNames.size > 0) base = base.filter(p => {
+            if (p.owner_name && selectedUserNames.has(p.owner_name)) return true
+            return (tasksByPlanId[p.id] ?? []).some(t => t.owner_name && selectedUserNames.has(t.owner_name))
+        })
         if (selectedPillarIds.size > 0) base = base.filter(p => p.key_result?.objective?.pillar_id && selectedPillarIds.has(p.key_result.objective.pillar_id))
         return base
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [plans, teamMemberNames, selectedPeriods, selectedUserNames, selectedPillarIds])
+    }, [plans, tasksByPlanId, teamMemberNames, selectedPeriods, selectedUserNames, selectedPillarIds])
 
     const counts = useMemo(() => {
         const now = new Date()
