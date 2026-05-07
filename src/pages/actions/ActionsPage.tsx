@@ -447,6 +447,7 @@ export function ActionsPage() {
                             return next
                         })}
                         placeholder={t('common.allUsers', 'Todos os usuários')}
+                        searchable
                     />
                 )}
 

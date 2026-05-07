@@ -1156,6 +1156,7 @@ export function OKRConfidenceMapPage() {
                                 selected={selectedUserNames}
                                 onToggle={toggleUser}
                                 placeholder={t('common.allUsers', 'Todos os usuários')}
+                                searchable
                             />
                         )}
                     </div>

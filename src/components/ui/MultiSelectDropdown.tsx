@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Search } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 interface MultiSelectDropdownProps {
@@ -8,11 +8,14 @@ interface MultiSelectDropdownProps {
     onToggle: (value: string) => void
     placeholder: string
     className?: string
+    searchable?: boolean
 }
 
-export function MultiSelectDropdown({ options, selected, onToggle, placeholder, className }: MultiSelectDropdownProps) {
+export function MultiSelectDropdown({ options, selected, onToggle, placeholder, className, searchable }: MultiSelectDropdownProps) {
     const [open, setOpen] = useState(false)
+    const [search, setSearch] = useState('')
     const ref = useRef<HTMLDivElement>(null)
+    const searchRef = useRef<HTMLInputElement>(null)
 
     useEffect(() => {
         function handleClick(e: MouseEvent) {
@@ -24,7 +27,17 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
         return () => document.removeEventListener('mousedown', handleClick)
     }, [])
 
+    useEffect(() => {
+        if (open) {
+            setSearch('')
+            setTimeout(() => searchRef.current?.focus(), 0)
+        }
+    }, [open])
+
     const selectedCount = selected.size
+    const visibleOptions = searchable && search.trim()
+        ? options.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
+        : options
 
     return (
         <div ref={ref} className={cn('relative', className)}>
@@ -44,37 +57,54 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
                 <ChevronDown className={cn('w-4 h-4 flex-shrink-0 transition-transform duration-200', open && 'rotate-180')} />
             </button>
             {open && (
-                <div className="absolute top-full mt-1 z-20 w-max min-w-full max-w-[280px] max-h-52 overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg">
-                    {options.map((opt) => {
-                        const isSelected = selected.has(opt.value)
-                        return (
-                            <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() => onToggle(opt.value)}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--color-surface-hover)] transition-colors"
-                            >
-                                <div className={cn(
-                                    'w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors',
-                                    isSelected
-                                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)]'
-                                        : 'border-[var(--color-border)]'
-                                )}>
-                                    {isSelected && (
-                                        <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
-                                            <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
+                <div className="absolute top-full mt-1 z-20 w-max min-w-full max-w-[280px] rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg flex flex-col">
+                    {searchable && (
+                        <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--color-border)]">
+                            <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] flex-shrink-0" />
+                            <input
+                                ref={searchRef}
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Buscar..."
+                                className="flex-1 bg-transparent text-xs outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+                            />
+                        </div>
+                    )}
+                    <div className="max-h-52 overflow-y-auto">
+                        {visibleOptions.length === 0 && (
+                            <p className="px-3 py-2 text-xs text-[var(--color-text-muted)]">Nenhum resultado</p>
+                        )}
+                        {visibleOptions.map((opt) => {
+                            const isSelected = selected.has(opt.value)
+                            return (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => onToggle(opt.value)}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--color-surface-hover)] transition-colors"
+                                >
+                                    <div className={cn(
+                                        'w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors',
+                                        isSelected
+                                            ? 'bg-[var(--color-primary)] border-[var(--color-primary)]'
+                                            : 'border-[var(--color-border)]'
+                                    )}>
+                                        {isSelected && (
+                                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
+                                                <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    {opt.color && (
+                                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
                                     )}
-                                </div>
-                                {opt.color && (
-                                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
-                                )}
-                                <span className={isSelected ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-primary)]'}>
-                                    {opt.label}
-                                </span>
-                            </button>
-                        )
-                    })}
+                                    <span className={isSelected ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-primary)]'}>
+                                        {opt.label}
+                                    </span>
+                                </button>
+                            )
+                        })}
+                    </div>
                 </div>
             )}
         </div>
