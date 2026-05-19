@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Calendar, ListTodo, Pencil, X } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
@@ -84,6 +85,7 @@ type StatusFilter = 'all' | ActionPlanStatus
 export function ActionsPage() {
     const { t } = useTranslation()
     const { selectedUnit } = useBusinessUnit()
+    const { user } = useAuth()
 
     const [loading, setLoading] = useState(true)
     const [plans, setPlans] = useState<ActionPlanWithRelations[]>([])
@@ -170,6 +172,20 @@ export function ActionsPage() {
         if (selectedUnit) loadPlans()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedUnit])
+
+    async function deleteActionPlan(plan: ActionPlanWithRelations) {
+        if (!user) return
+        try {
+            await supabase.from('action_plan_tasks').delete().eq('action_plan_id', plan.id)
+            await supabase.from('action_plan_comments').delete().eq('action_plan_id', plan.id)
+            const { error } = await supabase.from('action_plans').delete().eq('id', plan.id)
+            if (error) throw error
+            setSelectedPlan(null)
+            setPlans(prev => prev.filter(p => p.id !== plan.id))
+        } catch (e) {
+            console.error('Error deleting action plan:', e)
+        }
+    }
 
     async function loadPlans() {
         setLoading(true)
@@ -711,7 +727,7 @@ export function ActionsPage() {
                     const full = plans.find(p => p.id === plan.id)
                     if (full) { setSelectedPlan(null); openEditor(full) }
                 }}
-                onDeletePlan={() => { setSelectedPlan(null) }}
+                onDeletePlan={(plan) => deleteActionPlan(plan)}
             />
         </div>
     )

@@ -386,6 +386,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             const planTitle = target.title
 
             await supabase.from('action_plan_tasks').delete().eq('action_plan_id', planId)
+            await supabase.from('action_plan_comments').delete().eq('action_plan_id', planId)
 
             const { error: deleteError } = await supabase
                 .from('action_plans')
