@@ -248,6 +248,10 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
 
                 if (updateError) throw updateError
 
+                if (selectedPlan?.id === editingPlan.id) {
+                    setSelectedPlan(data as ActionPlan)
+                }
+
                 await supabase.from('audit_logs').insert({
                     user_id: user.id,
                     user_email: user.email || '',
