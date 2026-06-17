@@ -42,6 +42,9 @@ export interface ActionPlan {
     observations?: string | null
     effectiveness?: string | null
     status: ActionPlanStatus
+    created_by?: string | null
+    creator_name?: string | null
+    created_at?: string | null
 }
 
 export interface ActionPlanTask {
@@ -310,6 +313,13 @@ export function ActionPlanDetailModal({
         })
     }
 
+    function formatCreatedAt(dateStr: string): string {
+        const d = new Date(dateStr)
+        const date = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+        const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        return `${date} às ${time}`
+    }
+
     const hasDetails = !!(
         plan?.tracking_method ||
         plan?.observations ||
@@ -376,27 +386,37 @@ export function ActionPlanDetailModal({
                                         )}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => plan && onEditPlan(plan)}
-                                    >
-                                        <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                                        Editar
-                                    </Button>
-                                    <button
-                                        className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
-                                        onClick={() => plan && setShowDeleteConfirm(true)}
-                                        title="Deletar plano"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                    <Dialog.Close asChild>
-                                        <button className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors text-base leading-none">
-                                            ✕
+                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                    <div className="flex items-center gap-1.5">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => plan && onEditPlan(plan)}
+                                        >
+                                            <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                                            Editar
+                                        </Button>
+                                        <button
+                                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
+                                            onClick={() => plan && setShowDeleteConfirm(true)}
+                                            title="Deletar plano"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
-                                    </Dialog.Close>
+                                        <Dialog.Close asChild>
+                                            <button className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors text-base leading-none">
+                                                ✕
+                                            </button>
+                                        </Dialog.Close>
+                                    </div>
+                                    {(plan?.created_at || plan?.creator_name) && (
+                                        <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] whitespace-nowrap">
+                                            <Clock className="w-3 h-3" />
+                                            Criado
+                                            {plan?.creator_name && <> por <span className="font-medium text-[var(--color-text-secondary)]">{plan.creator_name}</span></>}
+                                            {plan?.created_at && <> em {formatCreatedAt(plan.created_at)}</>}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>

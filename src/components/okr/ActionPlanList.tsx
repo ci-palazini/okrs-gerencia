@@ -116,6 +116,25 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             if (plansError) throw plansError
 
             const normalizedPlans = (plansData as ActionPlan[]) || []
+
+            // Resolve creator display names from the users table
+            const creatorIds = Array.from(
+                new Set(normalizedPlans.map(p => p.created_by).filter((id): id is string => !!id))
+            )
+            if (creatorIds.length > 0) {
+                const { data: usersData } = await supabase
+                    .from('users')
+                    .select('id, full_name, email')
+                    .in('id', creatorIds)
+                const nameById = new Map<string, string>(
+                    (usersData as { id: string; full_name: string | null; email: string | null }[] | null
+                        || []).map(u => [u.id, u.full_name || u.email || 'Usuário'])
+                )
+                for (const p of normalizedPlans) {
+                    p.creator_name = p.created_by ? (nameById.get(p.created_by) ?? null) : null
+                }
+            }
+
             setPlans(normalizedPlans)
 
             if (normalizedPlans.length === 0) {
@@ -249,7 +268,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 if (updateError) throw updateError
 
                 if (selectedPlan?.id === editingPlan.id) {
-                    setSelectedPlan(data as ActionPlan)
+                    setSelectedPlan({ ...(data as ActionPlan), creator_name: editingPlan.creator_name ?? null })
                 }
 
                 await supabase.from('audit_logs').insert({
@@ -275,6 +294,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                         tracking_links: trackingLinks,
                         observations: observations.trim() || null,
                         status: formStatus,
+                        created_by: user.id,
                     })
                     .select()
                     .single()

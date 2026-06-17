@@ -61,6 +61,9 @@ interface ActionPlanWithRelations {
     tracking_links?: Array<{ url: string; label: string }> | null
     observations?: string | null
     effectiveness?: string | null
+    created_by?: string | null
+    creator_name?: string | null
+    created_at?: string | null
     key_result: {
         id: string
         code: string
@@ -203,6 +206,8 @@ export function ActionsPage() {
                     tracking_links,
                     observations,
                     effectiveness,
+                    created_by,
+                    created_at,
                     key_result:key_results(
                         id,
                         code,
@@ -224,6 +229,25 @@ export function ActionsPage() {
 
             const typed = (data || []) as unknown as ActionPlanWithRelations[]
             const filtered = typed.filter((p) => p?.key_result?.objective?.business_unit_id === selectedUnit)
+
+            // Resolve creator display names from the users table
+            const creatorIds = Array.from(
+                new Set(filtered.map(p => p.created_by).filter((id): id is string => !!id))
+            )
+            if (creatorIds.length > 0) {
+                const { data: usersData } = await supabase
+                    .from('users')
+                    .select('id, full_name, email')
+                    .in('id', creatorIds)
+                const nameById = new Map<string, string>(
+                    (usersData as { id: string; full_name: string | null; email: string | null }[] | null
+                        || []).map(u => [u.id, u.full_name || u.email || 'Usuário'])
+                )
+                for (const p of filtered) {
+                    p.creator_name = p.created_by ? (nameById.get(p.created_by) ?? null) : null
+                }
+            }
+
             setPlans(filtered)
 
             if (filtered.length > 0) {
