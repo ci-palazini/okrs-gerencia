@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { MultiSelectDropdown } from '../../components/ui/MultiSelectDropdown'
 import { DeadlineIndicatorIcon } from '../../components/okr/DeadlineIndicator'
+import { DiscontinuedBadge } from '../../components/okr/DiscontinuedBadge'
 import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import type { CascadeObjective, CascadePillar, CascadeTreeNode } from '../../hooks/useCascadeOKRData'
 import type { ConfidenceLevel } from '../../types'
@@ -56,6 +57,8 @@ function flattenNodes(nodes: CascadeTreeNode[]): CascadeTreeNode[] {
 
 function countConfidence(nodes: CascadeTreeNode[]): ConfidenceSummary {
     return nodes.reduce<ConfidenceSummary>((acc, node) => {
+        // Descontinuados não entram nos cálculos de saúde/confiança
+        if (node.discontinued_at) return acc
         acc.total += 1
         if (node.confidence === 'on_track') acc.on_track += 1
         else if (node.confidence === 'at_risk') acc.at_risk += 1
@@ -222,7 +225,9 @@ function computeQuickStats(sections: PillarSection[]): QuickStats {
     const soon = new Date(today)
     soon.setDate(soon.getDate() + 14)
 
-    const allNodes = sections.flatMap((s) => s.objectives.flatMap((g) => flattenNodes(g.roots)))
+    const allNodes = sections
+        .flatMap((s) => s.objectives.flatMap((g) => flattenNodes(g.roots)))
+        .filter((n) => !n.discontinued_at) // descontinuados ficam de fora das estatísticas
     const total = allNodes.length
     if (total === 0) return { total: 0, avgProgress: null, noActual: 0, dueSoon: 0 }
 
@@ -566,9 +571,16 @@ function KRTreeNode({ node, pillarId, depth, isLast, ancestorIsLast, onNavigate,
                                 : '—'}
                         </span>
 
-                        <span className="flex-1 text-sm text-[var(--color-text-primary)] truncate">
+                        <span className={cn(
+                            'flex-1 text-sm text-[var(--color-text-primary)] truncate',
+                            node.discontinued_at && 'line-through text-[var(--color-text-muted)]'
+                        )}>
                             {node.title}
                         </span>
+
+                        {node.discontinued_at && (
+                            <DiscontinuedBadge reason={node.discontinued_reason} className="flex-shrink-0" />
+                        )}
 
                         {/* Metric section: baseline → atual / meta + barra */}
                         <div className="flex flex-col items-end gap-0.5 flex-shrink-0">

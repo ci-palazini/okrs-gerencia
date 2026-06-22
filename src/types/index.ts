@@ -43,6 +43,9 @@ export interface Objective {
     due_date: string | null
     is_active: boolean
     is_completed: boolean
+    discontinued_at: string | null
+    discontinued_reason: string | null
+    discontinued_by: string | null
     created_at?: string
     updated_at?: string
 }
@@ -77,6 +80,9 @@ export interface KeyResult {
     notes?: string | null
     due_date: string | null
     is_completed: boolean
+    discontinued_at: string | null
+    discontinued_reason: string | null
+    discontinued_by: string | null
     created_at?: string
     updated_at?: string
 }

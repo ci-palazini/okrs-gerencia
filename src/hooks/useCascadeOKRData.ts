@@ -27,6 +27,9 @@ export interface CascadeObjective {
     due_date: string | null
     is_active: boolean
     is_completed: boolean
+    discontinued_at: string | null
+    discontinued_reason: string | null
+    discontinued_by: string | null
 }
 
 export interface CascadeObjectiveWithRelations {
@@ -63,6 +66,9 @@ export interface CascadeKeyResult {
     notes: string | null
     due_date: string | null
     is_completed: boolean
+    discontinued_at: string | null
+    discontinued_reason: string | null
+    discontinued_by: string | null
 }
 
 export interface CascadeTreeNode extends CascadeKeyResult {
@@ -601,6 +607,92 @@ export function useCascadeOKRData(filterPillar?: string | null) {
         }
     }, [objectives, user])
 
+    const setKRDiscontinued = useCallback(async (krId: string, discontinue: boolean, reason?: string | null) => {
+        try {
+            const kr = keyResults.find((item) => item.id === krId)
+            const patch = discontinue
+                ? {
+                    discontinued_at: new Date().toISOString(),
+                    discontinued_reason: reason?.trim() || null,
+                    discontinued_by: user?.id ?? null,
+                }
+                : {
+                    discontinued_at: null,
+                    discontinued_reason: null,
+                    discontinued_by: null,
+                }
+
+            const { error } = await supabase
+                .from('key_results')
+                .update(patch)
+                .eq('id', krId)
+
+            if (error) throw error
+
+            setKeyResults((prev) => prev.map((item) => (
+                item.id === krId ? { ...item, ...patch } : item
+            )))
+
+            if (user && kr) {
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email,
+                    action: 'update',
+                    entity_type: 'key_results',
+                    entity_id: krId,
+                    entity_name: `${kr.title} - ${discontinue ? 'discontinued' : 'reactivated'}`,
+                    old_value: { discontinued_at: kr.discontinued_at, discontinued_reason: kr.discontinued_reason },
+                    new_value: patch,
+                })
+            }
+        } catch (error) {
+            console.error('Error updating KR discontinued state:', error)
+        }
+    }, [keyResults, user])
+
+    const setObjectiveDiscontinued = useCallback(async (objectiveId: string, discontinue: boolean, reason?: string | null) => {
+        try {
+            const objective = objectives.find((item) => item.id === objectiveId)
+            const patch = discontinue
+                ? {
+                    discontinued_at: new Date().toISOString(),
+                    discontinued_reason: reason?.trim() || null,
+                    discontinued_by: user?.id ?? null,
+                }
+                : {
+                    discontinued_at: null,
+                    discontinued_reason: null,
+                    discontinued_by: null,
+                }
+
+            const { error } = await supabase
+                .from('objectives')
+                .update(patch)
+                .eq('id', objectiveId)
+
+            if (error) throw error
+
+            setObjectives((prev) => prev.map((item) => (
+                item.id === objectiveId ? { ...item, ...patch } : item
+            )))
+
+            if (user && objective) {
+                await supabase.from('audit_logs').insert({
+                    user_id: user.id,
+                    user_email: user.email,
+                    action: 'update',
+                    entity_type: 'objectives',
+                    entity_id: objectiveId,
+                    entity_name: `${objective.title} - ${discontinue ? 'discontinued' : 'reactivated'}`,
+                    old_value: { discontinued_at: objective.discontinued_at, discontinued_reason: objective.discontinued_reason },
+                    new_value: patch,
+                })
+            }
+        } catch (error) {
+            console.error('Error updating objective discontinued state:', error)
+        }
+    }, [objectives, user])
+
     const upsertMonthlyData = useCallback(async (
         krId: string,
         month: number,
@@ -690,5 +782,7 @@ export function useCascadeOKRData(filterPillar?: string | null) {
         deleteObjective,
         toggleKRComplete,
         toggleObjectiveComplete,
+        setKRDiscontinued,
+        setObjectiveDiscontinued,
     }
 }

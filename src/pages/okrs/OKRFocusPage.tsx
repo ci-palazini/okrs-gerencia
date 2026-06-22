@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
+    Archive,
     ArrowLeft,
     CheckCircle2,
     ChevronDown,
@@ -13,6 +14,7 @@ import {
     Paperclip,
     Pencil,
     Plus,
+    RotateCcw,
     ScanEye,
     Trash2,
     User,
@@ -26,6 +28,8 @@ import { ActionPlanList } from '../../components/okr/ActionPlanList'
 import { CascadeKRModal } from '../../components/okr/CascadeKRModal'
 import { KRAttachmentsModal } from '../../components/okr/KRAttachmentsPanel'
 import { DeadlineBadge } from '../../components/okr/DeadlineBadge'
+import { DiscontinueModal } from '../../components/okr/DiscontinueModal'
+import { DiscontinuedBadge } from '../../components/okr/DiscontinuedBadge'
 import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import type { CascadeKeyResult, CascadeObjective, CascadeTreeNode } from '../../hooks/useCascadeOKRData'
 import { cn, formatKRCurrency, getNextHierarchicalCode } from '../../lib/utils'
@@ -162,6 +166,8 @@ interface AccordionNodeProps {
     onUpdateConfidence: (krId: string, confidence: ConfidenceLevel) => void
     onFocusNode: (krId: string) => void
     onToggleComplete: (krId: string, isCompleted: boolean) => void
+    onDiscontinue: (kr: CascadeTreeNode) => void
+    onReactivate: (kr: CascadeTreeNode) => void
 }
 
 function AccordionNode({
@@ -177,6 +183,8 @@ function AccordionNode({
     onUpdateConfidence,
     onFocusNode,
     onToggleComplete,
+    onDiscontinue,
+    onReactivate,
 }: AccordionNodeProps) {
     const { t } = useTranslation()
     const isExpanded = expandedNodes.has(node.id)
@@ -189,6 +197,7 @@ function AccordionNode({
     const progress = node.progress !== null ? Math.round(node.progress) : null
     const borderColor = getConfidenceBorderColor(node.confidence)
     const barColor = getProgressBarColor(node.progress, node.confidence)
+    const isDiscontinued = Boolean(node.discontinued_at)
 
     return (
         <div className="space-y-3">
@@ -196,6 +205,7 @@ function AccordionNode({
                 className={cn(
                     'group rounded-lg border border-[var(--color-border)] border-l-4 bg-[var(--color-surface)] overflow-hidden',
                     borderColor,
+                    isDiscontinued && 'opacity-60 border-dashed',
                     isSelected && 'ring-2 ring-[var(--color-primary)]'
                 )}
             >
@@ -247,6 +257,9 @@ function AccordionNode({
                                             isCompleted={node.is_completed}
                                             size="sm"
                                         />
+                                    )}
+                                    {isDiscontinued && (
+                                        <DiscontinuedBadge reason={node.discontinued_reason} />
                                     )}
                                     {ownerNames.length > 0 && (
                                         <OwnerChips owners={ownerNames} colorMap={ownerColorMap} />
@@ -321,6 +334,17 @@ function AccordionNode({
                                 : <><Circle className="w-3 h-3 mr-1" />{t('okr.markComplete')}</>
                             }
                         </Button>
+                        {isDiscontinued ? (
+                            <Button variant="ghost" size="sm" className="h-8" onClick={() => onReactivate(node)}>
+                                <RotateCcw className="w-3 h-3 mr-1" />
+                                {t('okr.discontinue.reactivate')}
+                            </Button>
+                        ) : (
+                            <Button variant="ghost" size="sm" className="h-8" onClick={() => onDiscontinue(node)}>
+                                <Archive className="w-3 h-3 mr-1" />
+                                {t('okr.discontinue.action')}
+                            </Button>
+                        )}
                         {!isSelected && (
                             <Button
                                 variant="ghost"
@@ -392,6 +416,8 @@ function AccordionNode({
                             onUpdateConfidence={onUpdateConfidence}
                             onFocusNode={onFocusNode}
                             onToggleComplete={onToggleComplete}
+                            onDiscontinue={onDiscontinue}
+                            onReactivate={onReactivate}
                         />
                     ))}
                 </div>
@@ -420,7 +446,10 @@ export function OKRFocusPage() {
         updateConfidence,
         loadData,
         toggleKRComplete,
+        setKRDiscontinued,
     } = useCascadeOKRData(pillarId)
+
+    const [discontinueKr, setDiscontinueKr] = useState<{ id: string; label: string } | null>(null)
 
     const [expandedState, setExpandedState] = useState<{ nodeId: string; ids: Set<string> }>({
         nodeId: '',
@@ -527,6 +556,15 @@ export function OKRFocusPage() {
         if (krId === kr.id && pillarId) {
             navigate(`/okrs/pillar/${pillarId}`, { replace: true })
         }
+    }
+
+    function handleDiscontinueKR(kr: CascadeTreeNode) {
+        setDiscontinueKr({ id: kr.id, label: `${kr.code} · ${kr.title}` })
+    }
+
+    async function handleReactivateKR(kr: CascadeTreeNode) {
+        if (!window.confirm(t('okr.discontinue.reactivateConfirm'))) return
+        await setKRDiscontinued(kr.id, false)
     }
 
     function handleExpandAll() {
@@ -652,6 +690,9 @@ export function OKRFocusPage() {
                                         size="md"
                                     />
                                 )}
+                                {selectedNode.discontinued_at && (
+                                    <DiscontinuedBadge reason={selectedNode.discontinued_reason} size="md" />
+                                )}
                             </div>
                         </div>
 
@@ -666,6 +707,17 @@ export function OKRFocusPage() {
                                     : <><Circle className="w-4 h-4 mr-2" />{t('okr.markComplete')}</>
                                 }
                             </Button>
+                            {selectedNode.discontinued_at ? (
+                                <Button variant="ghost" onClick={() => handleReactivateKR(selectedNode)}>
+                                    <RotateCcw className="w-4 h-4 mr-2" />
+                                    {t('okr.discontinue.reactivate')}
+                                </Button>
+                            ) : (
+                                <Button variant="ghost" onClick={() => handleDiscontinueKR(selectedNode)}>
+                                    <Archive className="w-4 h-4 mr-2" />
+                                    {t('okr.discontinue.action')}
+                                </Button>
+                            )}
                             {!selectedIsLeaf && (
                                 <>
                                     <Button variant="outline" onClick={handleExpandAll}>
@@ -748,6 +800,8 @@ export function OKRFocusPage() {
                                 { state: { backTo: preservedBackTo } }
                             )}
                             onToggleComplete={toggleKRComplete}
+                            onDiscontinue={handleDiscontinueKR}
+                            onReactivate={handleReactivateKR}
                         />
                     ))}
                 </div>
@@ -797,6 +851,16 @@ export function OKRFocusPage() {
                 krId={selectedNode.id}
                 open={attachmentsModalState.open && attachmentsModalState.krId === selectedNode.id}
                 onOpenChange={(open) => setAttachmentsModalState({ open, krId: selectedNode.id })}
+            />
+
+            <DiscontinueModal
+                open={discontinueKr !== null}
+                onOpenChange={(open) => { if (!open) setDiscontinueKr(null) }}
+                entity="kr"
+                label={discontinueKr?.label}
+                onConfirm={async (reason) => {
+                    if (discontinueKr) await setKRDiscontinued(discontinueKr.id, true, reason)
+                }}
             />
         </div>
     )

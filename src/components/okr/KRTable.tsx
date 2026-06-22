@@ -7,6 +7,7 @@ import { ConfidenceEmoji } from '../ui/ConfidenceIndicator'
 import type { ConfidenceLevel } from '../ui/ConfidenceIndicator'
 import { cn, formatKRCurrency } from '../../lib/utils'
 import { DeadlineIndicator } from './DeadlineIndicator'
+import { DiscontinuedBadge } from './DiscontinuedBadge'
 
 interface KeyResultRow {
     id: string
@@ -26,6 +27,8 @@ interface KeyResultRow {
     due_date?: string | null
     is_active?: boolean
     is_completed?: boolean
+    discontinued_at?: string | null
+    discontinued_reason?: string | null
     // Quarterly data
     baseline?: number | null
     target?: number | null
@@ -140,7 +143,7 @@ export function KRTable({
                                 <tr
                                     className={cn(
                                         "group transition-colors",
-                                        kr.is_completed && "opacity-60",
+                                        (kr.is_completed || kr.discontinued_at) && "opacity-60",
                                         isExpanded ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
                                     )}
                                 >
@@ -175,9 +178,14 @@ export function KRTable({
 
                                     {/* Title */}
                                     <td className="px-3 py-3">
-                                        <p className={cn("font-medium text-[var(--color-text-primary)] text-sm cursor-pointer hover:text-[var(--color-primary)]", kr.is_completed && "line-through text-[var(--color-text-muted)]")} onClick={() => renderExpandedRow && toggleExpand(kr.id)}>
-                                            {kr.title}
-                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <p className={cn("font-medium text-[var(--color-text-primary)] text-sm cursor-pointer hover:text-[var(--color-primary)]", kr.is_completed && "line-through text-[var(--color-text-muted)]")} onClick={() => renderExpandedRow && toggleExpand(kr.id)}>
+                                                {kr.title}
+                                            </p>
+                                            {kr.discontinued_at && (
+                                                <DiscontinuedBadge reason={kr.discontinued_reason} />
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* Owner */}

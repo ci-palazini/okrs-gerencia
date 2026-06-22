@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Plus, Search, Trash2, Pencil, CheckCircle2, Circle } from 'lucide-react'
+import { Archive, ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Plus, RotateCcw, Search, Trash2, Pencil, CheckCircle2, Circle } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
@@ -11,9 +11,11 @@ import { Input } from '../../components/ui/Input'
 import { CreateObjectiveModalV2 } from '../../components/okr/CreateObjectiveModalV2'
 import { CascadeKRModal } from '../../components/okr/CascadeKRModal'
 import { DeadlineBadge } from '../../components/okr/DeadlineBadge'
+import { DiscontinueModal } from '../../components/okr/DiscontinueModal'
+import { DiscontinuedBadge } from '../../components/okr/DiscontinuedBadge'
 import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import type { CascadeKeyResult, CascadeObjective, CascadeTreeNode } from '../../hooks/useCascadeOKRData'
-import { formatKRCurrency, getNextHierarchicalCode } from '../../lib/utils'
+import { cn, formatKRCurrency, getNextHierarchicalCode } from '../../lib/utils'
 
 interface KRModalState {
   open: boolean
@@ -127,12 +129,18 @@ export function PillarOKRsPage() {
         loadData,
         toggleKRComplete,
         toggleObjectiveComplete,
+        setObjectiveDiscontinued,
+        setKRDiscontinued,
     } = useCascadeOKRData(pillarId)
 
     const [searchTerm, setSearchTerm] = useState('')
     const [objectiveModalOpen, setObjectiveModalOpen] = useState(false)
     const [editingObjective, setEditingObjective] = useState<CascadeObjective | null>(null)
     const [collapsedObjectives, setCollapsedObjectives] = useState<Set<string>>(new Set())
+    const [showDiscontinued, setShowDiscontinued] = useState(false)
+    const [discontinueTarget, setDiscontinueTarget] = useState<
+        { entity: 'objective' | 'kr'; id: string; label: string } | null
+    >(null)
     const [krModalState, setKrModalState] = useState<KRModalState>({
         open: false,
         objective: null,
@@ -206,6 +214,18 @@ export function PillarOKRsPage() {
             .filter((item): item is { objective: CascadeObjective; roots: CascadeTreeNode[]; rootCount: number; leafCount: number } => item !== null)
     }, [getObjectiveRoots, normalizedSearch, objectives, pillarId])
 
+    // Ativos primeiro, descontinuados ao fim (renderizados numa seção colapsável)
+    const orderedObjectiveCards = useMemo(() => {
+        return [...objectiveCards].sort(
+            (a, b) => Number(Boolean(a.objective.discontinued_at)) - Number(Boolean(b.objective.discontinued_at))
+        )
+    }, [objectiveCards])
+
+    const discontinuedCount = useMemo(
+        () => objectiveCards.filter((c) => c.objective.discontinued_at).length,
+        [objectiveCards]
+    )
+
 
     function openCreateRootKRModal(objective: CascadeObjective) {
         const roots = getObjectiveRoots(objective.id)
@@ -221,6 +241,25 @@ export function PillarOKRsPage() {
     async function handleDeleteObjective(objective: CascadeObjective) {
         if (!window.confirm(t('okr.deleteObjectiveConfirm'))) return
         await deleteObjective(objective.id)
+    }
+
+    async function handleReactivateObjective(objective: CascadeObjective) {
+        if (!window.confirm(t('okr.discontinue.reactivateConfirm'))) return
+        await setObjectiveDiscontinued(objective.id, false)
+    }
+
+    async function handleReactivateRootKR(root: CascadeTreeNode) {
+        if (!window.confirm(t('okr.discontinue.reactivateConfirm'))) return
+        await setKRDiscontinued(root.id, false)
+    }
+
+    async function handleConfirmDiscontinue(reason: string | null) {
+        if (!discontinueTarget) return
+        if (discontinueTarget.entity === 'objective') {
+            await setObjectiveDiscontinued(discontinueTarget.id, true, reason)
+        } else {
+            await setKRDiscontinued(discontinueTarget.id, true, reason)
+        }
     }
 
     async function handleDeleteRootKR(rootKr: CascadeTreeNode) {
@@ -343,11 +382,33 @@ export function PillarOKRsPage() {
                 </Card>
             ) : (
                 <div className="space-y-5">
-                    {objectiveCards.map(({ objective, roots, rootCount, leafCount }) => {
+                    {orderedObjectiveCards.map(({ objective, roots, rootCount, leafCount }, cardIndex) => {
                         const isCollapsed = collapsedObjectives.has(objective.id)
+                        const isDiscontinued = Boolean(objective.discontinued_at)
+                        const isFirstDiscontinued = isDiscontinued
+                            && (cardIndex === 0 || !orderedObjectiveCards[cardIndex - 1].objective.discontinued_at)
+                        const sortedRoots = [...roots].sort(
+                            (a, b) => Number(Boolean(a.discontinued_at)) - Number(Boolean(b.discontinued_at))
+                        )
 
                         return (
-                            <Card key={objective.id} variant="elevated" className="p-0 overflow-hidden">
+                            <Fragment key={objective.id}>
+                                {isFirstDiscontinued && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDiscontinued((v) => !v)}
+                                        className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors w-full pt-2"
+                                    >
+                                        {showDiscontinued ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                        <Archive className="w-4 h-4" />
+                                        {t('okr.discontinue.sectionTitle')}
+                                        <Badge variant="default" size="sm">
+                                            {t('okr.discontinue.sectionCount', { count: discontinuedCount })}
+                                        </Badge>
+                                    </button>
+                                )}
+                                {(!isDiscontinued || showDiscontinued) && (
+                            <Card variant="elevated" className={cn('p-0 overflow-hidden', isDiscontinued && 'opacity-60 border border-dashed border-[var(--color-text-muted)]')}>
                                 <CardHeader className="p-4 md:p-5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]/20">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex items-start gap-2 min-w-0">
@@ -374,6 +435,9 @@ export function PillarOKRsPage() {
                                                             isCompleted={objective.is_completed}
                                                             size="sm"
                                                         />
+                                                    )}
+                                                    {isDiscontinued && (
+                                                        <DiscontinuedBadge reason={objective.discontinued_reason} size="md" />
                                                     )}
                                                 </div>
                                                 {objective.description && (
@@ -404,6 +468,29 @@ export function PillarOKRsPage() {
                                                     : <><Circle className="w-3 h-3 mr-1" />{t('okr.markComplete')}</>
                                                 }
                                             </Button>
+                                            {isDiscontinued ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleReactivateObjective(objective)}
+                                                >
+                                                    <RotateCcw className="w-3 h-3 mr-1" />
+                                                    {t('okr.discontinue.reactivate')}
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setDiscontinueTarget({
+                                                        entity: 'objective',
+                                                        id: objective.id,
+                                                        label: `${objective.code} · ${objective.title}`,
+                                                    })}
+                                                >
+                                                    <Archive className="w-3 h-3 mr-1" />
+                                                    {t('okr.discontinue.action')}
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -449,18 +536,23 @@ export function PillarOKRsPage() {
                                                 </Button>
                                             </div>
                                         ) : (
-                                            roots.map((root) => {
+                                            sortedRoots.map((root) => {
                                                 const ownerNames = (root.owner_names && root.owner_names.length > 0)
                                                     ? root.owner_names
                                                     : root.owner_name ? [root.owner_name] : []
                                                 const progress = root.progress !== null ? Math.round(root.progress) : null
                                                 const borderColor = getConfidenceBorderColor(root.confidence)
                                                 const barColor = getProgressBarColor(root.progress, root.confidence)
+                                                const rootDiscontinued = Boolean(root.discontinued_at)
 
                                                 return (
                                                     <div
                                                         key={root.id}
-                                                        className={`group rounded-lg border border-[var(--color-border)] border-l-4 ${borderColor} bg-[var(--color-surface)] overflow-hidden`}
+                                                        className={cn(
+                                                            'group rounded-lg border border-[var(--color-border)] border-l-4 bg-[var(--color-surface)] overflow-hidden',
+                                                            borderColor,
+                                                            rootDiscontinued && 'opacity-60 border-dashed'
+                                                        )}
                                                     >
                                                         {/* KR Header */}
                                                         <div className="px-4 pt-4 pb-3">
@@ -477,6 +569,9 @@ export function PillarOKRsPage() {
                                                                                 isCompleted={root.is_completed}
                                                                                 size="sm"
                                                                             />
+                                                                        )}
+                                                                        {rootDiscontinued && (
+                                                                            <DiscontinuedBadge reason={root.discontinued_reason} />
                                                                         )}
                                                                         {ownerNames.length > 0 && (
                                                                             <OwnerChips owners={ownerNames} colorMap={ownerColorMap} />
@@ -549,6 +644,29 @@ export function PillarOKRsPage() {
                                                                         : <><Circle className="w-3 h-3 mr-1" />{t('okr.markComplete')}</>
                                                                     }
                                                                 </Button>
+                                                                {rootDiscontinued ? (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => handleReactivateRootKR(root)}
+                                                                    >
+                                                                        <RotateCcw className="w-3 h-3 mr-1" />
+                                                                        {t('okr.discontinue.reactivate')}
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => setDiscontinueTarget({
+                                                                            entity: 'kr',
+                                                                            id: root.id,
+                                                                            label: `${root.code} · ${root.title}`,
+                                                                        })}
+                                                                    >
+                                                                        <Archive className="w-3 h-3 mr-1" />
+                                                                        {t('okr.discontinue.action')}
+                                                                    </Button>
+                                                                )}
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
@@ -605,6 +723,8 @@ export function PillarOKRsPage() {
                                     </CardContent>
                                 )}
                             </Card>
+                                )}
+                            </Fragment>
                         )
                     })}
                 </div>
@@ -649,6 +769,14 @@ export function PillarOKRsPage() {
                 defaultPillarId={selectedPillar.id}
                 defaultYear={year}
                 objective={editingObjective}
+            />
+
+            <DiscontinueModal
+                open={discontinueTarget !== null}
+                onOpenChange={(open) => { if (!open) setDiscontinueTarget(null) }}
+                entity={discontinueTarget?.entity ?? 'objective'}
+                label={discontinueTarget?.label}
+                onConfirm={handleConfirmDiscontinue}
             />
         </div>
     )
