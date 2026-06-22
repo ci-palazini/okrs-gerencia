@@ -11,6 +11,7 @@ import {
     GitBranch,
     Layers,
     ListTree,
+    MoreHorizontal,
     Paperclip,
     Pencil,
     Plus,
@@ -19,6 +20,7 @@ import {
     Trash2,
     User,
 } from 'lucide-react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent } from '../../components/ui/Card'
@@ -696,7 +698,8 @@ export function OKRFocusPage() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                        <div className="flex items-center gap-2 justify-end shrink-0">
+                            {/* Ações primárias — sempre visíveis */}
                             <Button
                                 variant="ghost"
                                 className={selectedNode.is_completed ? "text-[var(--color-success)]" : ""}
@@ -707,29 +710,6 @@ export function OKRFocusPage() {
                                     : <><Circle className="w-4 h-4 mr-2" />{t('okr.markComplete')}</>
                                 }
                             </Button>
-                            {selectedNode.discontinued_at ? (
-                                <Button variant="ghost" onClick={() => handleReactivateKR(selectedNode)}>
-                                    <RotateCcw className="w-4 h-4 mr-2" />
-                                    {t('okr.discontinue.reactivate')}
-                                </Button>
-                            ) : (
-                                <Button variant="ghost" onClick={() => handleDiscontinueKR(selectedNode)}>
-                                    <Archive className="w-4 h-4 mr-2" />
-                                    {t('okr.discontinue.action')}
-                                </Button>
-                            )}
-                            {!selectedIsLeaf && (
-                                <>
-                                    <Button variant="outline" onClick={handleExpandAll}>
-                                        <Layers className="w-4 h-4 mr-2" />
-                                        {t('okr.flow.expandAllFromHere')}
-                                    </Button>
-                                    <Button variant="outline" onClick={handleCollapseAll}>
-                                        <ListTree className="w-4 h-4 mr-2" />
-                                        {t('okr.flow.collapseAllFromHere')}
-                                    </Button>
-                                </>
-                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => setAttachmentsModalState({ open: true, krId: selectedNode.id })}
@@ -738,27 +718,80 @@ export function OKRFocusPage() {
                                 {t('okr.fileCenter.openModal')}
                             </Button>
                             <Button
-                                variant="outline"
+                                variant="primary"
                                 onClick={() => openCreateChildKRModal(selectedContext.objective, selectedNode)}
                             >
                                 <Plus className="w-4 h-4 mr-2" />
                                 {t('okr.cascade.newChildKR')}
                             </Button>
-                            <Button
-                                variant="ghost"
-                                onClick={() => openEditKRModal(selectedContext.objective, selectedNode)}
-                            >
-                                <Pencil className="w-4 h-4 mr-2" />
-                                {t('common.edit')}
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                className="text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
-                                onClick={() => handleDeleteKR(selectedNode)}
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                {t('common.delete')}
-                            </Button>
+
+                            {/* Ações secundárias — menu "Mais" */}
+                            <DropdownMenu.Root>
+                                <DropdownMenu.Trigger asChild>
+                                    <Button variant="ghost" className="px-2" aria-label={t('common.moreActions')}>
+                                        <MoreHorizontal className="w-5 h-5" />
+                                    </Button>
+                                </DropdownMenu.Trigger>
+                                <DropdownMenu.Portal>
+                                    <DropdownMenu.Content
+                                        className="min-w-[200px] p-1 rounded-xl bg-[var(--color-surface-elevated)] border border-[var(--color-border)] shadow-xl animate-in fade-in-0 zoom-in-95 z-50"
+                                        sideOffset={8}
+                                        align="end"
+                                    >
+                                        {!selectedIsLeaf && (
+                                            <>
+                                                <DropdownMenu.Item
+                                                    className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                                    onClick={handleExpandAll}
+                                                >
+                                                    <Layers className="w-4 h-4" />
+                                                    {t('okr.flow.expandAllFromHere')}
+                                                </DropdownMenu.Item>
+                                                <DropdownMenu.Item
+                                                    className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                                    onClick={handleCollapseAll}
+                                                >
+                                                    <ListTree className="w-4 h-4" />
+                                                    {t('okr.flow.collapseAllFromHere')}
+                                                </DropdownMenu.Item>
+                                                <DropdownMenu.Separator className="h-px my-1 bg-[var(--color-border)]" />
+                                            </>
+                                        )}
+                                        <DropdownMenu.Item
+                                            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                            onClick={() => openEditKRModal(selectedContext.objective, selectedNode)}
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                            {t('common.edit')}
+                                        </DropdownMenu.Item>
+                                        {selectedNode.discontinued_at ? (
+                                            <DropdownMenu.Item
+                                                className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                                onClick={() => handleReactivateKR(selectedNode)}
+                                            >
+                                                <RotateCcw className="w-4 h-4" />
+                                                {t('okr.discontinue.reactivate')}
+                                            </DropdownMenu.Item>
+                                        ) : (
+                                            <DropdownMenu.Item
+                                                className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                                onClick={() => handleDiscontinueKR(selectedNode)}
+                                            >
+                                                <Archive className="w-4 h-4" />
+                                                {t('okr.discontinue.action')}
+                                            </DropdownMenu.Item>
+                                        )}
+                                        <DropdownMenu.Separator className="h-px my-1 bg-[var(--color-border)]" />
+                                        <DropdownMenu.Item
+                                            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-danger)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-danger)]/10 transition-colors"
+                                            onClick={() => handleDeleteKR(selectedNode)}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            {t('common.delete')}
+                                        </DropdownMenu.Item>
+                                    </DropdownMenu.Content>
+                                </DropdownMenu.Portal>
+                            </DropdownMenu.Root>
                         </div>
                     </div>
 
