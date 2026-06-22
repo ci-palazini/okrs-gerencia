@@ -751,7 +751,10 @@ export function ActionsPage() {
                     const full = plans.find(p => p.id === plan.id)
                     if (full) { setSelectedPlan(null); openEditor(full) }
                 }}
-                onDeletePlan={(plan) => deleteActionPlan(plan)}
+                onDeletePlan={(plan) => {
+                    const full = plans.find(p => p.id === plan.id)
+                    if (full) deleteActionPlan(full)
+                }}
             />
         </div>
     )
