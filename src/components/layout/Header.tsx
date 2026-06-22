@@ -3,11 +3,16 @@ import { formatUsername } from '../../lib/utils'
 import { useTranslation } from 'react-i18next'
 import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 import { UnitToggle } from '../ui/UnitToggle'
-import { LogOut, User, Languages } from 'lucide-react'
+import { LogOut, User, Languages, Sparkles } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useNavigate } from 'react-router-dom'
 
-export function Header() {
+interface HeaderProps {
+    /** Reabre o modal "Novidades" manualmente. */
+    onShowWhatsNew?: () => void
+}
+
+export function Header({ onShowWhatsNew }: HeaderProps) {
     const { t, i18n } = useTranslation()
     const { user, signOut } = useAuth()
     const { units, selectedUnit, setSelectedUnit } = useBusinessUnit()
@@ -96,6 +101,16 @@ export function Header() {
                                 <User className="w-4 h-4" />
                                 {t('header.myProfile')}
                             </DropdownMenu.Item>
+
+                            {onShowWhatsNew && (
+                                <DropdownMenu.Item
+                                    className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                    onClick={() => onShowWhatsNew()}
+                                >
+                                    <Sparkles className="w-4 h-4" />
+                                    {t('header.whatsNew')}
+                                </DropdownMenu.Item>
+                            )}
 
                             <DropdownMenu.Separator className="h-px my-2 bg-[var(--color-border)]" />
 

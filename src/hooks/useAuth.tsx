@@ -11,6 +11,8 @@ interface AuthContextType {
     signOut: () => Promise<void>
     updatePassword: (newPassword: string) => Promise<{ error: Error | null }>
     adminResetPassword: (userId: string, newPassword: string) => Promise<{ error: Error | null }>
+    /** Marca a versão de novidades como vista pelo usuário (persiste no perfil). */
+    markWhatsNewSeen: (version: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -156,8 +158,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    async function markWhatsNewSeen(version: string) {
+        if (!user || user.whats_new_seen_version === version) return
+        // Atualização otimista: fecha o ciclo localmente antes da resposta do banco.
+        setUser({ ...user, whats_new_seen_version: version })
+        const { error } = await supabase
+            .from('users')
+            .update({ whats_new_seen_version: version })
+            .eq('id', user.id)
+        if (error) console.error('Failed to persist whats_new_seen_version:', error)
+    }
+
     return (
-        <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, updatePassword, adminResetPassword }}>
+        <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, updatePassword, adminResetPassword, markWhatsNewSeen }}>
             {children}
         </AuthContext.Provider>
     )

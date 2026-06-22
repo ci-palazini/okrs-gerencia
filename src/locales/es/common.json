@@ -451,6 +451,34 @@
             "not_started": "No iniciado",
             "in_progress": "En progreso",
             "completed": "Completado"
+        },
+        "attachments": {
+            "title": "Centro de archivos",
+            "count": "{{count}} archivo(s)",
+            "addFile": "Agregar archivo",
+            "fileLabel": "Archivo",
+            "noteLabel": "Observación (opcional)",
+            "notePlaceholder": "Contexto del archivo",
+            "upload": "Enviar",
+            "uploading": "Enviando...",
+            "cancel": "Cancelar",
+            "download": "Descargar",
+            "delete": "Eliminar",
+            "empty": "Ningún archivo adjunto a este plan.",
+            "fileSize": "Tamaño",
+            "uploadedAt": "Enviado el",
+            "uploadedBy": "Enviado por",
+            "unknownUploader": "Usuario no identificado",
+            "deleteConfirm": "¿Desea eliminar el archivo \"{{name}}\"?",
+            "errors": {
+                "loadFailed": "No se pudieron cargar los archivos de este plan.",
+                "fileRequired": "Seleccione un archivo para enviar.",
+                "fileTooLarge": "El archivo excede el límite de {{maxMb}} MB.",
+                "uploadFailed": "No se pudo enviar el archivo.",
+                "downloadFailed": "No se pudo generar la descarga de este archivo.",
+                "deleteFailed": "No se pudo eliminar el archivo.",
+                "storageCleanupFailed": "El registro fue eliminado, pero hubo un fallo al limpiar el archivo en el storage."
+            }
         }
     },
     "modals": {
@@ -556,7 +584,31 @@
         "myProfile": "Mi Perfil",
         "appTitle": "OKR Dashboard",
         "languagePortuguese": "Portugués",
-        "languageSpanish": "Español"
+        "languageSpanish": "Español",
+        "whatsNew": "Novedades"
+    },
+    "whatsNew": {
+        "badge": "Novedades",
+        "title": "Qué hay de nuevo",
+        "subtitle": "Conoce las últimas mejoras de la plataforma",
+        "gotIt": "Entendido",
+        "features": {
+            "discontinue": {
+                "tag": "Gestión de OKRs",
+                "title": "Descontinuar OKRs",
+                "desc": "Deja de hacer seguimiento de un objetivo o resultado clave sin eliminarlo. Sale de los indicadores activos, pero permanece en el historial con el motivo registrado.",
+                "mockKr": "Aumentar NPS a 70",
+                "mockBadge": "Descontinuado"
+            },
+            "attachments": {
+                "tag": "Planes de Acción",
+                "title": "Central de archivos",
+                "desc": "Adjunta documentos, planillas y evidencias directamente en los planes de acción. Todo lo importante para la ejecución queda reunido en un solo lugar.",
+                "mockTitle": "Archivos del plan",
+                "mockFile1": "Cronograma.xlsx",
+                "mockFile2": "Evidencia.pdf"
+            }
+        }
     },
     "audit": {
         "title": "Auditoría",

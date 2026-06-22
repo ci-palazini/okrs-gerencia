@@ -149,6 +149,7 @@ export interface User {
     full_name: string
     avatar_url: string | null
     role: 'admin' | 'user'
+    whats_new_seen_version?: string | null
     created_at?: string
     updated_at?: string
 }

@@ -14,6 +14,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { cn, formatDate } from '../../lib/utils'
 import { getEffectiveDeadline, formatDeadlineDate } from '../../lib/dateUtils'
 import { DeadlineBadge } from './DeadlineBadge'
+import { ActionPlanAttachments } from './ActionPlanAttachments'
 import { type AssigneeOption } from '../../lib/assignees'
 
 // ── Shared types ──────────────────────────────────────────────────────────────
@@ -781,6 +782,9 @@ export function ActionPlanDetailModal({
                                     )}
                                 </div>
                             </div>
+
+                            {/* ── Attachments / File center ── */}
+                            {plan && <ActionPlanAttachments planId={plan.id} />}
 
                             {/* ── Comments section ── */}
                             <div className="border-t border-[var(--color-border)]">
