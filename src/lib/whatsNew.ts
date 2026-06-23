@@ -6,4 +6,4 @@
  * O controle de "já visto" fica em users.whats_new_seen_version (Supabase),
  * então segue o usuário em qualquer dispositivo.
  */
-export const WHATS_NEW_VERSION = '2026-06'
+export const WHATS_NEW_VERSION = '2026-07'

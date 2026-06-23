@@ -170,6 +170,28 @@
         "openItem": "Abrir",
         "attentionCount": "{{count}} em atenção"
     },
+    "monthlyTracking": {
+        "title": "Acompanhamento Mensal",
+        "subtitle": "Reporte o valor mês a mês dos KRs anuais e acompanhe a evolução no gráfico. O valor atual reflete sempre o último mês reportado.",
+        "searchPlaceholder": "Buscar KR: código, título, objetivo...",
+        "yearLabel": "Ano",
+        "filterPillar": "Pilar",
+        "filterOwner": "Responsável",
+        "clearFilters": "Limpar filtros",
+        "baseline": "Base",
+        "current": "Atual",
+        "goal": "Meta",
+        "progress": "Progresso",
+        "maximize": "Maximizar",
+        "minimize": "Minimizar",
+        "maximizeHint": "Quanto maior o valor, melhor — meta acima da base.",
+        "minimizeHint": "Quanto menor o valor, melhor — meta abaixo da base.",
+        "totalKRs": "{{count}} KR(s) anual(is)",
+        "loading": "Carregando dados...",
+        "emptyTitle": "Nenhum KR anual encontrado",
+        "emptyDescription": "Não há resultados anuais para a unidade e ano selecionados.",
+        "emptySearch": "Nenhum KR anual corresponde à busca atual."
+    },
     "okr": {
         "title": "OKRs",
         "subtitle": "Gerenciamento de Objetivos e Resultados Chave",
@@ -594,20 +616,20 @@
         "subtitle": "Conheça as últimas melhorias da plataforma",
         "gotIt": "Entendi",
         "features": {
-            "discontinue": {
-                "tag": "Gestão de OKRs",
-                "title": "Descontinuar OKRs",
-                "desc": "Pare de acompanhar um objetivo ou resultado-chave sem apagá-lo. Ele sai dos indicadores ativos, mas continua no histórico com o motivo registrado.",
-                "mockKr": "Aumentar NPS para 70",
-                "mockBadge": "Descontinuado"
+            "tracking": {
+                "tag": "Acompanhamento",
+                "title": "Acompanhamento mensal de OKRs",
+                "desc": "Nova página com um gráfico por KR anual: reporte o valor mês a mês e acompanhe a evolução. O valor atual passa a ser sempre o último mês reportado, atualizando o progresso automaticamente.",
+                "mockObjective": "KR anual",
+                "mockCurrent": "Atual: 68%"
             },
-            "attachments": {
-                "tag": "Planos de Ação",
-                "title": "Central de arquivos",
-                "desc": "Anexe documentos, planilhas e evidências diretamente nos planos de ação. Tudo o que importa para a execução fica reunido em um só lugar.",
-                "mockTitle": "Arquivos do plano",
-                "mockFile1": "Cronograma.xlsx",
-                "mockFile2": "Evidência.pdf"
+            "baseline": {
+                "tag": "Base, meta e progresso",
+                "title": "Edite base e meta na hora",
+                "desc": "Agora você edita a base e a meta direto na página, vê a linha de base no gráfico e identifica num selo se o KR é de maximizar ou minimizar — deixando o cálculo do progresso transparente.",
+                "mockBaseline": "Base 40%",
+                "mockGoal": "Meta 80%",
+                "mockDirection": "Maximizar"
             }
         }
     },

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Sparkles, X, Archive, Paperclip, FileText, CheckCircle2 } from 'lucide-react'
+import { Sparkles, X, LineChart, SlidersHorizontal, TrendingUp, CheckCircle2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
 interface WhatsNewModalProps {
@@ -46,24 +46,24 @@ export function WhatsNewModal({ open, onOpenChange }: WhatsNewModalProps) {
 
                     {/* Lista de features */}
                     <div className="p-6 space-y-5 overflow-y-auto">
-                        {/* Feature 1 — Descontinuar OKRs */}
+                        {/* Feature 1 — Acompanhamento mensal */}
                         <FeatureBlock
-                            icon={<Archive className="w-5 h-5" />}
-                            accent="amber"
-                            tag={t('whatsNew.features.discontinue.tag')}
-                            title={t('whatsNew.features.discontinue.title')}
-                            description={t('whatsNew.features.discontinue.desc')}
-                            visual={<DiscontinueVisual t={t} />}
+                            icon={<LineChart className="w-5 h-5" />}
+                            accent="blue"
+                            tag={t('whatsNew.features.tracking.tag')}
+                            title={t('whatsNew.features.tracking.title')}
+                            description={t('whatsNew.features.tracking.desc')}
+                            visual={<TrackingVisual t={t} />}
                         />
 
-                        {/* Feature 2 — Central de arquivos */}
+                        {/* Feature 2 — Base, meta e sentido do KR */}
                         <FeatureBlock
-                            icon={<Paperclip className="w-5 h-5" />}
-                            accent="blue"
-                            tag={t('whatsNew.features.attachments.tag')}
-                            title={t('whatsNew.features.attachments.title')}
-                            description={t('whatsNew.features.attachments.desc')}
-                            visual={<AttachmentsVisual t={t} />}
+                            icon={<SlidersHorizontal className="w-5 h-5" />}
+                            accent="emerald"
+                            tag={t('whatsNew.features.baseline.tag')}
+                            title={t('whatsNew.features.baseline.title')}
+                            description={t('whatsNew.features.baseline.desc')}
+                            visual={<BaselineVisual t={t} />}
                         />
                     </div>
 
@@ -83,6 +83,7 @@ export function WhatsNewModal({ open, onOpenChange }: WhatsNewModalProps) {
 const ACCENTS = {
     amber: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
     blue: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+    emerald: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
 } as const
 
 interface FeatureBlockProps {
@@ -118,43 +119,50 @@ function FeatureBlock({ icon, accent, tag, title, description, visual }: Feature
     )
 }
 
-/** Mini-mock ilustrativo de um OKR marcado como descontinuado. */
-function DiscontinueVisual({ t }: { t: (k: string) => string }) {
+/** Mini-mock ilustrativo do gráfico de acompanhamento mensal de um KR anual. */
+function TrackingVisual({ t }: { t: (k: string) => string }) {
     return (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-2 h-2 rounded-full bg-[var(--color-text-muted)] shrink-0" />
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] line-through truncate">
-                        {t('whatsNew.features.discontinue.mockKr')}
-                    </span>
-                </div>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
-                    <Archive className="w-2.5 h-2.5" />
-                    {t('whatsNew.features.discontinue.mockBadge')}
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                    {t('whatsNew.features.tracking.mockObjective')}
+                </span>
+                <span className="text-[10px] font-medium text-[var(--color-primary)]">
+                    {t('whatsNew.features.tracking.mockCurrent')}
                 </span>
             </div>
+            <svg viewBox="0 0 200 48" className="w-full h-12" preserveAspectRatio="none">
+                <line x1="0" y1="7" x2="200" y2="7" stroke="var(--color-warning)" strokeWidth="1" strokeDasharray="3 3" />
+                <polyline
+                    points="0,42 28,38 56,31 84,33 112,24 140,19 168,13 200,9"
+                    fill="none"
+                    stroke="var(--color-primary)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                />
+            </svg>
         </div>
     )
 }
 
-/** Mini-mock ilustrativo de anexos em um plano de ação. */
-function AttachmentsVisual({ t }: { t: (k: string) => string }) {
+/** Mini-mock ilustrativo de base → meta com o selo de sentido do KR. */
+function BaselineVisual({ t }: { t: (k: string) => string }) {
     return (
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm space-y-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                {t('whatsNew.features.attachments.mockTitle')}
-            </span>
-            <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-hover)]/60 px-2 py-1.5">
-                    <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span className="text-xs text-[var(--color-text-secondary)] truncate">{t('whatsNew.features.attachments.mockFile1')}</span>
-                </div>
-                <div className="flex items-center gap-2 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-hover)]/60 px-2 py-1.5">
-                    <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span className="text-xs text-[var(--color-text-secondary)] truncate">{t('whatsNew.features.attachments.mockFile2')}</span>
-                </div>
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs min-w-0">
+                <span className="px-2 py-0.5 rounded-md bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] font-medium whitespace-nowrap">
+                    {t('whatsNew.features.baseline.mockBaseline')}
+                </span>
+                <span className="text-[var(--color-text-muted)]">→</span>
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
+                    {t('whatsNew.features.baseline.mockGoal')}
+                </span>
             </div>
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <TrendingUp className="w-2.5 h-2.5" />
+                {t('whatsNew.features.baseline.mockDirection')}
+            </span>
         </div>
     )
 }

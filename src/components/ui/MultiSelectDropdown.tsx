@@ -9,9 +9,10 @@ interface MultiSelectDropdownProps {
     placeholder: string
     className?: string
     searchable?: boolean
+    align?: 'left' | 'right'
 }
 
-export function MultiSelectDropdown({ options, selected, onToggle, placeholder, className, searchable }: MultiSelectDropdownProps) {
+export function MultiSelectDropdown({ options, selected, onToggle, placeholder, className, searchable, align = 'left' }: MultiSelectDropdownProps) {
     const [open, setOpen] = useState(false)
     const [search, setSearch] = useState('')
     const ref = useRef<HTMLDivElement>(null)
@@ -29,7 +30,6 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
 
     useEffect(() => {
         if (open) {
-            setSearch('')
             setTimeout(() => searchRef.current?.focus(), 0)
         }
     }, [open])
@@ -43,7 +43,10 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
         <div ref={ref} className={cn('relative', className)}>
             <button
                 type="button"
-                onClick={() => setOpen((v) => !v)}
+                onClick={() => {
+                    if (!open) setSearch('')
+                    setOpen((v) => !v)
+                }}
                 className={cn(
                     'h-9 flex items-center justify-between gap-2 px-3 rounded-[var(--radius-lg)] border bg-[var(--color-surface)] text-xs transition-all duration-200 min-w-[140px]',
                     selectedCount > 0
@@ -57,7 +60,10 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
                 <ChevronDown className={cn('w-4 h-4 flex-shrink-0 transition-transform duration-200', open && 'rotate-180')} />
             </button>
             {open && (
-                <div className="absolute top-full mt-1 z-20 w-max min-w-full max-w-[280px] rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg flex flex-col">
+                <div className={cn(
+                    'absolute top-full mt-1 z-20 w-max min-w-full max-w-[280px] rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg flex flex-col',
+                    align === 'right' ? 'right-0' : 'left-0'
+                )}>
                     {searchable && (
                         <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--color-border)]">
                             <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] flex-shrink-0" />

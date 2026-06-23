@@ -10,6 +10,7 @@ import { OKRsPage } from './pages/okrs/OKRsPage'
 import { PillarOKRsPage } from './pages/okrs/PillarOKRsPage'
 import { OKRFocusPage } from './pages/okrs/OKRFocusPage'
 import { OKRConfidenceMapPage } from './pages/okrs/OKRConfidenceMapPage'
+import { MonthlyTrackingPage } from './pages/tracking/MonthlyTrackingPage'
 import { ActionsPage } from './pages/actions/ActionsPage'
 import { AuditLogPage } from './pages/audit/AuditLogPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
@@ -34,6 +35,7 @@ function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/okrs" element={<OKRsPage />} />
                 <Route path="/mapa" element={<OKRConfidenceMapPage />} />
+                <Route path="/acompanhamento" element={<MonthlyTrackingPage />} />
                 <Route path="/okrs/pillar/:pillarId" element={<PillarOKRsPage />} />
                 <Route path="/okrs/pillar/:pillarId/kr/:krId" element={<OKRFocusPage />} />
                 <Route path="/actions" element={<ActionsPage />} />

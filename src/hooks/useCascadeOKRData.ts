@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { useBusinessUnit } from '../contexts/BusinessUnitContext'
+import { calculateKRProgress as calculateProgress } from '../lib/okr'
 import type { ConfidenceLevel } from '../types'
 
 export interface CascadePillar {
@@ -156,36 +157,6 @@ function collectDescendantIds(rootId: string, childrenByParent: Map<string, stri
     }
 
     return all
-}
-
-function calculateProgress(
-    target: number | null,
-    actual: number | null,
-    direction: 'maximize' | 'minimize' = 'maximize',
-    baseline: number | null = null
-): number | null {
-    if (target === null || actual === null) return null
-
-    if (baseline !== null) {
-        if (direction === 'minimize') {
-            const denominator = baseline - target
-            if (denominator === 0) return null
-            return Math.round(((baseline - actual) / denominator) * 100)
-        }
-
-        const denominator = target - baseline
-        if (denominator === 0) return null
-        return Math.round(((actual - baseline) / denominator) * 100)
-    }
-
-    if (target === 0) return null
-
-    if (direction === 'minimize') {
-        if (actual === 0) return null
-        return Math.round((target / actual) * 100)
-    }
-
-    return Math.round((actual / target) * 100)
 }
 
 function collectLeafNodes(nodes: CascadeTreeNode[]): CascadeTreeNode[] {

@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
 import { Input } from '../ui/Input'
 import { ProgressBar } from '../ui/ProgressBar'
 import type { CascadeObjective, CascadeTreeNode, CascadeMonthlyEntry } from '../../hooks/useCascadeOKRData'
-import { cn, formatKRCurrency } from '../../lib/utils'
+import { cn } from '../../lib/utils'
+import { calculateKRProgress as calculateProgress, formatMetricValue } from '../../lib/okr'
 
 export interface MonthlyCockpitItem {
     objective: Pick<CascadeObjective, 'id' | 'code' | 'title'>
@@ -35,41 +36,6 @@ function toComparableNumber(raw: string): number | null | 'invalid' {
     if (!normalized) return null
     const parsed = Number(normalized)
     return Number.isNaN(parsed) ? 'invalid' : parsed
-}
-
-function calculateProgress(
-    target: number | null,
-    actual: number | null,
-    direction: 'maximize' | 'minimize',
-    baseline: number | null
-): number | null {
-    if (target === null || actual === null) return null
-
-    if (baseline !== null) {
-        if (direction === 'minimize') {
-            const denominator = baseline - target
-            if (denominator === 0) return null
-            return Math.round(((baseline - actual) / denominator) * 100)
-        }
-        const denominator = target - baseline
-        if (denominator === 0) return null
-        return Math.round(((actual - baseline) / denominator) * 100)
-    }
-
-    if (target === 0) return null
-    if (direction === 'minimize') {
-        if (actual === 0) return null
-        return Math.round((target / actual) * 100)
-    }
-
-    return Math.round((actual / target) * 100)
-}
-
-function formatMetricValue(kr: CascadeTreeNode, value: number | null): string {
-    if (value === null) return '-'
-    if (kr.metric_type === 'currency') return formatKRCurrency(value, kr.currency_type)
-    if (kr.metric_type === 'percentage') return `${value}%`
-    return `${value}${kr.unit ? ` ${kr.unit}` : ''}`
 }
 
 export function MonthlyCockpitPanel({

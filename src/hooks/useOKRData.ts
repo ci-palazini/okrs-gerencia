@@ -5,6 +5,7 @@ import { useBusinessUnit } from '../contexts/BusinessUnitContext'
 import { useQuarter } from './useQuarter'
 import type { ConfidenceLevel } from '../types'
 import { formatKRCurrency } from '../lib/utils'
+import { calculateKRProgress } from '../lib/okr'
 
 // =====================================================
 // TYPES
@@ -199,32 +200,7 @@ export function useOKRData(filterPillar?: string | null) {
         actual: number | null,
         direction: 'maximize' | 'minimize' = 'maximize',
         baseline: number | null = null
-    ): number | null => {
-        if (target === null || actual === null) return null
-
-        // With baseline: measure progress from starting point to target
-        if (baseline !== null) {
-            if (direction === 'minimize') {
-                // (baseline - actual) / (baseline - target) × 100
-                const denominator = baseline - target
-                if (denominator === 0) return null
-                return Math.round(((baseline - actual) / denominator) * 100)
-            } else {
-                // (actual - baseline) / (target - baseline) × 100
-                const denominator = target - baseline
-                if (denominator === 0) return null
-                return Math.round(((actual - baseline) / denominator) * 100)
-            }
-        }
-
-        // Fallback (no baseline): original formula
-        if (target === 0) return null
-        if (direction === 'minimize') {
-            if (actual === 0) return null
-            return Math.round((target / actual) * 100)
-        }
-        return Math.round((actual / target) * 100)
-    }, [])
+    ): number | null => calculateKRProgress(target, actual, direction, baseline), [])
 
     // =====================================================
     // CUD OPERATIONS

@@ -12,6 +12,7 @@ import {
     Layers,
     Network,
     GitBranch,
+    LineChart,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
@@ -106,6 +107,7 @@ export function Sidebar() {
 
                 {/* Other standard links that are not pillars but specific pages */}
                 {[
+                    { name: t('sidebar.tracking', 'Acompanhamento'), href: '/acompanhamento', icon: LineChart },
                     { name: t('sidebar.actions'), href: '/actions', icon: ListTodo },
                     { name: t('sidebar.teams', 'Times'), href: '/teams', icon: Network },
                     { name: t('sidebar.audit'), href: '/audit', icon: History },
