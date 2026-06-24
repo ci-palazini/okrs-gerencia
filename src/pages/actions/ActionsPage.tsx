@@ -359,8 +359,8 @@ export function ActionsPage() {
         const now = new Date()
         return {
             all: basePlans.length,
-            overdue: basePlans.filter(p => p.due_date && new Date(p.due_date) < now).length,
-            upcoming: basePlans.filter(p => p.due_date && new Date(p.due_date) >= now).length,
+            overdue: basePlans.filter(p => p.status !== 'completed' && p.due_date && new Date(p.due_date) < now).length,
+            upcoming: basePlans.filter(p => p.status !== 'completed' && p.due_date && new Date(p.due_date) >= now).length,
             no_due: basePlans.filter(p => !p.due_date).length,
         }
     }, [basePlans])
@@ -380,9 +380,9 @@ export function ActionsPage() {
     const filteredPlans = useMemo(() => {
         const now = new Date()
         let base = basePlans
-        if (filter === 'overdue') base = base.filter(p => p.due_date && new Date(p.due_date) < now)
+        if (filter === 'overdue') base = base.filter(p => p.status !== 'completed' && p.due_date && new Date(p.due_date) < now)
         else if (filter === 'no_due') base = base.filter(p => !p.due_date)
-        else if (filter === 'upcoming') base = base.filter(p => p.due_date && new Date(p.due_date) >= now)
+        else if (filter === 'upcoming') base = base.filter(p => p.status !== 'completed' && p.due_date && new Date(p.due_date) >= now)
         if (statusFilter !== 'all') base = base.filter(p => p.status === statusFilter)
         return base
     }, [basePlans, filter, statusFilter])
