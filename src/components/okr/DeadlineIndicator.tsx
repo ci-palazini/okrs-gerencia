@@ -7,7 +7,7 @@
 import { useTranslation } from 'react-i18next'
 import { Calendar, Clock, AlertTriangle, XCircle, CheckCircle2, BadgeCheck } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { getDeadlineAlert, formatDeadlineDate } from '../../lib/dateUtils'
+import { getDeadlineAlert, formatDeadlineDate, toDateLocale } from '../../lib/dateUtils'
 import type { DeadlineStatus } from '../../types'
 
 interface DeadlineIndicatorProps {
@@ -68,7 +68,7 @@ export function DeadlineIndicator({
   variant = 'both'
 }: DeadlineIndicatorProps) {
   const { t, i18n } = useTranslation()
-  const locale = i18n.language === 'es' ? 'es' : 'pt'
+  const locale = i18n.language.split('-')[0]
 
   if (!dueDate) {
     return (
@@ -82,7 +82,7 @@ export function DeadlineIndicator({
   const config = statusConfig[alert.status]
   const Icon = config.icon
 
-  const formattedDate = formatDeadlineDate(dueDate, locale === 'es' ? 'es-ES' : 'pt-BR')
+  const formattedDate = formatDeadlineDate(dueDate, toDateLocale(i18n.language))
 
   // Determine what to display based on variant
   let displayText = ''
@@ -138,7 +138,7 @@ export function DeadlineIndicatorIcon({
   className
 }: Omit<DeadlineIndicatorProps, 'variant'>) {
   const { i18n } = useTranslation()
-  const locale = i18n.language === 'es' ? 'es' : 'pt'
+  const locale = i18n.language.split('-')[0]
 
   if (!dueDate) {
     return null
@@ -174,7 +174,7 @@ export function DeadlineIndicatorCompact({
   className
 }: Omit<DeadlineIndicatorProps, 'variant'>) {
   const { i18n } = useTranslation()
-  const locale = i18n.language === 'es' ? 'es' : 'pt'
+  const locale = i18n.language.split('-')[0]
 
   if (!dueDate) {
     return null

@@ -7,7 +7,7 @@
 import { useTranslation } from 'react-i18next'
 import { Calendar, Clock, AlertTriangle, XCircle, CheckCircle2, BadgeCheck } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { getDeadlineAlert, formatDeadlineDate } from '../../lib/dateUtils'
+import { getDeadlineAlert, formatDeadlineDate, toDateLocale } from '../../lib/dateUtils'
 import type { DeadlineStatus } from '../../types'
 
 interface DeadlineBadgeProps {
@@ -97,7 +97,7 @@ export function DeadlineBadge({
   size = 'md'
 }: DeadlineBadgeProps) {
   const { t, i18n } = useTranslation()
-  const locale = i18n.language === 'es' ? 'es' : 'pt'
+  const locale = i18n.language.split('-')[0]
 
   if (!dueDate) {
     return null
@@ -108,7 +108,7 @@ export function DeadlineBadge({
   const sizeStyles = sizeConfig[size]
   const Icon = config.icon
 
-  const formattedDate = formatDeadlineDate(dueDate, locale === 'es' ? 'es-ES' : 'pt-BR')
+  const formattedDate = formatDeadlineDate(dueDate, toDateLocale(i18n.language))
 
   const tooltipContent = alert.message
 

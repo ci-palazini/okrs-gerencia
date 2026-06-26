@@ -11,7 +11,7 @@ import type { ConfidenceLevel } from '../ui/ConfidenceIndicator'
 import { ActionPlanList } from './ActionPlanList'
 import { cn, formatKRCurrency } from '../../lib/utils'
 import { DeadlineIndicatorCompact } from './DeadlineIndicator'
-import { formatDeadlineDate, getLastDayOfQuarter } from '../../lib/dateUtils'
+import { formatDeadlineDate, getLastDayOfQuarter, toDateLocale } from '../../lib/dateUtils'
 
 // =====================================================
 // TYPES
@@ -250,7 +250,7 @@ export function QuarterlyTimeline({
                                     </span>
                                 )}
                                 <span className="text-[10px] text-[var(--color-text-muted)]">
-                                    {t('deadline.suggested')}: {formatDeadlineDate(quarterDeadline, i18n.language === 'es' ? 'es-ES' : 'pt-BR')}
+                                    {t('deadline.suggested')}: {formatDeadlineDate(quarterDeadline, toDateLocale(i18n.language))}
                                 </span>
                             </div>
                             <button

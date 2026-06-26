@@ -7,6 +7,7 @@ import { Input } from '../ui/Input'
 import { ProgressBar } from '../ui/ProgressBar'
 import type { CascadeObjective, CascadeTreeNode, CascadeMonthlyEntry } from '../../hooks/useCascadeOKRData'
 import { cn } from '../../lib/utils'
+import { toDateLocale } from '../../lib/dateUtils'
 import { calculateKRProgress as calculateProgress, formatMetricValue } from '../../lib/okr'
 
 export interface MonthlyCockpitItem {
@@ -46,7 +47,7 @@ export function MonthlyCockpitPanel({
     getMonthlyEntry,
     onSaveMonthly,
 }: MonthlyCockpitPanelProps) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
 
     const [search, setSearch] = useState('')
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -54,7 +55,7 @@ export function MonthlyCockpitPanel({
     const [draftNotes, setDraftNotes] = useState<Record<string, string>>({})
     const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set())
 
-    const locale = 'pt-BR'
+    const locale = toDateLocale(i18n.language)
     const filteredItems = useMemo(() => {
         const normalized = search.trim().toLowerCase()
         if (!normalized) return items

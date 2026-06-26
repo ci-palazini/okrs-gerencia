@@ -12,7 +12,8 @@ import { Input } from '../ui/Input'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { cn, formatDate } from '../../lib/utils'
-import { getEffectiveDeadline, formatDeadlineDate } from '../../lib/dateUtils'
+import { getEffectiveDeadline, formatDeadlineDate, toDateLocale } from '../../lib/dateUtils'
+import i18n from '../../i18n'
 import { DeadlineBadge } from './DeadlineBadge'
 import { ActionPlanAttachments } from './ActionPlanAttachments'
 import { type AssigneeOption } from '../../lib/assignees'
@@ -60,7 +61,7 @@ export interface ActionPlanTask {
 
 export function formatShortDate(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    return d.toLocaleDateString(toDateLocale(i18n.language), { day: '2-digit', month: 'short' })
 }
 
 // ── Comment type ──────────────────────────────────────────────────────────────
@@ -103,7 +104,8 @@ export function ActionPlanDetailModal({
     onEditPlan,
     onDeletePlan,
 }: ActionPlanDetailModalProps) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
+    const dateLocale = toDateLocale(i18n.language)
     const { user } = useAuth()
 
     // Comments
@@ -309,16 +311,16 @@ export function ActionPlanDetailModal({
     }
 
     function formatCommentDate(dateStr: string): string {
-        return new Date(dateStr).toLocaleString('pt-BR', {
+        return new Date(dateStr).toLocaleString(dateLocale, {
             day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
         })
     }
 
     function formatCreatedAt(dateStr: string): string {
         const d = new Date(dateStr)
-        const date = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
-        const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        return `${date} às ${time}`
+        const date = d.toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', year: 'numeric' })
+        const time = d.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })
+        return `${date} ${t('common.at')} ${time}`
     }
 
     const hasDetails = !!(

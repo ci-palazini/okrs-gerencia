@@ -12,6 +12,8 @@ import { useCascadeOKRData } from '../../hooks/useCascadeOKRData'
 import type { CascadeObjective, CascadePillar, CascadeTreeNode } from '../../hooks/useCascadeOKRData'
 import type { ConfidenceLevel } from '../../types'
 import { cn } from '../../lib/utils'
+import { toDateLocale } from '../../lib/dateUtils'
+import i18n from '../../i18n'
 import { supabase } from '../../lib/supabase'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -48,7 +50,7 @@ interface PillarSection {
 
 function formatShortDate(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    return d.toLocaleDateString(toDateLocale(i18n.language), { day: '2-digit', month: 'short' })
 }
 
 function flattenNodes(nodes: CascadeTreeNode[]): CascadeTreeNode[] {

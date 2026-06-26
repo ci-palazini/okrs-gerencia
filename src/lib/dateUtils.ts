@@ -6,6 +6,17 @@
 import type { DeadlineStatus, DeadlineAlert } from '../types'
 
 /**
+ * Maps an i18n language code (e.g. 'pt', 'es', 'en', 'en-US') to the
+ * Intl/BCP-47 locale used for date and number formatting.
+ */
+export function toDateLocale(language: string = 'pt'): string {
+  const base = language.split('-')[0]
+  if (base === 'es') return 'es-ES'
+  if (base === 'en') return 'en-US'
+  return 'pt-BR'
+}
+
+/**
  * Calculates the deadline status based on days remaining
  * @param dueDate - ISO date string (YYYY-MM-DD)
  * @param isCompleted - Whether the OKR/KR is completed
@@ -62,22 +73,30 @@ export function getDeadlineAlert(
   const absDays = Math.abs(daysRemaining)
 
   if (isCompleted) {
-    message = locale === 'es' ? 'Completado' : 'Concluído'
+    message = locale === 'es' ? 'Completado' : locale === 'en' ? 'Completed' : 'Concluído'
   } else if (status === 'overdue') {
-    message = locale === 'es' 
+    message = locale === 'es'
       ? `Atrasado ${absDays} ${absDays === 1 ? 'día' : 'días'}`
+      : locale === 'en'
+      ? `Overdue ${absDays} ${absDays === 1 ? 'day' : 'days'}`
       : `Atrasado ${absDays} ${absDays === 1 ? 'dia' : 'dias'}`
   } else if (status === 'urgent') {
     message = locale === 'es'
       ? `Urgente: ${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'} restantes`
+      : locale === 'en'
+      ? `Urgent: ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining`
       : `Urgente: ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} restantes`
   } else if (status === 'warning') {
     message = locale === 'es'
       ? `Atención: ${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'} restantes`
+      : locale === 'en'
+      ? `Attention: ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining`
       : `Atenção: ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} restantes`
   } else {
     message = locale === 'es'
       ? `En plazo: ${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'} restantes`
+      : locale === 'en'
+      ? `On track: ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining`
       : `No prazo: ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} restantes`
   }
 

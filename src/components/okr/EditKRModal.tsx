@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { calculateProgress, cn } from '../../lib/utils'
 import { validateKRDueDate, suggestQuarterlyKRDueDate } from '../../lib/validations'
-import { getQuarterFromDate, formatDeadlineDate } from '../../lib/dateUtils'
+import { getQuarterFromDate, formatDeadlineDate, toDateLocale } from '../../lib/dateUtils'
 
 interface KeyResultData {
     id: string
@@ -39,7 +39,7 @@ interface EditKRModalProps {
 }
 
 export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRModalProps) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const { user } = useAuth()
     const [currentValue, setCurrentValue] = useState<string>('')
     const [dueDate, setDueDate] = useState<string>('')
@@ -235,7 +235,7 @@ export function EditKRModal({ keyResult, open, onOpenChange, onSave }: EditKRMod
                             </div>
                             {dueDate && keyResult.scope === 'quarterly' && keyResult.quarter && (
                                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                                    {t('modals.editKR.suggestedQuarterly')}: Q{keyResult.quarter} - {formatDeadlineDate(suggestQuarterlyKRDueDate(keyResult.quarter as 1 | 2 | 3 | 4, new Date().getFullYear()), t('language') === 'es' ? 'es-ES' : 'pt-BR')}
+                                    {t('modals.editKR.suggestedQuarterly')}: Q{keyResult.quarter} - {formatDeadlineDate(suggestQuarterlyKRDueDate(keyResult.quarter as 1 | 2 | 3 | 4, new Date().getFullYear()), toDateLocale(i18n.language))}
                                 </p>
                             )}
                             {dueDate && keyResult.objective?.due_date && new Date(dueDate) > new Date(keyResult.objective.due_date) && (

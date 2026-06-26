@@ -1,5 +1,7 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import i18n from '../i18n'
+import { toDateLocale } from './dateUtils'
 
 /**
  * Merge Tailwind classes with clsx
@@ -68,7 +70,7 @@ export function getCurrencySymbol(currencyType: string | null | undefined = 'BRL
 /**
  * Format a date
  */
-export function formatDate(date: Date | string, locale = 'pt-BR'): string {
+export function formatDate(date: Date | string, locale = toDateLocale(i18n.language)): string {
     const d = typeof date === 'string' ? new Date(date) : date
     return new Intl.DateTimeFormat(locale, {
         day: '2-digit',

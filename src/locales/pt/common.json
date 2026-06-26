@@ -50,7 +50,8 @@
         "saving": "Salvando...",
         "saveChanges": "Salvar Alterações",
         "allStatuses": "Todos os status",
-        "allUsers": "Todos os usuários"
+        "allUsers": "Todos os usuários",
+        "at": "às"
     },
     "sidebar": {
         "managementControl": "Controle de Gestão",
@@ -555,7 +556,8 @@
             "newValue": "Novo valor atual",
             "invalidValue": "Valor inválido",
             "save": "Salvar Alteração",
-            "progress": "Progresso"
+            "progress": "Progresso",
+            "suggestedQuarterly": "Prazo sugerido"
         },
         "createKR": {
             "titleNew": "Novo Key Result",
@@ -609,6 +611,7 @@
         "appTitle": "OKR Dashboard",
         "languagePortuguese": "Português",
         "languageSpanish": "Español",
+        "languageEnglish": "English",
         "whatsNew": "Novidades"
     },
     "whatsNew": {

@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import ptTranslation from './locales/pt/common.json';
 import esTranslation from './locales/es/common.json';
+import enTranslation from './locales/en/common.json';
 
 i18n
     .use(LanguageDetector)
@@ -15,9 +16,13 @@ i18n
             es: {
                 translation: esTranslation,
             },
+            en: {
+                translation: enTranslation,
+            },
         },
         fallbackLng: 'pt',
-        lng: 'pt', // Force 'pt' for now as we only have this locale
+        supportedLngs: ['pt', 'es', 'en'],
+        load: 'languageOnly', // map region variants (en-US -> en) to base language
         interpolation: {
             escapeValue: false, // not needed for react as it escapes by default
         },

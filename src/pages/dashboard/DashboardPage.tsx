@@ -219,7 +219,7 @@ export function DashboardPage() {
         })
     }, [keyResults, objectiveById, pillarById, t])
 
-    const deadlineLocale = i18n.language === 'es' ? 'es' : 'pt'
+    const deadlineLocale = i18n.language.split('-')[0]
     const { overdueAlerts, urgentAlerts, counts: deadlineCounts } = useDeadlineAlerts(
         objectives,
         keyResults,

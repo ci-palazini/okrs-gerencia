@@ -17,6 +17,7 @@ import { ProgressBar } from '../ui/ProgressBar'
 import type { CascadeKeyResult, CascadeObjective, CascadeMonthlyEntry } from '../../hooks/useCascadeOKRData'
 import { calculateKRProgress, formatMetricValue } from '../../lib/okr'
 import { cn } from '../../lib/utils'
+import { toDateLocale } from '../../lib/dateUtils'
 
 interface AnnualKRTrackingCardProps {
     kr: CascadeKeyResult
@@ -32,8 +33,8 @@ interface AnnualKRTrackingCardProps {
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
-function monthLabel(month: number): string {
-    const label = new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(new Date(2026, month - 1, 1))
+function monthLabel(month: number, locale = 'pt-BR'): string {
+    const label = new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(2026, month - 1, 1))
     return label.replace('.', '')
 }
 
@@ -106,7 +107,8 @@ function EditableStat({
 }
 
 export function AnnualKRTrackingCard({ kr, objective, getMonthlyEntry, onSaveMonthly, onUpdateValue }: AnnualKRTrackingCardProps) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
+    const dateLocale = toDateLocale(i18n.language)
 
     const [drafts, setDrafts] = useState<Record<number, string>>({})
     const [savingMonths, setSavingMonths] = useState<Set<number>>(new Set())
@@ -119,10 +121,10 @@ export function AnnualKRTrackingCard({ kr, objective, getMonthlyEntry, onSaveMon
 
     const chartData = useMemo(() => (
         MONTHS.map((month) => ({
-            month: monthLabel(month),
+            month: monthLabel(month, dateLocale),
             actual: getMonthlyEntry(kr.id, month)?.actual ?? null,
         }))
-    ), [getMonthlyEntry, kr.id])
+    ), [getMonthlyEntry, kr.id, dateLocale])
 
     const progress = kr.progress !== null
         ? Math.max(0, Math.min(100, kr.progress))
@@ -307,7 +309,7 @@ export function AnnualKRTrackingCard({ kr, objective, getMonthlyEntry, onSaveMon
                             <div key={month} className="rounded-lg border border-[var(--color-border)] p-2 bg-[var(--color-surface)]">
                                 <div className="flex items-center justify-between mb-1.5">
                                     <span className="text-[11px] font-semibold text-[var(--color-text-secondary)] capitalize">
-                                        {monthLabel(month)}
+                                        {monthLabel(month, dateLocale)}
                                     </span>
                                     <span className="text-[10px] text-[var(--color-text-muted)]">
                                         {monthProgress !== null ? `${monthProgress}%` : '-'}

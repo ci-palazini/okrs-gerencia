@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { formatDate, cn, formatUsername } from '../../lib/utils'
+import { toDateLocale } from '../../lib/dateUtils'
 
 interface AuditLogEntry {
     id: string
@@ -40,7 +41,8 @@ const entityLabels = (t: any): Record<string, string> => ({
 })
 
 export function AuditLogPage() {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
+    const dateLocale = toDateLocale(i18n.language)
     const [loading, setLoading] = useState(true)
     const [logs, setLogs] = useState<AuditLogEntry[]>([])
     const [filter, setFilter] = useState<string>('all')
@@ -195,7 +197,7 @@ export function AuditLogPage() {
                                             {formatDate(log.created_at)}
                                         </p>
                                         <p className="text-xs text-[var(--color-text-muted)]">
-                                            {new Date(log.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(log.created_at).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>
                                 </CardContent>

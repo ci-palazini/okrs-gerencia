@@ -66,6 +66,13 @@ export function Header({ onShowWhatsNew }: HeaderProps) {
                                 <span className="w-6 text-center">🇦🇷</span>
                                 {t('header.languageSpanish')}
                             </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg cursor-pointer outline-none hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+                                onClick={() => i18n.changeLanguage('en')}
+                            >
+                                <span className="w-6 text-center">🇺🇸</span>
+                                {t('header.languageEnglish')}
+                            </DropdownMenu.Item>
                         </DropdownMenu.Content>
                     </DropdownMenu.Portal>
                 </DropdownMenu.Root>
