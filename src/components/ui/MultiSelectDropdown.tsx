@@ -10,9 +10,10 @@ interface MultiSelectDropdownProps {
     className?: string
     searchable?: boolean
     align?: 'left' | 'right'
+    fullWidth?: boolean
 }
 
-export function MultiSelectDropdown({ options, selected, onToggle, placeholder, className, searchable, align = 'left' }: MultiSelectDropdownProps) {
+export function MultiSelectDropdown({ options, selected, onToggle, placeholder, className, searchable, align = 'left', fullWidth }: MultiSelectDropdownProps) {
     const [open, setOpen] = useState(false)
     const [search, setSearch] = useState('')
     const ref = useRef<HTMLDivElement>(null)
@@ -48,7 +49,8 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
                     setOpen((v) => !v)
                 }}
                 className={cn(
-                    'h-9 flex items-center justify-between gap-2 px-3 rounded-[var(--radius-lg)] border bg-[var(--color-surface)] text-xs transition-all duration-200 min-w-[140px]',
+                    'h-9 flex items-center justify-between gap-2 px-3 rounded-[var(--radius-lg)] border bg-[var(--color-surface)] text-xs transition-all duration-200',
+                    fullWidth ? 'w-full min-w-0' : 'min-w-[140px]',
                     selectedCount > 0
                         ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
                         : 'border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)]'
@@ -61,7 +63,7 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
             </button>
             {open && (
                 <div className={cn(
-                    'absolute top-full mt-1 z-20 w-max min-w-full max-w-[280px] rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg flex flex-col',
+                    'absolute top-full mt-1 z-20 w-full min-w-[180px] rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg flex flex-col',
                     align === 'right' ? 'right-0' : 'left-0'
                 )}>
                     {searchable && (
@@ -87,10 +89,10 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
                                     key={opt.value}
                                     type="button"
                                     onClick={() => onToggle(opt.value)}
-                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--color-surface-hover)] transition-colors"
+                                    className="w-full flex items-start gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--color-surface-hover)] transition-colors"
                                 >
                                     <div className={cn(
-                                        'w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors',
+                                        'mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors',
                                         isSelected
                                             ? 'bg-[var(--color-primary)] border-[var(--color-primary)]'
                                             : 'border-[var(--color-border)]'
@@ -102,9 +104,12 @@ export function MultiSelectDropdown({ options, selected, onToggle, placeholder, 
                                         )}
                                     </div>
                                     {opt.color && (
-                                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
+                                        <div className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
                                     )}
-                                    <span className={isSelected ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-primary)]'}>
+                                    <span className={cn(
+                                        'min-w-0 break-words',
+                                        isSelected ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-primary)]'
+                                    )}>
                                         {opt.label}
                                     </span>
                                 </button>

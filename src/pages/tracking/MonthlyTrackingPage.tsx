@@ -29,6 +29,7 @@ export function MonthlyTrackingPage() {
 
     const [search, setSearch] = useState('')
     const [selectedPillars, setSelectedPillars] = useState<Set<string>>(new Set())
+    const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set())
     const [selectedOwners, setSelectedOwners] = useState<Set<string>>(new Set())
 
     const ownerOptions = useMemo(() => {
@@ -43,10 +44,17 @@ export function MonthlyTrackingPage() {
         pillars.map((pillar) => ({ value: pillar.id, label: pillar.name, color: pillar.color }))
     ), [pillars])
 
+    const objectiveOptions = useMemo(() => (
+        objectives
+            .filter((objective) => selectedPillars.size === 0 || selectedPillars.has(objective.pillar_id))
+            .map((objective) => ({ value: objective.id, label: `${objective.code} · ${objective.title}` }))
+    ), [objectives, selectedPillars])
+
     const groups = useMemo(() => {
         const normalized = search.trim().toLowerCase()
         return objectives
             .filter((objective) => selectedPillars.size === 0 || selectedPillars.has(objective.pillar_id))
+            .filter((objective) => selectedObjectives.size === 0 || selectedObjectives.has(objective.id))
             .map((objective) => {
                 const krs = annualKRs
                     .filter((kr) => kr.objective_id === objective.id)
@@ -66,17 +74,36 @@ export function MonthlyTrackingPage() {
                 return { objective, krs }
             })
             .filter((group) => group.krs.length > 0)
-    }, [objectives, annualKRs, search, selectedPillars, selectedOwners])
+    }, [objectives, annualKRs, search, selectedPillars, selectedObjectives, selectedOwners])
 
     const totalKRs = useMemo(
         () => groups.reduce((acc, group) => acc + group.krs.length, 0),
         [groups]
     )
 
-    const hasActiveFilters = search.trim() !== '' || selectedPillars.size > 0 || selectedOwners.size > 0
+    const hasActiveFilters = search.trim() !== '' || selectedPillars.size > 0 || selectedObjectives.size > 0 || selectedOwners.size > 0
 
     function togglePillar(value: string) {
-        setSelectedPillars((prev) => {
+        const nextPillars = new Set(selectedPillars)
+        if (nextPillars.has(value)) nextPillars.delete(value)
+        else nextPillars.add(value)
+        setSelectedPillars(nextPillars)
+
+        // Drop objective selections that no longer belong to the active pillars
+        setSelectedObjectives((prev) => {
+            if (prev.size === 0 || nextPillars.size === 0) return prev
+            const next = new Set(prev)
+            objectives.forEach((objective) => {
+                if (next.has(objective.id) && !nextPillars.has(objective.pillar_id)) {
+                    next.delete(objective.id)
+                }
+            })
+            return next.size === prev.size ? prev : next
+        })
+    }
+
+    function toggleObjective(value: string) {
+        setSelectedObjectives((prev) => {
             const next = new Set(prev)
             if (next.has(value)) next.delete(value)
             else next.add(value)
@@ -96,6 +123,7 @@ export function MonthlyTrackingPage() {
     function clearFilters() {
         setSearch('')
         setSelectedPillars(new Set())
+        setSelectedObjectives(new Set())
         setSelectedOwners(new Set())
     }
 
@@ -134,21 +162,34 @@ export function MonthlyTrackingPage() {
                 </div>
 
                 {/* Filter bar */}
-                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 flex flex-col lg:flex-row lg:items-center gap-2">
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         placeholder={t('monthlyTracking.searchPlaceholder')}
                         icon={<Search className="w-4 h-4" />}
-                        className="lg:flex-1 lg:min-w-[220px]"
+                        className="h-9 sm:w-44 lg:w-56 sm:flex-shrink-0"
                     />
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-1 items-center gap-2">
                         {pillarOptions.length > 0 && (
                             <MultiSelectDropdown
                                 options={pillarOptions}
                                 selected={selectedPillars}
                                 onToggle={togglePillar}
                                 placeholder={t('monthlyTracking.filterPillar')}
+                                className="flex-1"
+                                fullWidth
+                            />
+                        )}
+                        {objectiveOptions.length > 0 && (
+                            <MultiSelectDropdown
+                                options={objectiveOptions}
+                                selected={selectedObjectives}
+                                onToggle={toggleObjective}
+                                placeholder={t('monthlyTracking.filterObjective')}
+                                searchable
+                                className="flex-1"
+                                fullWidth
                             />
                         )}
                         {ownerOptions.length > 0 && (
@@ -159,18 +200,20 @@ export function MonthlyTrackingPage() {
                                 placeholder={t('monthlyTracking.filterOwner')}
                                 searchable
                                 align="right"
+                                className="flex-1"
+                                fullWidth
                             />
                         )}
-                        {hasActiveFilters && (
-                            <button
-                                type="button"
-                                onClick={clearFilters}
-                                className="inline-flex items-center gap-1 h-9 px-3 rounded-lg border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-all"
-                            >
-                                <X className="w-3.5 h-3.5" />
-                                {t('monthlyTracking.clearFilters')}
-                            </button>
-                        )}
+                        <button
+                            type="button"
+                            onClick={clearFilters}
+                            disabled={!hasActiveFilters}
+                            title={t('monthlyTracking.clearFilters')}
+                            aria-label={t('monthlyTracking.clearFilters')}
+                            className="inline-flex flex-shrink-0 items-center justify-center h-9 w-9 rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] transition-all enabled:hover:border-[var(--color-primary)] enabled:hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
             </div>
