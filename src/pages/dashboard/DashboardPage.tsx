@@ -20,6 +20,7 @@ interface ActionPlanSummaryRow {
     key_result_id: string
     owner_name: string | null
     due_date: string | null
+    status: 'not_started' | 'in_progress' | 'completed'
 }
 
 interface ActionPlanTaskRow {
@@ -134,7 +135,7 @@ export function DashboardPage() {
 
             const { data: plansData, error: plansError } = await supabase
                 .from('action_plans')
-                .select('id, key_result_id, owner_name, due_date')
+                .select('id, key_result_id, owner_name, due_date, status')
                 .in('key_result_id', krIds)
 
             if (plansError) throw plansError
@@ -265,6 +266,8 @@ export function DashboardPage() {
         const overdue = new Set<string>()
 
         actionPlans.forEach((plan) => {
+            if (plan.status === 'completed') return
+
             const tasks = tasksByPlanId[plan.id] || []
             const effectiveDL = getEffectiveDeadline(plan.due_date, tasks)
             if (!effectiveDL) return
