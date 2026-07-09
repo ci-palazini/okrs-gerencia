@@ -199,8 +199,19 @@ export function DashboardPage() {
         return new Map(visiblePillars.map((pillar) => [pillar.id, pillar]))
     }, [visiblePillars])
 
+    // Descontinuados não entram nos cálculos de saúde/confiança/prazos do dashboard,
+    // mesma convenção usada no mapa de confiança (OKRConfidenceMapPage).
+    const activeObjectives = useMemo(
+        () => objectives.filter((objective) => !objective.discontinued_at),
+        [objectives]
+    )
+    const activeKeyResults = useMemo(
+        () => keyResults.filter((kr) => !kr.discontinued_at),
+        [keyResults]
+    )
+
     const dashboardKRs = useMemo<DashboardKR[]>(() => {
-        return keyResults.map((kr) => {
+        return activeKeyResults.map((kr) => {
             const objective = objectiveById.get(kr.objective_id)
             const pillar = objective ? pillarById.get(objective.pillar_id) : null
 
@@ -218,12 +229,12 @@ export function DashboardPage() {
                 isCritical: isCriticalConfidence(kr.confidence),
             }
         })
-    }, [keyResults, objectiveById, pillarById, t])
+    }, [activeKeyResults, objectiveById, pillarById, t])
 
     const deadlineLocale = i18n.language.split('-')[0]
     const { overdueAlerts, urgentAlerts, counts: deadlineCounts } = useDeadlineAlerts(
-        objectives,
-        keyResults,
+        activeObjectives,
+        activeKeyResults,
         {
             includeCompleted: false,
             locale: deadlineLocale,
