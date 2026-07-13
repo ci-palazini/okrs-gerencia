@@ -118,23 +118,28 @@ export function ActionsPage() {
     })
 
     useEffect(() => {
+        if (!selectedUnit) return
         supabase
             .from('teams')
-            .select('id, name, team_members(users(full_name))')
+            .select('id, name, team_members(users(full_name)), team_business_units!inner(business_unit_id)')
             .eq('is_active', true)
+            .eq('team_business_units.business_unit_id', selectedUnit)
             .order('order_index')
             .then(({ data }) => {
-                if (data) {
-                    setTeams(data.map((t: any) => ({
-                        id: t.id,
-                        name: t.name,
-                        memberNames: (t.team_members as any[])
-                            .map((m: any) => m.users?.full_name)
-                            .filter(Boolean),
-                    })))
-                }
+                if (!data) return
+                const unitTeams = data.map((t: any) => ({
+                    id: t.id,
+                    name: t.name,
+                    memberNames: (t.team_members as any[])
+                        .map((m: any) => m.users?.full_name)
+                        .filter(Boolean),
+                }))
+                setTeams(unitTeams)
+                setSelectedTeamId(prev =>
+                    prev && !unitTeams.some(t => t.id === prev) ? null : prev
+                )
             })
-    }, [])
+    }, [selectedUnit])
 
     useEffect(() => {
         if (!selectedUnit) return

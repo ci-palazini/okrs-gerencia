@@ -16,9 +16,11 @@ import {
 } from 'lucide-react'
 import type { UserWithUnits, TeamWithMembers } from '../../types'
 import { formatUsername } from '../../lib/utils'
+import { useBusinessUnit } from '../../contexts/BusinessUnitContext'
 
 export function TeamsPage() {
     const { t } = useTranslation()
+    const { units, selectedUnit } = useBusinessUnit()
     const [teams, setTeams] = useState<TeamWithMembers[]>([])
     const [allUsers, setAllUsers] = useState<UserWithUnits[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -29,15 +31,28 @@ export function TeamsPage() {
 
     useEffect(() => {
         loadData()
-    }, [])
+    }, [selectedUnit])
 
     async function loadData() {
+        if (!selectedUnit) return
         setIsLoading(true)
         try {
+            // Os times da empresa ativa são resolvidos primeiro, para que a query
+            // seguinte traga cada time com TODAS as suas empresas (um inner join
+            // filtrado devolveria só a empresa ativa e o modal salvaria o time
+            // perdendo o vínculo com as demais).
+            const { data: links } = await supabase
+                .from('team_business_units')
+                .select('team_id')
+                .eq('business_unit_id', selectedUnit)
+
+            const teamIds = (links ?? []).map(l => l.team_id)
+
             const [teamsRes, usersRes] = await Promise.all([
-                supabase
-                    .from('teams')
-                    .select(`
+                teamIds.length > 0
+                    ? supabase
+                        .from('teams')
+                        .select(`
                         *,
                         team_members (
                             user_id,
@@ -49,9 +64,15 @@ export function TeamsPage() {
                                     business_units ( code )
                                 )
                             )
+                        ),
+                        team_business_units (
+                            business_unit_id,
+                            business_units ( id, code, name )
                         )
                     `)
-                    .order('order_index'),
+                        .in('id', teamIds)
+                        .order('order_index')
+                    : Promise.resolve({ data: [] as unknown[] }),
                 supabase
                     .from('users')
                     .select(`
@@ -89,21 +110,13 @@ export function TeamsPage() {
         description: string | null
         leaderId: string | null
         memberIds: string[]
+        businessUnitIds: string[]
     }) => {
-        if (data.id) {
-            // Atualizar time existente
-            const { error: teamError } = await supabase
-                .from('teams')
-                .update({ name: data.name, description: data.description })
-                .eq('id', data.id)
-
-            if (teamError) throw teamError
-
-            // Reconstruir membros
-            await supabase.from('team_members').delete().eq('team_id', data.id)
+        const syncRelations = async (teamId: string) => {
+            await supabase.from('team_members').delete().eq('team_id', teamId)
 
             const membersToInsert = data.memberIds.map(uid => ({
-                team_id: data.id!,
+                team_id: teamId,
                 user_id: uid,
                 role: uid === data.leaderId ? 'leader' as const : 'member' as const,
             }))
@@ -114,8 +127,32 @@ export function TeamsPage() {
                     .insert(membersToInsert)
                 if (membersError) throw membersError
             }
+
+            await supabase.from('team_business_units').delete().eq('team_id', teamId)
+
+            const unitsToInsert = data.businessUnitIds.map(buId => ({
+                team_id: teamId,
+                business_unit_id: buId,
+            }))
+
+            if (unitsToInsert.length > 0) {
+                const { error: unitsError } = await supabase
+                    .from('team_business_units')
+                    .insert(unitsToInsert)
+                if (unitsError) throw unitsError
+            }
+        }
+
+        if (data.id) {
+            const { error: teamError } = await supabase
+                .from('teams')
+                .update({ name: data.name, description: data.description })
+                .eq('id', data.id)
+
+            if (teamError) throw teamError
+
+            await syncRelations(data.id)
         } else {
-            // Criar novo time
             const { data: newTeam, error: createError } = await supabase
                 .from('teams')
                 .insert({
@@ -128,18 +165,7 @@ export function TeamsPage() {
 
             if (createError || !newTeam) throw createError
 
-            const membersToInsert = data.memberIds.map(uid => ({
-                team_id: newTeam.id,
-                user_id: uid,
-                role: uid === data.leaderId ? 'leader' as const : 'member' as const,
-            }))
-
-            if (membersToInsert.length > 0) {
-                const { error: membersError } = await supabase
-                    .from('team_members')
-                    .insert(membersToInsert)
-                if (membersError) throw membersError
-            }
+            await syncRelations(newTeam.id)
         }
 
         await loadData()
@@ -222,11 +248,17 @@ export function TeamsPage() {
                 onClose={() => { setModalOpen(false); setEditingTeam(null) }}
                 team={editingTeam}
                 allUsers={allUsers}
+                allUnits={units}
                 currentLeaderId={
                     editingTeam?.team_members?.find(m => m.role === 'leader')?.user_id ?? null
                 }
                 currentMemberIds={
                     editingTeam?.team_members?.map(m => m.user_id) ?? []
+                }
+                currentUnitIds={
+                    editingTeam
+                        ? editingTeam.team_business_units?.map(tbu => tbu.business_unit_id) ?? []
+                        : selectedUnit ? [selectedUnit] : []
                 }
                 onSave={handleSave}
             />
@@ -268,6 +300,20 @@ function TeamCard({
                     <Network className="w-5 h-5 text-[var(--color-primary)]" />
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                         <span className="font-semibold text-[var(--color-text-primary)] text-base">{team.name}</span>
+                        {/* Só sinalizamos as empresas quando o time é compartilhado — na
+                            empresa ativa o badge seria redundante */}
+                        {(team.team_business_units?.length ?? 0) > 1 && (
+                            <span className="inline-flex flex-wrap gap-1 flex-shrink-0">
+                                {team.team_business_units.map(tbu => (
+                                    <span
+                                        key={tbu.business_unit_id}
+                                        className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-muted)] font-medium"
+                                    >
+                                        {tbu.business_units.code}
+                                    </span>
+                                ))}
+                            </span>
+                        )}
                         {team.description && (
                             <span className="text-xs text-[var(--color-text-muted)] truncate hidden sm:inline">
                                 — {team.description}

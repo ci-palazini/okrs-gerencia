@@ -195,6 +195,10 @@ export interface TeamWithMembers extends Team {
         role: 'leader' | 'member'
         users: UserWithUnits
     }[]
+    team_business_units: {
+        business_unit_id: string
+        business_units: BusinessUnit
+    }[]
 }
 
 // =====================================================

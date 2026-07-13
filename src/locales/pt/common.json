@@ -70,6 +70,9 @@
     "teams": {
         "title": "Times",
         "subtitle": "Organize colaboradores em times para acompanhamento de OKRs",
+        "businessUnits": "Empresas",
+        "businessUnitsHint": "O time aparecerá nos filtros apenas das empresas selecionadas.",
+        "noUsersForUnits": "Selecione ao menos uma empresa para listar os colaboradores.",
         "newTeam": "Novo Time",
         "editTeam": "Editar Time",
         "name": "Nome",

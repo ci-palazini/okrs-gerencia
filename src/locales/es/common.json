@@ -70,6 +70,9 @@
     "teams": {
         "title": "Equipos",
         "subtitle": "Organice colaboradores en equipos para el seguimiento de OKRs",
+        "businessUnits": "Empresas",
+        "businessUnitsHint": "El equipo aparecerá en los filtros solo de las empresas seleccionadas.",
+        "noUsersForUnits": "Seleccione al menos una empresa para listar los colaboradores.",
         "newTeam": "Nuevo Equipo",
         "editTeam": "Editar Equipo",
         "name": "Nombre",

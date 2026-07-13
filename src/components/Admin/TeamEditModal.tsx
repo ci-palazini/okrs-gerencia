@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Check, Crown } from 'lucide-react'
+import { X, Check, Crown, Building2 } from 'lucide-react'
 import { Button } from '../ui/Button'
-import type { UserWithUnits } from '../../types'
+import type { UserWithUnits, BusinessUnit } from '../../types'
 import { useTranslation } from 'react-i18next'
 import { formatUsername } from '../../lib/utils'
 
@@ -11,14 +11,17 @@ interface TeamEditModalProps {
     onClose: () => void
     team: { id?: string; name: string; description: string | null } | null
     allUsers: UserWithUnits[]
+    allUnits: Pick<BusinessUnit, 'id' | 'code' | 'name'>[]
     currentLeaderId: string | null
     currentMemberIds: string[]
+    currentUnitIds: string[]
     onSave: (data: {
         id?: string
         name: string
         description: string | null
         leaderId: string | null
         memberIds: string[]
+        businessUnitIds: string[]
     }) => Promise<void>
 }
 
@@ -27,8 +30,10 @@ export function TeamEditModal({
     onClose,
     team,
     allUsers,
+    allUnits,
     currentLeaderId,
     currentMemberIds,
+    currentUnitIds,
     onSave,
 }: TeamEditModalProps) {
     const { t } = useTranslation()
@@ -36,6 +41,7 @@ export function TeamEditModal({
     const [description, setDescription] = useState('')
     const [leaderId, setLeaderId] = useState<string | null>(null)
     const [memberIds, setMemberIds] = useState<string[]>([])
+    const [unitIds, setUnitIds] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
 
     useEffect(() => {
@@ -44,8 +50,25 @@ export function TeamEditModal({
             setDescription(team?.description || '')
             setLeaderId(currentLeaderId)
             setMemberIds(currentMemberIds)
+            setUnitIds(currentUnitIds)
         }
-    }, [isOpen, team, currentLeaderId, currentMemberIds])
+    }, [isOpen, team, currentLeaderId, currentMemberIds, currentUnitIds])
+
+    // Só pessoas das empresas do time são selecionáveis. Membros já vinculados
+    // continuam listados mesmo fora delas, para poderem ser removidos à mão em
+    // vez de sumirem da tela e serem descartados no save.
+    const selectableUsers = allUsers.filter(user =>
+        memberIds.includes(user.id) ||
+        user.user_business_units?.some(ubu => unitIds.includes(ubu.business_unit_id))
+    )
+
+    const handleToggleUnit = (unitId: string) => {
+        setUnitIds(prev =>
+            prev.includes(unitId)
+                ? prev.filter(id => id !== unitId)
+                : [...prev, unitId]
+        )
+    }
 
     const handleToggleMember = (userId: string) => {
         if (userId === leaderId) return // não pode desmarcar o líder dos membros
@@ -69,7 +92,7 @@ export function TeamEditModal({
     }
 
     const handleSave = async () => {
-        if (!name.trim()) return
+        if (!name.trim() || unitIds.length === 0) return
         setIsSaving(true)
         try {
             await onSave({
@@ -78,6 +101,7 @@ export function TeamEditModal({
                 description: description.trim() || null,
                 leaderId,
                 memberIds,
+                businessUnitIds: unitIds,
             })
             onClose()
         } catch (error) {
@@ -134,6 +158,41 @@ export function TeamEditModal({
                             />
                         </div>
 
+                        {/* Empresas do time */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-[var(--color-text-muted)] flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-[var(--color-primary)]" />
+                                {t('teams.businessUnits', 'Empresas')} *
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {allUnits.map(unit => {
+                                    const isSelected = unitIds.includes(unit.id)
+                                    return (
+                                        <button
+                                            key={unit.id}
+                                            type="button"
+                                            onClick={() => handleToggleUnit(unit.id)}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors ${isSelected
+                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/40 text-[var(--color-text-primary)]'
+                                                : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                                                }`}
+                                        >
+                                            <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected
+                                                ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
+                                                : 'border-[var(--color-text-muted)]'
+                                                }`}>
+                                                {isSelected && <Check className="w-3 h-3" />}
+                                            </span>
+                                            {unit.name}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                            <p className="text-xs text-[var(--color-text-muted)]">
+                                {t('teams.businessUnitsHint', 'O time aparecerá nos filtros apenas das empresas selecionadas.')}
+                            </p>
+                        </div>
+
                         {/* Seleção de Líder */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--color-text-muted)] flex items-center gap-2">
@@ -141,7 +200,7 @@ export function TeamEditModal({
                                 {t('teams.leader', 'Líder')}
                             </label>
                             <div className="max-h-36 overflow-y-auto space-y-1 border border-[var(--color-border)] rounded-xl p-2 bg-[var(--color-surface-elevated)]">
-                                {allUsers.map(user => (
+                                {selectableUsers.map(user => (
                                     <div
                                         key={user.id}
                                         onClick={() => handleSetLeader(user.id)}
@@ -182,7 +241,12 @@ export function TeamEditModal({
                                 {t('teams.teamMembers', 'Membros do Time')}
                             </label>
                             <div className="max-h-48 overflow-y-auto space-y-1 border border-[var(--color-border)] rounded-xl p-2 bg-[var(--color-surface-elevated)]">
-                                {allUsers.map(user => {
+                                {selectableUsers.length === 0 && (
+                                    <p className="text-xs text-[var(--color-text-muted)] p-2">
+                                        {t('teams.noUsersForUnits', 'Selecione ao menos uma empresa para listar os colaboradores.')}
+                                    </p>
+                                )}
+                                {selectableUsers.map(user => {
                                     const isLeader = leaderId === user.id
                                     const isSelected = memberIds.includes(user.id)
                                     return (
@@ -228,7 +292,7 @@ export function TeamEditModal({
                         <Button variant="outline" onClick={onClose} disabled={isSaving}>
                             {t('common.cancel', 'Cancelar')}
                         </Button>
-                        <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
+                        <Button onClick={handleSave} disabled={isSaving || !name.trim() || unitIds.length === 0}>
                             {isSaving
                                 ? t('teams.saving', 'Salvando...')
                                 : isEditing
