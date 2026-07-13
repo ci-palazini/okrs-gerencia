@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     full_name: authUser.user_metadata?.full_name || authUser.email!,
                     role: 'user',
                     avatar_url: authUser.user_metadata?.avatar_url || null,
+                    is_active: true,
                     user_business_units: []
                 }
             }
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 full_name: authUser.user_metadata?.full_name || authUser.email!,
                 role: 'user',
                 avatar_url: authUser.user_metadata?.avatar_url || null,
+                is_active: true,
                 user_business_units: []
             }
         }

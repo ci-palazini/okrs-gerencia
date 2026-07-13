@@ -150,8 +150,25 @@ export interface User {
     avatar_url: string | null
     role: 'admin' | 'user'
     whats_new_seen_version?: string | null
+    /** false quando o usuário foi excluído com soft delete (perfil mantido para autoria) */
+    is_active: boolean
+    deleted_at?: string | null
+    deleted_by?: string | null
     created_at?: string
     updated_at?: string
+}
+
+/** Resultado de admin_user_impact / admin_delete_user. */
+export interface UserDeletionImpact {
+    action_plans: number
+    comments: number
+    action_plan_attachments: number
+    kr_attachments: number
+    discontinued_items: number
+    team_memberships: number
+    business_units: number
+    content_total: number
+    mode: 'soft' | 'hard'
 }
 
 export interface UserBusinessUnit {

@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import type { UserWithUnits, BusinessUnit } from '../../types'
 import { UserEditModal } from '../../components/Admin/UserEditModal'
+import { DeleteUserDialog } from '../../components/Admin/DeleteUserDialog'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import { Pencil, Loader2, ShieldCheck, User as UserIcon, UserPlus, Building2, ChevronDown, ChevronRight, Users } from 'lucide-react'
+import { Pencil, Loader2, ShieldCheck, User as UserIcon, UserPlus, Building2, ChevronDown, ChevronRight, Users, UserX, RotateCcw } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
 import { formatUsername } from '../../lib/utils'
@@ -14,12 +15,49 @@ interface UserGroup {
     id: string
     label: string
     code?: string
-    icon: 'admin' | 'company' | 'none'
+    icon: 'admin' | 'company' | 'none' | 'inactive'
     users: UserWithUnits[]
 }
 
-function UserRow({ user, onEdit }: { user: UserWithUnits; onEdit: (u: UserWithUnits) => void }) {
+function UserRow({ user, onEdit, onRestore }: {
+    user: UserWithUnits
+    onEdit: (u: UserWithUnits) => void
+    onRestore?: (u: UserWithUnits) => void
+}) {
     const { t } = useTranslation()
+
+    if (onRestore) {
+        return (
+            <tr className="group hover:bg-[var(--color-surface-hover)] transition-colors">
+                <td className="p-4">
+                    <div className="flex items-center gap-3 opacity-60">
+                        <div className="w-10 h-10 rounded-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-secondary)] font-bold">
+                            {user.full_name.charAt(0)}
+                        </div>
+                        <div>
+                            <div className="font-semibold text-[var(--color-text-primary)] line-through">{user.full_name}</div>
+                            <div className="text-sm text-[var(--color-text-muted)]">{formatUsername(user.email)}</div>
+                        </div>
+                    </div>
+                </td>
+                <td className="p-4">
+                    <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
+                        {t('users.deactivated')}
+                    </Badge>
+                </td>
+                <td className="p-4 text-sm text-[var(--color-text-muted)]">
+                    {user.deleted_at ? new Date(user.deleted_at).toLocaleDateString() : '—'}
+                </td>
+                <td className="p-4 text-right">
+                    <Button variant="outline" size="sm" onClick={() => onRestore(user)}>
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        {t('users.restore')}
+                    </Button>
+                </td>
+            </tr>
+        )
+    }
+
     return (
         <tr className="group hover:bg-[var(--color-surface-hover)] transition-colors">
             <td className="p-4">
@@ -83,14 +121,21 @@ function UserRow({ user, onEdit }: { user: UserWithUnits; onEdit: (u: UserWithUn
     )
 }
 
-function UserGroupSection({ group, onEdit }: { group: UserGroup; onEdit: (u: UserWithUnits) => void }) {
+function UserGroupSection({ group, onEdit, onRestore }: {
+    group: UserGroup
+    onEdit: (u: UserWithUnits) => void
+    onRestore?: (u: UserWithUnits) => void
+}) {
     const { t } = useTranslation()
-    const [isOpen, setIsOpen] = useState(true)
+    const isInactiveGroup = group.icon === 'inactive'
+    const [isOpen, setIsOpen] = useState(!isInactiveGroup)
 
     const iconElement = group.icon === 'admin' ? (
         <ShieldCheck className="w-5 h-5 text-amber-500" />
     ) : group.icon === 'company' ? (
         <Building2 className="w-5 h-5 text-[var(--color-primary)]" />
+    ) : group.icon === 'inactive' ? (
+        <UserX className="w-5 h-5 text-red-500" />
     ) : (
         <Users className="w-5 h-5 text-[var(--color-text-muted)]" />
     )
@@ -125,13 +170,15 @@ function UserGroupSection({ group, onEdit }: { group: UserGroup; onEdit: (u: Use
                         <tr className="border-b border-[var(--color-border)]">
                             <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">{t('common.user')}</th>
                             <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">{t('users.role')}</th>
-                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">{t('users.companies')}</th>
+                            <th className="p-4 text-sm font-medium text-[var(--color-text-muted)]">
+                                {isInactiveGroup ? t('users.deactivatedOn') : t('users.companies')}
+                            </th>
                             <th className="p-4 text-sm font-medium text-[var(--color-text-muted)] text-right">{t('sidebar.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border)]">
                         {group.users.map(user => (
-                            <UserRow key={user.id} user={user} onEdit={onEdit} />
+                            <UserRow key={user.id} user={user} onEdit={onEdit} onRestore={onRestore} />
                         ))}
                     </tbody>
                 </table>
@@ -148,6 +195,7 @@ export function UserManagementPage() {
     const [units, setUnits] = useState<BusinessUnit[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [editingUser, setEditingUser] = useState<UserWithUnits | null>(null)
+    const [deletingUser, setDeletingUser] = useState<UserWithUnits | null>(null)
 
     useEffect(() => {
         loadData()
@@ -186,12 +234,14 @@ export function UserManagementPage() {
         }
     }
 
-    // Group users by business unit
+    // Group users by business unit (usuários desativados ficam em um grupo à parte)
     const userGroups = useMemo<UserGroup[]>(() => {
         const groups: UserGroup[] = []
+        const activeUsers = users.filter(u => u.is_active !== false)
+        const inactiveUsers = users.filter(u => u.is_active === false)
 
         // 1. Admins section
-        const admins = users.filter(u => u.role === 'admin')
+        const admins = activeUsers.filter(u => u.role === 'admin')
         if (admins.length > 0) {
             groups.push({
                 id: '__admins__',
@@ -203,7 +253,7 @@ export function UserManagementPage() {
 
         // 2. One section per business unit (ordered by order_index from DB)
         for (const unit of units) {
-            const unitUsers = users.filter(
+            const unitUsers = activeUsers.filter(
                 u => u.role !== 'admin' && u.user_business_units?.some(ubu => ubu.business_unit_id === unit.id)
             )
             if (unitUsers.length > 0) {
@@ -218,7 +268,7 @@ export function UserManagementPage() {
         }
 
         // 3. Users without any assignment (non-admin)
-        const unassigned = users.filter(
+        const unassigned = activeUsers.filter(
             u => u.role !== 'admin' && (!u.user_business_units || u.user_business_units.length === 0)
         )
         if (unassigned.length > 0) {
@@ -230,8 +280,18 @@ export function UserManagementPage() {
             })
         }
 
+        // 4. Soft-deleted users (perfil mantido para preservar autoria)
+        if (inactiveUsers.length > 0) {
+            groups.push({
+                id: '__inactive__',
+                label: t('users.deactivatedGroup'),
+                icon: 'inactive',
+                users: inactiveUsers,
+            })
+        }
+
         return groups
-    }, [users, units])
+    }, [users, units, t])
 
     const handleSaveUser = async (userId: string, role: 'admin' | 'user', unitIds: string[]) => {
         try {
@@ -265,6 +325,22 @@ export function UserManagementPage() {
         }
     }
 
+    const handleDeleted = () => {
+        setDeletingUser(null)
+        setEditingUser(null)
+        loadData()
+    }
+
+    const handleRestore = async (user: UserWithUnits) => {
+        const { error } = await supabase.rpc('admin_restore_user', { target_user_id: user.id })
+        if (error) {
+            console.error('Error restoring user:', error)
+            alert(error.message)
+            return
+        }
+        loadData()
+    }
+
     if (!currentUser || currentUser.role !== 'admin') {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-[var(--color-text-muted)]">
@@ -284,7 +360,9 @@ export function UserManagementPage() {
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="bg-[var(--color-surface-elevated)] px-4 py-2 rounded-lg border border-[var(--color-border)]">
-                        <span className="text-sm font-medium text-[var(--color-text-secondary)]">{t('users.totalCount', { count: users.length })}</span>
+                        <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+                            {t('users.totalCount', { count: users.filter(u => u.is_active !== false).length })}
+                        </span>
                     </div>
                     <Button onClick={() => navigate('/admin/users/create')}>
                         <UserPlus className="w-4 h-4 mr-2" />
@@ -304,6 +382,7 @@ export function UserManagementPage() {
                             key={group.id}
                             group={group}
                             onEdit={setEditingUser}
+                            onRestore={group.icon === 'inactive' ? handleRestore : undefined}
                         />
                     ))}
                     {userGroups.length === 0 && (
@@ -321,6 +400,16 @@ export function UserManagementPage() {
                     user={editingUser}
                     allUnits={units}
                     onSave={handleSaveUser}
+                    onRequestDelete={setDeletingUser}
+                />
+            )}
+
+            {deletingUser && (
+                <DeleteUserDialog
+                    isOpen={!!deletingUser}
+                    onClose={() => setDeletingUser(null)}
+                    user={deletingUser}
+                    onDeleted={handleDeleted}
                 />
             )}
         </div>

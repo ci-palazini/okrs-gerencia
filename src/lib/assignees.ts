@@ -32,6 +32,7 @@ export async function listAssigneesForBusinessUnit(businessUnitId: string): Prom
                 business_unit_id
             )
         `)
+        .eq('is_active', true)
         .order('full_name')
 
     if (error) {

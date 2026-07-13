@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Check, KeyRound, Eye, EyeOff } from 'lucide-react'
+import { X, Check, KeyRound, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../ui/Button'
 import type { BusinessUnit, UserWithUnits } from '../../types'
@@ -13,11 +13,13 @@ interface UserEditModalProps {
     user: UserWithUnits
     allUnits: BusinessUnit[]
     onSave: (userId: string, role: 'admin' | 'user', unitIds: string[]) => Promise<void>
+    onRequestDelete: (user: UserWithUnits) => void
 }
 
-export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserEditModalProps) {
+export function UserEditModal({ isOpen, onClose, user, allUnits, onSave, onRequestDelete }: UserEditModalProps) {
     const { t } = useTranslation()
-    const { adminResetPassword } = useAuth()
+    const { adminResetPassword, user: currentUser } = useAuth()
+    const isSelf = currentUser?.id === user.id
     const [role, setRole] = useState<'admin' | 'user'>(user.role)
     const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
     const [isSaving, setIsSaving] = useState(false)
@@ -212,6 +214,28 @@ export function UserEditModal({ isOpen, onClose, user, allUnits, onSave }: UserE
                                 </p>
                             )}
                         </div>
+
+                        {/* Danger Zone */}
+                        {!isSelf && (
+                            <div className="space-y-3 pt-2 border-t border-[var(--color-border)]">
+                                <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-danger)]">
+                                    <Trash2 className="w-4 h-4" />
+                                    {t('users.dangerZone')}
+                                </label>
+                                <div className="flex items-center justify-between gap-4">
+                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                        {t('users.deleteHint')}
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => onRequestDelete(user)}
+                                        className="shrink-0 text-[var(--color-danger)] border-[var(--color-danger)]/30 hover:bg-[var(--color-danger-muted)]"
+                                    >
+                                        {t('users.deleteUser')}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-3 mt-8">

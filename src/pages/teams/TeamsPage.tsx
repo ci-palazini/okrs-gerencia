@@ -82,6 +82,7 @@ export function TeamsPage() {
                             business_units ( code )
                         )
                     `)
+                    .eq('is_active', true)
                     .order('full_name'),
             ])
 
