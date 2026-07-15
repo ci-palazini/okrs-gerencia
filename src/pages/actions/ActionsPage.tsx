@@ -14,7 +14,7 @@ import { listAssigneesForBusinessUnit, type AssigneeOption } from '../../lib/ass
 import { cn } from '../../lib/utils'
 import { getDeadlineAlert, getEffectiveDeadline } from '../../lib/dateUtils'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ActionPlanDetailModal } from '../../components/okr/ActionPlanDetailModal'
+import { ActionPlanDetailModal, type ActionPlanTask as ModalActionPlanTask, TASK_COLUMNS } from '../../components/okr/ActionPlanDetailModal'
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-purple-500', 'bg-green-600', 'bg-orange-500',
@@ -39,15 +39,8 @@ const STATUS_CONFIG: Record<ActionPlanStatus, { label: string; className: string
     completed:    { label: 'Concluído',    className: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-800/50' },
 }
 
-interface ActionPlanTask {
-    id: string
+interface ActionPlanTask extends ModalActionPlanTask {
     action_plan_id?: string
-    title: string
-    is_done: boolean
-    order_index: number
-    due_date: string | null
-    owner_name: string | null
-    notes: string | null
 }
 
 interface ActionPlanWithRelations {
@@ -258,13 +251,13 @@ export function ActionsPage() {
             if (filtered.length > 0) {
                 const { data: tasksData } = await supabase
                     .from('action_plan_tasks')
-                    .select('id, action_plan_id, title, is_done, order_index, due_date, owner_name, notes')
+                    .select(`action_plan_id, ${TASK_COLUMNS}`)
                     .in('action_plan_id', filtered.map(p => p.id))
                     .order('order_index', { ascending: true })
 
                 const grouped: Record<string, ActionPlanTask[]> = {}
                 for (const plan of filtered) grouped[plan.id] = []
-                for (const task of (tasksData || []) as ActionPlanTask[]) {
+                for (const task of (tasksData || []) as unknown as ActionPlanTask[]) {
                     const planId = task.action_plan_id!
                     if (grouped[planId]) grouped[planId].push(task)
                 }

@@ -1,18 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     AlertTriangle, BarChart2, Calendar, CheckCircle2, Clock,
     ExternalLink, FileText, MessageSquare, Pencil, Plus, Trash2, User,
-    Send,
+    Send, Repeat, History, RotateCcw,
 } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
-import { Input } from '../ui/Input'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { cn, formatDate } from '../../lib/utils'
-import { getEffectiveDeadline, formatDeadlineDate, toDateLocale } from '../../lib/dateUtils'
+import { getEffectiveDeadline, formatDeadlineDate, toDateLocale, getTodayISO } from '../../lib/dateUtils'
+import {
+    type RecurrenceType,
+    getTaskEffectiveState,
+    getCurrentPeriodDate,
+    getNextOccurrence,
+    describeRecurrence,
+    defaultWeekdays,
+    addDaysISO,
+} from '../../lib/recurrence'
 import i18n from '../../i18n'
 import { DeadlineBadge } from './DeadlineBadge'
 import { ActionPlanAttachments } from './ActionPlanAttachments'
@@ -57,7 +65,30 @@ export interface ActionPlanTask {
     due_date: string | null
     owner_name: string | null
     notes: string | null
+    is_recurring: boolean
+    recurrence_type: RecurrenceType | null
+    recurrence_interval: number | null
+    recurrence_weekdays: number[] | null
+    recurrence_day_of_month: number | null
+    recurrence_start_date: string | null
+    recurrence_end_date: string | null
 }
+
+export interface ActionPlanTaskCompletion {
+    id: string
+    task_id: string
+    period_date: string
+    completed_at: string
+    completed_by: string | null
+    completed_by_name: string | null
+    note: string | null
+}
+
+/** Columns selected for a task (shared by list and modal queries). */
+export const TASK_COLUMNS =
+    'id, title, is_done, order_index, due_date, owner_name, notes, ' +
+    'is_recurring, recurrence_type, recurrence_interval, recurrence_weekdays, ' +
+    'recurrence_day_of_month, recurrence_start_date, recurrence_end_date'
 
 export function formatShortDate(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00')
@@ -120,9 +151,8 @@ export function ActionPlanDetailModal({
     const [addingTask, setAddingTask] = useState(false)
     const [showAddTaskForm, setShowAddTaskForm] = useState(false)
 
-    // Task edit sub-modal
-    const [editingTask, setEditingTask] = useState<ActionPlanTask | null>(null)
-    const [taskModalOpen, setTaskModalOpen] = useState(false)
+    // Selected-task detail panel (inline editing, replaces the old sub-modal)
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
     const [taskTitle, setTaskTitle] = useState('')
     const [taskDueDate, setTaskDueDate] = useState('')
     const [taskOwnerName, setTaskOwnerName] = useState('')
@@ -130,8 +160,24 @@ export function ActionPlanDetailModal({
     const [savingTask, setSavingTask] = useState(false)
     const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
 
+    // Recurrence config (mirrors the selected task while editing)
+    const [isRecurring, setIsRecurring] = useState(false)
+    const [recType, setRecType] = useState<RecurrenceType>('daily')
+    const [recInterval, setRecInterval] = useState(1)
+    const [recWeekdays, setRecWeekdays] = useState<number[]>([])
+    const [recDayOfMonth, setRecDayOfMonth] = useState(1)
+    const [recStart, setRecStart] = useState('')
+    const [recEnd, setRecEnd] = useState('')
+
+    // Completion history, keyed by task id (recent window for progress; full for selected task)
+    const [completionsByTaskId, setCompletionsByTaskId] = useState<Record<string, ActionPlanTaskCompletion[]>>({})
+    const [completionNote, setCompletionNote] = useState('')
+    const [togglingCompletion, setTogglingCompletion] = useState(false)
+
     // Delete plan confirmation
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+    const selectedTask = tasks.find(t => t.id === selectedTaskId) ?? null
 
     // Reset state when the modal opens for a new plan
     useEffect(() => {
@@ -142,6 +188,8 @@ export function ActionPlanDetailModal({
             setComments([])
             commentsLoaded.current = false
             setShowDeleteConfirm(false)
+            setSelectedTaskId(null)
+            setCompletionsByTaskId({})
             // Eagerly load comments
             commentsLoaded.current = true
             setCommentsLoading(true)
@@ -154,6 +202,23 @@ export function ActionPlanDetailModal({
                     setComments((data as ActionPlanComment[]) || [])
                     setCommentsLoading(false)
                 })
+            // Load recent completions for recurring tasks (drives current-period state)
+            const recurringIds = tasks.filter(t => t.is_recurring).map(t => t.id)
+            if (recurringIds.length > 0) {
+                const since = addDaysISO(getTodayISO(), -62)
+                supabase
+                    .from('action_plan_task_completions')
+                    .select('*')
+                    .in('task_id', recurringIds)
+                    .gte('period_date', since)
+                    .then(({ data }) => {
+                        const grouped: Record<string, ActionPlanTaskCompletion[]> = {}
+                        for (const c of (data as ActionPlanTaskCompletion[]) || []) {
+                            ;(grouped[c.task_id] ??= []).push(c)
+                        }
+                        setCompletionsByTaskId(grouped)
+                    })
+            }
         }
     }, [plan?.id])
 
@@ -188,14 +253,16 @@ export function ActionPlanDetailModal({
                     due_date: newTaskDraft.dueDate || null,
                     owner_name: newTaskDraft.ownerName || null,
                 })
-                .select('id, title, is_done, order_index, due_date, owner_name, notes')
+                .select(TASK_COLUMNS)
                 .single()
 
             if (error) throw error
 
-            onTasksChanged(plan.id, [...tasks, data as ActionPlanTask])
+            const created = data as unknown as ActionPlanTask
+            onTasksChanged(plan.id, [...tasks, created])
             setNewTaskDraft({ title: '', dueDate: '', ownerName: '' })
             setShowAddTaskForm(false)
+            selectTask(created)
         } catch (e) {
             console.error('Error adding task:', e)
         } finally {
@@ -203,36 +270,68 @@ export function ActionPlanDetailModal({
         }
     }
 
-    function openTaskEditor(task: ActionPlanTask) {
-        setEditingTask(task)
+    function selectTask(task: ActionPlanTask) {
+        setSelectedTaskId(task.id)
         setTaskTitle(task.title)
         setTaskDueDate(task.due_date || '')
         setTaskOwnerName(task.owner_name || '')
         setTaskNotes(task.notes || '')
-        setTaskModalOpen(true)
+        setCompletionNote('')
+        setIsRecurring(task.is_recurring)
+        setRecType(task.recurrence_type ?? 'daily')
+        setRecInterval(task.recurrence_interval ?? 1)
+        setRecWeekdays(task.recurrence_weekdays ?? [])
+        setRecDayOfMonth(task.recurrence_day_of_month ?? 1)
+        setRecStart(task.recurrence_start_date ?? getTodayISO())
+        setRecEnd(task.recurrence_end_date ?? '')
+        // Lazily load full completion history for recurring tasks
+        if (task.is_recurring) {
+            supabase
+                .from('action_plan_task_completions')
+                .select('*')
+                .eq('task_id', task.id)
+                .order('period_date', { ascending: false })
+                .then(({ data }) => {
+                    setCompletionsByTaskId(prev => ({
+                        ...prev,
+                        [task.id]: (data as ActionPlanTaskCompletion[]) || [],
+                    }))
+                })
+        }
+    }
+
+    function buildRecurrencePayload() {
+        return {
+            is_recurring: isRecurring,
+            recurrence_type: isRecurring ? recType : null,
+            recurrence_interval: isRecurring && recType === 'custom' ? Math.max(1, recInterval) : 1,
+            recurrence_weekdays: isRecurring && recType === 'weekly' ? recWeekdays : null,
+            recurrence_day_of_month: isRecurring && recType === 'monthly' ? recDayOfMonth : null,
+            recurrence_start_date: isRecurring ? (recStart || getTodayISO()) : null,
+            recurrence_end_date: isRecurring ? (recEnd || null) : null,
+        }
     }
 
     async function saveTask() {
-        if (!editingTask || !plan || !taskTitle.trim()) return
+        if (!selectedTask || !plan || !taskTitle.trim()) return
         setSavingTask(true)
         try {
             const { data, error } = await supabase
                 .from('action_plan_tasks')
                 .update({
                     title: taskTitle.trim(),
-                    due_date: taskDueDate || null,
+                    due_date: isRecurring ? null : (taskDueDate || null),
                     owner_name: taskOwnerName || null,
                     notes: taskNotes.trim() || null,
+                    ...buildRecurrencePayload(),
                 })
-                .eq('id', editingTask.id)
-                .select('id, title, is_done, order_index, due_date, owner_name, notes')
+                .eq('id', selectedTask.id)
+                .select(TASK_COLUMNS)
                 .single()
 
             if (error) throw error
 
-            onTasksChanged(plan.id, tasks.map(t => t.id === editingTask.id ? (data as ActionPlanTask) : t))
-            setTaskModalOpen(false)
-            setEditingTask(null)
+            onTasksChanged(plan.id, tasks.map(t => t.id === selectedTask.id ? (data as unknown as ActionPlanTask) : t))
         } catch (e) {
             console.error('Error saving task:', e)
         } finally {
@@ -246,14 +345,64 @@ export function ActionPlanDetailModal({
         try {
             await supabase.from('action_plan_tasks').delete().eq('id', taskId)
             onTasksChanged(plan.id, tasks.filter(t => t.id !== taskId))
-            if (taskModalOpen && editingTask?.id === taskId) {
-                setTaskModalOpen(false)
-                setEditingTask(null)
-            }
+            if (selectedTaskId === taskId) setSelectedTaskId(null)
         } catch (e) {
             console.error('Error deleting task:', e)
         } finally {
             setDeletingTaskId(null)
+        }
+    }
+
+    // ── Recurring completions ────────────────────────────────────────────────
+
+    async function markPeriodDone(task: ActionPlanTask, note?: string) {
+        if (!plan) return
+        const period = getCurrentPeriodDate(task)
+        if (!period) return
+        setTogglingCompletion(true)
+        try {
+            const completedByName = (user as any)?.full_name || user?.email || null
+            const { data, error } = await supabase
+                .from('action_plan_task_completions')
+                .insert({
+                    task_id: task.id,
+                    period_date: period,
+                    completed_by: user?.id ?? null,
+                    completed_by_name: completedByName,
+                    note: note?.trim() || null,
+                })
+                .select('*')
+                .single()
+            if (error) throw error
+            setCompletionsByTaskId(prev => ({
+                ...prev,
+                [task.id]: [data as ActionPlanTaskCompletion, ...(prev[task.id] || [])],
+            }))
+            setCompletionNote('')
+        } catch (e) {
+            console.error('Error marking period done:', e)
+        } finally {
+            setTogglingCompletion(false)
+        }
+    }
+
+    async function unmarkPeriodDone(task: ActionPlanTask) {
+        if (!plan) return
+        const period = getCurrentPeriodDate(task)
+        if (!period) return
+        const existing = (completionsByTaskId[task.id] || []).find(c => c.period_date === period)
+        if (!existing) return
+        setTogglingCompletion(true)
+        try {
+            await supabase.from('action_plan_task_completions').delete().eq('id', existing.id)
+            setCompletionsByTaskId(prev => ({
+                ...prev,
+                [task.id]: (prev[task.id] || []).filter(c => c.id !== existing.id),
+            }))
+        } catch (e) {
+            console.error('Error unmarking period:', e)
+        } finally {
+            setTogglingCompletion(false)
         }
     }
 
@@ -296,14 +445,31 @@ export function ActionPlanDetailModal({
 
     // ── Derived ──────────────────────────────────────────────────────────────
 
-    const doneTasks = tasks.filter(t => t.is_done).length
+    const today = getTodayISO()
+
+    // Effective { dueDate, isDone } per task, unifying recurring and one-off tasks.
+    const effectiveStateById = useMemo(() => {
+        const map: Record<string, { dueDate: string | null; isDone: boolean }> = {}
+        for (const task of tasks) {
+            map[task.id] = getTaskEffectiveState(task, completionsByTaskId[task.id] || [], today)
+        }
+        return map
+    }, [tasks, completionsByTaskId, today])
+
+    const doneTasks = tasks.filter(t => effectiveStateById[t.id]?.isDone).length
     const totalTasks = tasks.length
     const progressPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0
     const allDone = totalTasks > 0 && doneTasks === totalTasks
     const someDone = doneTasks > 0 && !allDone
 
     const effectiveDeadline = plan
-        ? getEffectiveDeadline(plan.due_date, tasks)
+        ? getEffectiveDeadline(
+            plan.due_date,
+            tasks.map(t => {
+                const s = effectiveStateById[t.id]
+                return { due_date: s?.dueDate ?? null, is_done: s?.isDone ?? t.is_done }
+            })
+        )
         : null
 
     function getInitials(name: string): string {
@@ -338,6 +504,11 @@ export function ActionPlanDetailModal({
         )
     )
 
+    // Shared field styles for the task detail panel
+    const fieldCls = 'w-full h-9 px-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]'
+    const labelCls = 'block text-xs font-medium text-[var(--color-text-muted)] mb-1'
+    const weekdayOrder = [1, 2, 3, 4, 5, 6, 0]
+
     // ── Render ───────────────────────────────────────────────────────────────
 
     return (
@@ -345,7 +516,10 @@ export function ActionPlanDetailModal({
             <Dialog.Root open={plan !== null} onOpenChange={(open) => { if (!open) onClose() }}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 z-[40] bg-black/60 backdrop-blur-sm animate-in fade-in-0" />
-                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[50] w-full max-w-[76rem] max-h-[92vh] flex flex-col bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 overflow-hidden">
+                    <Dialog.Content className={cn(
+                        'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[50] w-full max-h-[92vh] flex flex-col bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 overflow-hidden transition-[max-width] duration-300',
+                        selectedTask ? 'max-w-[96rem]' : 'max-w-[76rem]'
+                    )}>
 
                         {/* ── Header ── */}
                         <div className="shrink-0 px-6 pt-5 pb-4 border-b border-[var(--color-border)]">
@@ -464,38 +638,63 @@ export function ActionPlanDetailModal({
                                     {/* Task list */}
                                     {tasks.length > 0 ? (
                                         <div className="space-y-1">
-                                            {tasks.map(task => (
+                                            {tasks.map(task => {
+                                                const state = effectiveStateById[task.id] ?? { dueDate: task.due_date, isDone: task.is_done }
+                                                const isSelected = task.id === selectedTaskId
+                                                const recurringDesc = task.is_recurring ? describeRecurrence(task, t) : ''
+                                                return (
                                                 <div
                                                     key={task.id}
-                                                    className="group/task flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                    onClick={() => selectTask(task)}
+                                                    className={cn(
+                                                        'group/task flex items-start gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors',
+                                                        isSelected
+                                                            ? 'bg-[var(--color-primary)]/10 ring-1 ring-[var(--color-primary)]/30'
+                                                            : 'hover:bg-[var(--color-surface-hover)]'
+                                                    )}
                                                 >
                                                     <button
                                                         type="button"
                                                         className={cn(
                                                             'mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
-                                                            task.is_done
+                                                            state.isDone
                                                                 ? 'border-green-500 bg-green-500 text-white'
                                                                 : 'border-[var(--color-border)] hover:border-[var(--color-primary)] bg-transparent text-transparent hover:text-[var(--color-primary)]'
                                                         )}
-                                                        onClick={() => toggleTaskDone(task.id, !task.is_done)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            if (task.is_recurring) {
+                                                                if (state.isDone) unmarkPeriodDone(task)
+                                                                else markPeriodDone(task)
+                                                            } else {
+                                                                toggleTaskDone(task.id, !task.is_done)
+                                                            }
+                                                        }}
                                                     >
                                                         <CheckCircle2 className="w-3 h-3" />
                                                     </button>
                                                     <div className="flex-1 min-w-0">
                                                         <p className={cn(
-                                                            'text-sm leading-relaxed',
-                                                            task.is_done
+                                                            'text-sm leading-relaxed flex items-center gap-1.5',
+                                                            state.isDone
                                                                 ? 'text-[var(--color-text-muted)] line-through'
                                                                 : 'text-[var(--color-text-primary)]'
                                                         )}>
-                                                            {task.title}
+                                                            {task.is_recurring && <Repeat className="w-3 h-3 shrink-0 text-[var(--color-primary)]" />}
+                                                            <span className="truncate">{task.title}</span>
                                                         </p>
-                                                        {(task.due_date || task.owner_name || task.notes) && (
+                                                        {(state.dueDate || task.owner_name || task.notes || recurringDesc) && (
                                                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                                {task.due_date && (
+                                                                {state.dueDate && (
                                                                     <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
                                                                         <Calendar className="w-3 h-3" />
-                                                                        {formatShortDate(task.due_date)}
+                                                                        {formatShortDate(state.dueDate)}
+                                                                    </span>
+                                                                )}
+                                                                {recurringDesc && (
+                                                                    <span className="flex items-center gap-1 text-xs text-[var(--color-primary)]">
+                                                                        <Repeat className="w-3 h-3" />
+                                                                        {recurringDesc}
                                                                     </span>
                                                                 )}
                                                                 {task.owner_name && (
@@ -516,22 +715,16 @@ export function ActionPlanDetailModal({
                                                     <div className="flex items-center gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity shrink-0">
                                                         <button
                                                             type="button"
-                                                            className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)] transition-colors"
-                                                            onClick={() => openTaskEditor(task)}
-                                                        >
-                                                            <Pencil className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <button
-                                                            type="button"
                                                             className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
-                                                            onClick={() => deleteTask(task.id)}
+                                                            onClick={(e) => { e.stopPropagation(); deleteTask(task.id) }}
                                                             disabled={deletingTaskId === task.id}
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </button>
                                                     </div>
                                                 </div>
-                                            ))}
+                                                )
+                                            })}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-6 text-[var(--color-text-muted)] rounded-xl border border-dashed border-[var(--color-border)]">
@@ -622,6 +815,283 @@ export function ActionPlanDetailModal({
                                         </button>
                                     )}
                                 </div>
+
+                                {/* ── Middle: Task detail panel ── */}
+                                {selectedTask && (
+                                    <div className="w-96 shrink-0 flex flex-col overflow-y-auto bg-[var(--color-surface)]">
+                                        <div className="flex items-center justify-between px-5 pt-5 pb-3 sticky top-0 bg-[var(--color-surface)] z-10 border-b border-[var(--color-border)]">
+                                            <h3 className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-widest">
+                                                {selectedTask.is_recurring && <Repeat className="w-3.5 h-3.5 text-[var(--color-primary)]" />}
+                                                {t('taskDetail.title')}
+                                            </h3>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedTaskId(null)}
+                                                className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors text-base leading-none"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+
+                                        <div className="px-5 py-4 space-y-4">
+                                            {/* Title */}
+                                            <div>
+                                                <label className={labelCls}>{t('taskDetail.taskTitle')}</label>
+                                                <input
+                                                    value={taskTitle}
+                                                    onChange={(e) => setTaskTitle(e.target.value)}
+                                                    className={fieldCls}
+                                                />
+                                            </div>
+
+                                            {/* Owner */}
+                                            <div>
+                                                <label className={labelCls}>{t('actionPlan.fields.owner')}</label>
+                                                {assigneeOptions.length > 0 ? (
+                                                    <select
+                                                        value={taskOwnerName}
+                                                        onChange={(e) => setTaskOwnerName(e.target.value)}
+                                                        className={fieldCls}
+                                                    >
+                                                        <option value="">{t('actionPlan.fields.ownerSelectPlaceholder')}</option>
+                                                        {taskOwnerName && !assigneeOptions.some(a => a.name === taskOwnerName) && (
+                                                            <option value={taskOwnerName}>{taskOwnerName}</option>
+                                                        )}
+                                                        {assigneeOptions.map((a) => (
+                                                            <option key={a.id} value={a.name}>{a.name}</option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    <input
+                                                        type="text"
+                                                        value={taskOwnerName}
+                                                        onChange={(e) => setTaskOwnerName(e.target.value)}
+                                                        placeholder={t('actionPlan.fields.ownerPlaceholder')}
+                                                        className={fieldCls}
+                                                    />
+                                                )}
+                                            </div>
+
+                                            {/* Due date (one-off tasks only) */}
+                                            {!isRecurring && (
+                                                <div>
+                                                    <label className={labelCls}>{t('actionPlan.fields.dueDate')}</label>
+                                                    <input
+                                                        type="date"
+                                                        value={taskDueDate}
+                                                        onChange={(e) => setTaskDueDate(e.target.value)}
+                                                        className={fieldCls}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Notes */}
+                                            <div>
+                                                <label className={labelCls}>{t('taskDetail.notes')}</label>
+                                                <textarea
+                                                    value={taskNotes}
+                                                    onChange={(e) => setTaskNotes(e.target.value)}
+                                                    rows={2}
+                                                    placeholder={t('taskDetail.notesPlaceholder')}
+                                                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] resize-none"
+                                                />
+                                            </div>
+
+                                            {/* Recurrence config */}
+                                            <div className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
+                                                <label className="flex items-center justify-between cursor-pointer">
+                                                    <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-primary)]">
+                                                        <Repeat className="w-4 h-4 text-[var(--color-primary)]" />
+                                                        {t('recurringTask.makeRecurring')}
+                                                    </span>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isRecurring}
+                                                        onChange={(e) => {
+                                                            const on = e.target.checked
+                                                            setIsRecurring(on)
+                                                            if (on && recWeekdays.length === 0) setRecWeekdays(defaultWeekdays(today))
+                                                            if (on && !recStart) setRecStart(today)
+                                                        }}
+                                                        className="w-4 h-4 accent-[var(--color-primary)]"
+                                                    />
+                                                </label>
+
+                                                {isRecurring && (
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <label className={labelCls}>{t('recurringTask.type')}</label>
+                                                            <select
+                                                                value={recType}
+                                                                onChange={(e) => {
+                                                                    const next = e.target.value as RecurrenceType
+                                                                    setRecType(next)
+                                                                    if (next === 'weekly' && recWeekdays.length === 0) setRecWeekdays(defaultWeekdays(today))
+                                                                }}
+                                                                className={fieldCls}
+                                                            >
+                                                                <option value="daily">{t('recurringTask.freq.daily')}</option>
+                                                                <option value="weekly">{t('recurringTask.freq.weekly')}</option>
+                                                                <option value="monthly">{t('recurringTask.freq.monthly')}</option>
+                                                                <option value="custom">{t('recurringTask.freq.custom')}</option>
+                                                            </select>
+                                                        </div>
+
+                                                        {recType === 'weekly' && (
+                                                            <div>
+                                                                <label className={labelCls}>{t('recurringTask.weekdays')}</label>
+                                                                <div className="flex gap-1">
+                                                                    {weekdayOrder.map(wd => (
+                                                                        <button
+                                                                            key={wd}
+                                                                            type="button"
+                                                                            onClick={() => setRecWeekdays(prev => prev.includes(wd) ? prev.filter(d => d !== wd) : [...prev, wd])}
+                                                                            className={cn(
+                                                                                'w-8 h-8 rounded-lg text-xs font-medium transition-colors',
+                                                                                recWeekdays.includes(wd)
+                                                                                    ? 'bg-[var(--color-primary)] text-white'
+                                                                                    : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                                                                            )}
+                                                                        >
+                                                                            {t(`recurringTask.weekdayShort.${wd}`)}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {recType === 'monthly' && (
+                                                            <div>
+                                                                <label className={labelCls}>{t('recurringTask.dayOfMonth')}</label>
+                                                                <input
+                                                                    type="number"
+                                                                    min={1}
+                                                                    max={31}
+                                                                    value={recDayOfMonth}
+                                                                    onChange={(e) => setRecDayOfMonth(Math.min(31, Math.max(1, Number(e.target.value) || 1)))}
+                                                                    className={cn(fieldCls, 'w-24')}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {recType === 'custom' && (
+                                                            <div>
+                                                                <label className={labelCls}>{t('recurringTask.intervalDays')}</label>
+                                                                <input
+                                                                    type="number"
+                                                                    min={1}
+                                                                    value={recInterval}
+                                                                    onChange={(e) => setRecInterval(Math.max(1, Number(e.target.value) || 1))}
+                                                                    className={cn(fieldCls, 'w-24')}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <label className={labelCls}>{t('recurringTask.startDate')}</label>
+                                                                <input type="date" value={recStart} onChange={(e) => setRecStart(e.target.value)} className={fieldCls} />
+                                                            </div>
+                                                            <div>
+                                                                <label className={labelCls}>{t('recurringTask.endDate')}</label>
+                                                                <input type="date" value={recEnd} onChange={(e) => setRecEnd(e.target.value)} className={fieldCls} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Save / Delete */}
+                                            <div className="flex items-center justify-between gap-2 pt-1">
+                                                <Button
+                                                    variant="danger"
+                                                    size="sm"
+                                                    onClick={() => deleteTask(selectedTask.id)}
+                                                    loading={deletingTaskId === selectedTask.id}
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-1.5" />
+                                                    {t('common.delete', 'Deletar')}
+                                                </Button>
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
+                                                    onClick={saveTask}
+                                                    loading={savingTask}
+                                                    disabled={!taskTitle.trim()}
+                                                >
+                                                    {t('common.save')}
+                                                </Button>
+                                            </div>
+
+                                            {/* Recurrence status + completion history (persisted recurring tasks) */}
+                                            {selectedTask.is_recurring && (() => {
+                                                const period = getCurrentPeriodDate(selectedTask, today)
+                                                const history = completionsByTaskId[selectedTask.id] || []
+                                                const doneForPeriod = period ? history.some(c => c.period_date === period) : false
+                                                const nextDue = period && doneForPeriod ? getNextOccurrence(selectedTask, period) : period
+                                                return (
+                                                    <div className="pt-3 border-t border-[var(--color-border)] space-y-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-xs font-medium text-[var(--color-text-muted)]">{t('recurringTask.nextDue')}</span>
+                                                            <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                                                                {nextDue ? formatDeadlineDate(nextDue) : t('recurringTask.ended')}
+                                                            </span>
+                                                        </div>
+
+                                                        {period && (doneForPeriod ? (
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                    {t('recurringTask.doneForPeriod')}
+                                                                </div>
+                                                                <Button variant="outline" size="sm" onClick={() => unmarkPeriodDone(selectedTask)} loading={togglingCompletion} className="w-full">
+                                                                    <RotateCcw className="w-4 h-4 mr-1.5" />
+                                                                    {t('recurringTask.unmark')}
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-2">
+                                                                <input
+                                                                    value={completionNote}
+                                                                    onChange={(e) => setCompletionNote(e.target.value)}
+                                                                    placeholder={t('recurringTask.completionNotePlaceholder')}
+                                                                    className={fieldCls}
+                                                                />
+                                                                <Button variant="primary" size="sm" onClick={() => markPeriodDone(selectedTask, completionNote)} loading={togglingCompletion} className="w-full">
+                                                                    <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                                                                    {t('recurringTask.markDoneToday')}
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+
+                                                        <div className="space-y-2">
+                                                            <h4 className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-widest">
+                                                                <History className="w-3.5 h-3.5" />
+                                                                {t('recurringTask.history')}
+                                                            </h4>
+                                                            {history.length > 0 ? (
+                                                                <div className="space-y-1.5">
+                                                                    {history.map(c => (
+                                                                        <div key={c.id} className="flex items-start gap-2 text-xs">
+                                                                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <span className="text-[var(--color-text-primary)] font-medium">{formatDeadlineDate(c.period_date)}</span>
+                                                                                {c.completed_by_name && <span className="text-[var(--color-text-muted)]"> · {c.completed_by_name}</span>}
+                                                                                {c.note && <p className="text-[var(--color-text-muted)] truncate">{c.note}</p>}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-[var(--color-text-muted)] opacity-60">{t('recurringTask.noHistory')}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })()}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* ── Right: Details sidebar ── */}
                                 <div className="w-72 shrink-0 p-5 space-y-5 bg-[var(--color-surface-hover)]/30">
@@ -875,115 +1345,6 @@ export function ActionPlanDetailModal({
                                 </div>
                             </div>
 
-                        </div>
-                    </Dialog.Content>
-                </Dialog.Portal>
-            </Dialog.Root>
-
-            {/* ── Task edit sub-modal ── */}
-            <Dialog.Root
-                open={taskModalOpen}
-                onOpenChange={(open) => {
-                    setTaskModalOpen(open)
-                    if (!open) setEditingTask(null)
-                }}
-            >
-                <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 z-[50] bg-black/40 backdrop-blur-sm animate-in fade-in-0" />
-                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95">
-                        <div className="flex items-center justify-between p-5 border-b border-[var(--color-border)]">
-                            <Dialog.Title className="text-base font-semibold text-[var(--color-text-primary)]">
-                                Editar tarefa
-                            </Dialog.Title>
-                            <Dialog.Close asChild>
-                                <button className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors">
-                                    ✕
-                                </button>
-                            </Dialog.Close>
-                        </div>
-
-                        <div className="p-5 space-y-4">
-                            <Input
-                                label="Título *"
-                                value={taskTitle}
-                                onChange={(e) => setTaskTitle(e.target.value)}
-                                placeholder="Descrição da tarefa"
-                            />
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input
-                                    type="date"
-                                    label="Prazo"
-                                    value={taskDueDate}
-                                    onChange={(e) => setTaskDueDate(e.target.value)}
-                                    icon={<Calendar className="w-4 h-4" />}
-                                />
-                                <div>
-                                    <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                        Responsável
-                                    </label>
-                                    {assigneeOptions.length > 0 ? (
-                                        <select
-                                            value={taskOwnerName}
-                                            onChange={(e) => setTaskOwnerName(e.target.value)}
-                                            className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                                        >
-                                            <option value="">Sem responsável</option>
-                                            {taskOwnerName && !assigneeOptions.some(a => a.name === taskOwnerName) && (
-                                                <option value={taskOwnerName}>{taskOwnerName}</option>
-                                            )}
-                                            {assigneeOptions.map((a) => (
-                                                <option key={a.id} value={a.name}>{a.name}</option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            value={taskOwnerName}
-                                            onChange={(e) => setTaskOwnerName(e.target.value)}
-                                            placeholder="Nome do responsável"
-                                            className="w-full h-11 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                                        />
-                                    )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                                    Notas
-                                </label>
-                                <textarea
-                                    value={taskNotes}
-                                    onChange={(e) => setTaskNotes(e.target.value)}
-                                    placeholder="Observações sobre esta tarefa..."
-                                    rows={2}
-                                    className="w-full px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-3 p-5 border-t border-[var(--color-border)]">
-                            <Button
-                                variant="danger"
-                                onClick={() => editingTask && deleteTask(editingTask.id)}
-                                loading={deletingTaskId === editingTask?.id}
-                            >
-                                <Trash2 className="w-4 h-4 mr-1.5" />
-                                Deletar
-                            </Button>
-                            <div className="flex items-center gap-3">
-                                <Button variant="ghost" onClick={() => setTaskModalOpen(false)}>
-                                    {t('common.cancel')}
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    onClick={saveTask}
-                                    loading={savingTask}
-                                    disabled={!taskTitle.trim()}
-                                >
-                                    {t('common.save')}
-                                </Button>
-                            </div>
                         </div>
                     </Dialog.Content>
                 </Dialog.Portal>

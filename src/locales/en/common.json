@@ -508,6 +508,52 @@
             }
         }
     },
+    "recurringTask": {
+        "recurringBadge": "Recurring",
+        "makeRecurring": "Make recurring",
+        "recurrence": "Recurrence",
+        "type": "Frequency",
+        "weekdays": "Days of week",
+        "dayOfMonth": "Day of month",
+        "intervalDays": "Every how many days",
+        "startDate": "Start",
+        "endDate": "End (optional)",
+        "nextDue": "Next due",
+        "doneForPeriod": "Done for this period",
+        "markDone": "Mark as done",
+        "markDoneToday": "Mark done today",
+        "unmark": "Unmark",
+        "history": "Completion history",
+        "noHistory": "No completions logged yet.",
+        "completionNotePlaceholder": "Note (optional)",
+        "ended": "Recurrence ended",
+        "monthlyDay": "Day {{day}} of each month",
+        "everyNDays_one": "Every day",
+        "everyNDays_other": "Every {{count}} days",
+        "freq": {
+            "daily": "Daily",
+            "weekly": "Weekly",
+            "monthly": "Monthly",
+            "custom": "Custom"
+        },
+        "weekdayShort": {
+            "0": "Sun",
+            "1": "Mon",
+            "2": "Tue",
+            "3": "Wed",
+            "4": "Thu",
+            "5": "Fri",
+            "6": "Sat"
+        }
+    },
+    "taskDetail": {
+        "title": "Task detail",
+        "selectHint": "Select a task to view and edit its details.",
+        "taskTitle": "Title",
+        "notes": "Notes",
+        "notesPlaceholder": "Notes about this task...",
+        "createdAt": "Created on"
+    },
     "modals": {
         "createObjective": {
             "title": "New Objective",
@@ -622,20 +668,20 @@
         "subtitle": "Discover the latest platform improvements",
         "gotIt": "Got it",
         "features": {
-            "tracking": {
-                "tag": "Tracking",
-                "title": "Monthly OKR tracking",
-                "desc": "New page with one chart per annual KR: report the value month by month and follow the evolution. The current value is now always the latest reported month, updating progress automatically.",
-                "mockObjective": "Annual KR",
-                "mockCurrent": "Current: 68%"
+            "recurring": {
+                "tag": "Recurring tasks",
+                "title": "Tasks that repeat",
+                "desc": "Mark routine tasks as recurring (daily, weekly, monthly or custom). They get a dynamic due date, reset every period and keep a completion history — no need to recreate them each time.",
+                "mockTitle": "Update sequencing",
+                "mockFreq": "Daily",
+                "mockNext": "Next: 07/16"
             },
-            "baseline": {
-                "tag": "Baseline, goal and progress",
-                "title": "Edit baseline and goal instantly",
-                "desc": "Now you edit the baseline and the goal directly on the page, see the baseline line on the chart and identify with a badge whether the KR is to maximize or minimize — making the progress calculation transparent.",
-                "mockBaseline": "Baseline 40%",
-                "mockGoal": "Goal 80%",
-                "mockDirection": "Maximize"
+            "taskPanel": {
+                "tag": "Task detail",
+                "title": "Edit everything in a side panel",
+                "desc": "Click any task to open a panel beside it: edit owner, due date, notes and recurrence, and follow its history — all without leaving the action plan.",
+                "mockList": "Tasks",
+                "mockDetail": "Detail"
             }
         }
     },

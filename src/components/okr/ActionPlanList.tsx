@@ -7,7 +7,8 @@ import { supabase } from '../../lib/supabase'
 import { listAssigneesForBusinessUnit, type AssigneeOption } from '../../lib/assignees'
 import { useAuth } from '../../hooks/useAuth'
 import { cn, formatDate } from '../../lib/utils'
-import { getEffectiveDeadline } from '../../lib/dateUtils'
+import { getEffectiveDeadline, getTodayISO } from '../../lib/dateUtils'
+import { getTaskEffectiveState, addDaysISO } from '../../lib/recurrence'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Input } from '../ui/Input'
 import {
@@ -17,6 +18,7 @@ import {
     type ActionPlanStatus,
     type TrackingLink,
     STATUS_CONFIG,
+    TASK_COLUMNS,
     formatShortDate,
 } from './ActionPlanDetailModal'
 
@@ -56,6 +58,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     const [loading, setLoading] = useState(true)
     const [plans, setPlans] = useState<ActionPlan[]>([])
     const [tasksByPlanId, setTasksByPlanId] = useState<Record<string, ActionPlanTask[]>>({})
+    const [completionsByTaskId, setCompletionsByTaskId] = useState<Record<string, { period_date: string }[]>>({})
     const [selectedPlan, setSelectedPlan] = useState<ActionPlan | null>(null)
     const [editingPlan, setEditingPlan] = useState<ActionPlan | null>(null)
     const [draftTasks, setDraftTasks] = useState<ActionPlanTask[]>([])
@@ -145,18 +148,19 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
             const planIds = normalizedPlans.map(plan => plan.id)
             const { data: tasksData, error: tasksError } = await supabase
                 .from('action_plan_tasks')
-                .select('id, action_plan_id, title, is_done, order_index, due_date, owner_name, notes')
+                .select(`action_plan_id, ${TASK_COLUMNS}`)
                 .in('action_plan_id', planIds)
                 .order('order_index', { ascending: true })
 
             if (tasksError) throw tasksError
 
+            const taskRows = (tasksData as ActionPlanTaskRow[] | null) || []
             const groupedTasks: Record<string, ActionPlanTask[]> = {}
             for (const planItem of normalizedPlans) {
                 groupedTasks[planItem.id] = []
             }
 
-            for (const task of (tasksData as ActionPlanTaskRow[] | null) || []) {
+            for (const task of taskRows) {
                 if (!groupedTasks[task.action_plan_id]) {
                     groupedTasks[task.action_plan_id] = []
                 }
@@ -168,10 +172,35 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                     due_date: task.due_date,
                     owner_name: task.owner_name,
                     notes: task.notes,
+                    is_recurring: task.is_recurring,
+                    recurrence_type: task.recurrence_type,
+                    recurrence_interval: task.recurrence_interval,
+                    recurrence_weekdays: task.recurrence_weekdays,
+                    recurrence_day_of_month: task.recurrence_day_of_month,
+                    recurrence_start_date: task.recurrence_start_date,
+                    recurrence_end_date: task.recurrence_end_date,
                 })
             }
 
             setTasksByPlanId(groupedTasks)
+
+            // Load recent completions for recurring tasks (drives card progress/deadline)
+            const recurringIds = taskRows.filter(t => t.is_recurring).map(t => t.id)
+            if (recurringIds.length > 0) {
+                const since = addDaysISO(getTodayISO(), -62)
+                const { data: completionsData } = await supabase
+                    .from('action_plan_task_completions')
+                    .select('task_id, period_date')
+                    .in('task_id', recurringIds)
+                    .gte('period_date', since)
+                const groupedCompletions: Record<string, { period_date: string }[]> = {}
+                for (const c of (completionsData as { task_id: string; period_date: string }[] | null) || []) {
+                    ;(groupedCompletions[c.task_id] ??= []).push({ period_date: c.period_date })
+                }
+                setCompletionsByTaskId(groupedCompletions)
+            } else {
+                setCompletionsByTaskId({})
+            }
         } catch (loadError) {
             console.error('Error loading action plans:', loadError)
             setAssigneeOptions([])
@@ -185,17 +214,29 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
         if (krId) loadPlans()
     }, [krId, loadPlans])
 
+    // Effective { dueDate, isDone } per task, unifying recurring and one-off tasks.
+    const effectiveStateByTaskId = useMemo(() => {
+        const today = getTodayISO()
+        const map: Record<string, { dueDate: string | null; isDone: boolean }> = {}
+        for (const planId in tasksByPlanId) {
+            for (const task of tasksByPlanId[planId]) {
+                map[task.id] = getTaskEffectiveState(task, completionsByTaskId[task.id] || [], today)
+            }
+        }
+        return map
+    }, [tasksByPlanId, completionsByTaskId])
+
     const taskCountsByPlanId = useMemo(() => {
         const counts: Record<string, { total: number; done: number }> = {}
         for (const planItem of plans) {
             const planTasks = tasksByPlanId[planItem.id] || []
             counts[planItem.id] = {
                 total: planTasks.length,
-                done: planTasks.filter(task => task.is_done).length,
+                done: planTasks.filter(task => effectiveStateByTaskId[task.id]?.isDone).length,
             }
         }
         return counts
-    }, [plans, tasksByPlanId])
+    }, [plans, tasksByPlanId, effectiveStateByTaskId])
 
     async function updatePlanStatus(planId: string, newStatus: ActionPlanStatus) {
         try {
@@ -381,6 +422,13 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 due_date: newDraftTaskDueDate || null,
                 owner_name: newDraftTaskOwnerName || null,
                 notes: null,
+                is_recurring: false,
+                recurrence_type: null,
+                recurrence_interval: 1,
+                recurrence_weekdays: null,
+                recurrence_day_of_month: null,
+                recurrence_start_date: null,
+                recurrence_end_date: null,
             }
         ])
         setNewDraftTaskTitle('')
@@ -493,7 +541,13 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                 ? 'border-l-blue-500'
                                 : 'border-l-[var(--color-border)]'
                         const barColor = allDone ? 'bg-green-500' : someDone ? 'bg-blue-500' : 'bg-[var(--color-border)]'
-                        const effectiveDL = getEffectiveDeadline(planItem.due_date, planTasks)
+                        const effectiveDL = getEffectiveDeadline(
+                            planItem.due_date,
+                            planTasks.map(tk => {
+                                const s = effectiveStateByTaskId[tk.id]
+                                return { due_date: s?.dueDate ?? tk.due_date, is_done: s?.isDone ?? tk.is_done }
+                            })
+                        )
 
                         return (
                             <div

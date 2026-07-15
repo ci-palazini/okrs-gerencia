@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Sparkles, X, LineChart, SlidersHorizontal, TrendingUp, CheckCircle2 } from 'lucide-react'
+import { Sparkles, X, Repeat, PanelRight, CheckCircle2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
 interface WhatsNewModalProps {
@@ -46,24 +46,24 @@ export function WhatsNewModal({ open, onOpenChange }: WhatsNewModalProps) {
 
                     {/* Lista de features */}
                     <div className="p-6 space-y-5 overflow-y-auto">
-                        {/* Feature 1 — Acompanhamento mensal */}
+                        {/* Feature 1 — Tarefas recorrentes */}
                         <FeatureBlock
-                            icon={<LineChart className="w-5 h-5" />}
+                            icon={<Repeat className="w-5 h-5" />}
                             accent="blue"
-                            tag={t('whatsNew.features.tracking.tag')}
-                            title={t('whatsNew.features.tracking.title')}
-                            description={t('whatsNew.features.tracking.desc')}
-                            visual={<TrackingVisual t={t} />}
+                            tag={t('whatsNew.features.recurring.tag')}
+                            title={t('whatsNew.features.recurring.title')}
+                            description={t('whatsNew.features.recurring.desc')}
+                            visual={<RecurringVisual t={t} />}
                         />
 
-                        {/* Feature 2 — Base, meta e sentido do KR */}
+                        {/* Feature 2 — Painel de detalhe da tarefa */}
                         <FeatureBlock
-                            icon={<SlidersHorizontal className="w-5 h-5" />}
+                            icon={<PanelRight className="w-5 h-5" />}
                             accent="emerald"
-                            tag={t('whatsNew.features.baseline.tag')}
-                            title={t('whatsNew.features.baseline.title')}
-                            description={t('whatsNew.features.baseline.desc')}
-                            visual={<BaselineVisual t={t} />}
+                            tag={t('whatsNew.features.taskPanel.tag')}
+                            title={t('whatsNew.features.taskPanel.title')}
+                            description={t('whatsNew.features.taskPanel.desc')}
+                            visual={<TaskPanelVisual t={t} />}
                         />
                     </div>
 
@@ -119,50 +119,57 @@ function FeatureBlock({ icon, accent, tag, title, description, visual }: Feature
     )
 }
 
-/** Mini-mock ilustrativo do gráfico de acompanhamento mensal de um KR anual. */
-function TrackingVisual({ t }: { t: (k: string) => string }) {
+/** Mini-mock de uma tarefa recorrente: badge de frequência, próximo prazo e histórico. */
+function RecurringVisual({ t }: { t: (k: string) => string }) {
     return (
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                    {t('whatsNew.features.tracking.mockObjective')}
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm space-y-2">
+            <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full border-2 border-green-500 bg-green-500 text-white inline-flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-3 h-3" />
                 </span>
-                <span className="text-[10px] font-medium text-[var(--color-primary)]">
-                    {t('whatsNew.features.tracking.mockCurrent')}
+                <span className="text-xs font-medium text-[var(--color-text-primary)] flex-1 truncate">
+                    {t('whatsNew.features.recurring.mockTitle')}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
+                    <Repeat className="w-2.5 h-2.5" />
+                    {t('whatsNew.features.recurring.mockFreq')}
                 </span>
             </div>
-            <svg viewBox="0 0 200 48" className="w-full h-12" preserveAspectRatio="none">
-                <line x1="0" y1="7" x2="200" y2="7" stroke="var(--color-warning)" strokeWidth="1" strokeDasharray="3 3" />
-                <polyline
-                    points="0,42 28,38 56,31 84,33 112,24 140,19 168,13 200,9"
-                    fill="none"
-                    stroke="var(--color-primary)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                />
-            </svg>
+            <div className="flex items-center justify-between text-[10px] pl-7">
+                <span className="text-[var(--color-primary)] font-medium">
+                    {t('whatsNew.features.recurring.mockNext')}
+                </span>
+                <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
+                    <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
+                    15/07 · 14/07 · 12/07
+                </span>
+            </div>
         </div>
     )
 }
 
-/** Mini-mock ilustrativo de base → meta com o selo de sentido do KR. */
-function BaselineVisual({ t }: { t: (k: string) => string }) {
+/** Mini-mock do layout lista de tarefas + painel de detalhe ao lado. */
+function TaskPanelVisual({ t }: { t: (k: string) => string }) {
     return (
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs min-w-0">
-                <span className="px-2 py-0.5 rounded-md bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] font-medium whitespace-nowrap">
-                    {t('whatsNew.features.baseline.mockBaseline')}
-                </span>
-                <span className="text-[var(--color-text-muted)]">→</span>
-                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
-                    {t('whatsNew.features.baseline.mockGoal')}
-                </span>
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-sm flex gap-2">
+            <div className="flex-1 space-y-1">
+                <div className="h-6 rounded-md bg-[var(--color-surface-hover)] flex items-center px-2 text-[10px] text-[var(--color-text-muted)]">
+                    {t('whatsNew.features.taskPanel.mockList')}
+                </div>
+                <div className="h-6 rounded-md bg-[var(--color-primary)]/10 ring-1 ring-[var(--color-primary)]/30 flex items-center px-2 gap-1">
+                    <Repeat className="w-2.5 h-2.5 text-[var(--color-primary)]" />
+                    <span className="h-1.5 flex-1 rounded bg-[var(--color-primary)]/30" />
+                </div>
+                <div className="h-6 rounded-md bg-[var(--color-surface-hover)]" />
             </div>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
-                <TrendingUp className="w-2.5 h-2.5" />
-                {t('whatsNew.features.baseline.mockDirection')}
-            </span>
+            <div className="w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-hover)]/40 p-1.5 space-y-1.5">
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                    {t('whatsNew.features.taskPanel.mockDetail')}
+                </div>
+                <div className="h-2 rounded bg-[var(--color-border)]" />
+                <div className="h-2 rounded bg-[var(--color-border)] w-3/4" />
+                <div className="h-2 rounded bg-[var(--color-border)] w-1/2" />
+            </div>
         </div>
     )
 }

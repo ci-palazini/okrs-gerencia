@@ -509,6 +509,52 @@
             }
         }
     },
+    "recurringTask": {
+        "recurringBadge": "Recorrente",
+        "makeRecurring": "Tornar recorrente",
+        "recurrence": "Recorrência",
+        "type": "Frequência",
+        "weekdays": "Dias da semana",
+        "dayOfMonth": "Dia do mês",
+        "intervalDays": "A cada quantos dias",
+        "startDate": "Início",
+        "endDate": "Término (opcional)",
+        "nextDue": "Próximo prazo",
+        "doneForPeriod": "Feito neste período",
+        "markDone": "Marcar como feito",
+        "markDoneToday": "Marcar feito hoje",
+        "unmark": "Desmarcar",
+        "history": "Histórico de conclusões",
+        "noHistory": "Nenhuma conclusão registrada ainda.",
+        "completionNotePlaceholder": "Observação (opcional)",
+        "ended": "Recorrência encerrada",
+        "monthlyDay": "Dia {{day}} de cada mês",
+        "everyNDays_one": "A cada dia",
+        "everyNDays_other": "A cada {{count}} dias",
+        "freq": {
+            "daily": "Diária",
+            "weekly": "Semanal",
+            "monthly": "Mensal",
+            "custom": "Personalizada"
+        },
+        "weekdayShort": {
+            "0": "Dom",
+            "1": "Seg",
+            "2": "Ter",
+            "3": "Qua",
+            "4": "Qui",
+            "5": "Sex",
+            "6": "Sáb"
+        }
+    },
+    "taskDetail": {
+        "title": "Detalhe da tarefa",
+        "selectHint": "Selecione uma tarefa para ver e editar os detalhes.",
+        "taskTitle": "Título",
+        "notes": "Notas",
+        "notesPlaceholder": "Observações sobre esta tarefa...",
+        "createdAt": "Criada em"
+    },
     "modals": {
         "createObjective": {
             "title": "Novo Objetivo",
@@ -623,20 +669,20 @@
         "subtitle": "Conheça as últimas melhorias da plataforma",
         "gotIt": "Entendi",
         "features": {
-            "tracking": {
-                "tag": "Acompanhamento",
-                "title": "Acompanhamento mensal de OKRs",
-                "desc": "Nova página com um gráfico por KR anual: reporte o valor mês a mês e acompanhe a evolução. O valor atual passa a ser sempre o último mês reportado, atualizando o progresso automaticamente.",
-                "mockObjective": "KR anual",
-                "mockCurrent": "Atual: 68%"
+            "recurring": {
+                "tag": "Tarefas recorrentes",
+                "title": "Tarefas que se repetem",
+                "desc": "Marque tarefas de rotina como recorrentes (diárias, semanais, mensais ou personalizadas). Elas ganham prazo dinâmico, resetam a cada período e guardam o histórico de conclusões — sem precisar recriar toda vez.",
+                "mockTitle": "Atualizar sequenciamento",
+                "mockFreq": "Diária",
+                "mockNext": "Próximo: 16/07"
             },
-            "baseline": {
-                "tag": "Base, meta e progresso",
-                "title": "Edite base e meta na hora",
-                "desc": "Agora você edita a base e a meta direto na página, vê a linha de base no gráfico e identifica num selo se o KR é de maximizar ou minimizar — deixando o cálculo do progresso transparente.",
-                "mockBaseline": "Base 40%",
-                "mockGoal": "Meta 80%",
-                "mockDirection": "Maximizar"
+            "taskPanel": {
+                "tag": "Detalhe da tarefa",
+                "title": "Edite tudo num painel lateral",
+                "desc": "Clique em qualquer tarefa para abrir um painel ao lado: edite responsável, prazo, notas e a recorrência, e acompanhe o histórico — tudo sem sair do plano de ação.",
+                "mockList": "Tarefas",
+                "mockDetail": "Detalhe"
             }
         }
     },
