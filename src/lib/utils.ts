@@ -71,7 +71,11 @@ export function getCurrencySymbol(currencyType: string | null | undefined = 'BRL
  * Format a date
  */
 export function formatDate(date: Date | string, locale = toDateLocale(i18n.language)): string {
-    const d = typeof date === 'string' ? new Date(date) : date
+    // Date-only strings (e.g. "2026-09-30", from `date` columns) must be read as local
+    // midnight — `new Date(dateOnlyString)` parses as UTC midnight, which can shift the
+    // displayed day backward in timezones behind UTC.
+    const isDateOnly = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+    const d = typeof date === 'string' ? new Date(isDateOnly ? date + 'T00:00:00' : date) : date
     return new Intl.DateTimeFormat(locale, {
         day: '2-digit',
         month: 'short',
