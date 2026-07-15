@@ -550,8 +550,7 @@
         "title": "Task detail",
         "selectHint": "Select a task to view and edit its details.",
         "taskTitle": "Title",
-        "notes": "Notes",
-        "notesPlaceholder": "Notes about this task...",
+        "completedAt": "Completed on",
         "createdAt": "Created on"
     },
     "modals": {

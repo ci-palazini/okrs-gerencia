@@ -64,7 +64,7 @@ export interface ActionPlanTask {
     order_index: number
     due_date: string | null
     owner_name: string | null
-    notes: string | null
+    completed_at: string | null
     is_recurring: boolean
     recurrence_type: RecurrenceType | null
     recurrence_interval: number | null
@@ -86,7 +86,7 @@ export interface ActionPlanTaskCompletion {
 
 /** Columns selected for a task (shared by list and modal queries). */
 export const TASK_COLUMNS =
-    'id, title, is_done, order_index, due_date, owner_name, notes, ' +
+    'id, title, is_done, order_index, due_date, owner_name, completed_at, ' +
     'is_recurring, recurrence_type, recurrence_interval, recurrence_weekdays, ' +
     'recurrence_day_of_month, recurrence_start_date, recurrence_end_date'
 
@@ -156,7 +156,6 @@ export function ActionPlanDetailModal({
     const [taskTitle, setTaskTitle] = useState('')
     const [taskDueDate, setTaskDueDate] = useState('')
     const [taskOwnerName, setTaskOwnerName] = useState('')
-    const [taskNotes, setTaskNotes] = useState('')
     const [savingTask, setSavingTask] = useState(false)
     const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
 
@@ -227,8 +226,9 @@ export function ActionPlanDetailModal({
     async function toggleTaskDone(taskId: string, isDone: boolean) {
         if (!plan) return
         try {
-            await supabase.from('action_plan_tasks').update({ is_done: isDone }).eq('id', taskId)
-            const updated = tasks.map(t => t.id === taskId ? { ...t, is_done: isDone } : t)
+            const completedAt = isDone ? new Date().toISOString() : null
+            await supabase.from('action_plan_tasks').update({ is_done: isDone, completed_at: completedAt }).eq('id', taskId)
+            const updated = tasks.map(t => t.id === taskId ? { ...t, is_done: isDone, completed_at: completedAt } : t)
             onTasksChanged(plan.id, updated)
         } catch (e) {
             console.error('Error toggling task:', e)
@@ -275,7 +275,6 @@ export function ActionPlanDetailModal({
         setTaskTitle(task.title)
         setTaskDueDate(task.due_date || '')
         setTaskOwnerName(task.owner_name || '')
-        setTaskNotes(task.notes || '')
         setCompletionNote('')
         setIsRecurring(task.is_recurring)
         setRecType(task.recurrence_type ?? 'daily')
@@ -322,7 +321,6 @@ export function ActionPlanDetailModal({
                     title: taskTitle.trim(),
                     due_date: isRecurring ? null : (taskDueDate || null),
                     owner_name: taskOwnerName || null,
-                    notes: taskNotes.trim() || null,
                     ...buildRecurrencePayload(),
                 })
                 .eq('id', selectedTask.id)
@@ -487,6 +485,13 @@ export function ActionPlanDetailModal({
         const date = d.toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', year: 'numeric' })
         const time = d.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })
         return `${date} ${t('common.at')} ${time}`
+    }
+
+    function formatCompletedAt(dateStr: string): string {
+        const d = new Date(dateStr)
+        const date = d.toLocaleDateString(dateLocale, { day: '2-digit', month: 'short' })
+        const time = d.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })
+        return `${t('taskDetail.completedAt', 'Concluída em')} ${date} ${t('common.at')} ${time}`
     }
 
     const hasDetails = !!(
@@ -683,7 +688,7 @@ export function ActionPlanDetailModal({
                                                             {task.is_recurring && <Repeat className="w-3 h-3 shrink-0 text-[var(--color-primary)]" />}
                                                             <span className="truncate">{task.title}</span>
                                                         </p>
-                                                        {(state.dueDate || task.owner_name || task.notes || recurringDesc) && (
+                                                        {(state.dueDate || task.owner_name || recurringDesc || (!task.is_recurring && state.isDone && task.completed_at)) && (
                                                             <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                                 {state.dueDate && (
                                                                     <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
@@ -703,10 +708,10 @@ export function ActionPlanDetailModal({
                                                                         {task.owner_name}
                                                                     </span>
                                                                 )}
-                                                                {task.notes && (
-                                                                    <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] max-w-[180px]">
-                                                                        <FileText className="w-3 h-3 shrink-0" />
-                                                                        <span className="truncate">{task.notes}</span>
+                                                                {!task.is_recurring && state.isDone && task.completed_at && (
+                                                                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                                                        <CheckCircle2 className="w-3 h-3" />
+                                                                        {formatCompletedAt(task.completed_at)}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -885,18 +890,6 @@ export function ActionPlanDetailModal({
                                                 </div>
                                             )}
 
-                                            {/* Notes */}
-                                            <div>
-                                                <label className={labelCls}>{t('taskDetail.notes')}</label>
-                                                <textarea
-                                                    value={taskNotes}
-                                                    onChange={(e) => setTaskNotes(e.target.value)}
-                                                    rows={2}
-                                                    placeholder={t('taskDetail.notesPlaceholder')}
-                                                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] resize-none"
-                                                />
-                                            </div>
-
                                             {/* Recurrence config */}
                                             <div className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
                                                 <label className="flex items-center justify-between cursor-pointer">
@@ -1022,6 +1015,16 @@ export function ActionPlanDetailModal({
                                                     {t('common.save')}
                                                 </Button>
                                             </div>
+
+                                            {/* Completion stamp (one-off tasks) */}
+                                            {!selectedTask.is_recurring && selectedTask.is_done && selectedTask.completed_at && (
+                                                <div className="pt-3 border-t border-[var(--color-border)]">
+                                                    <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                        {formatCompletedAt(selectedTask.completed_at)}
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* Recurrence status + completion history (persisted recurring tasks) */}
                                             {selectedTask.is_recurring && (() => {

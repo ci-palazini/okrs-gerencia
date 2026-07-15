@@ -551,8 +551,7 @@
         "title": "Detalhe da tarefa",
         "selectHint": "Selecione uma tarefa para ver e editar os detalhes.",
         "taskTitle": "Título",
-        "notes": "Notas",
-        "notesPlaceholder": "Observações sobre esta tarefa...",
+        "completedAt": "Concluída em",
         "createdAt": "Criada em"
     },
     "modals": {

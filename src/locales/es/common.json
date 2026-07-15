@@ -550,8 +550,7 @@
         "title": "Detalle de la tarea",
         "selectHint": "Selecciona una tarea para ver y editar los detalles.",
         "taskTitle": "Título",
-        "notes": "Notas",
-        "notesPlaceholder": "Observaciones sobre esta tarea...",
+        "completedAt": "Completada el",
         "createdAt": "Creada el"
     },
     "modals": {

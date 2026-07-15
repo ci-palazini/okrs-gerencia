@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, Clock, ListTodo, Calendar, Plus, Trash2, Pencil, User, AlertTriangle, ExternalLink, Link } from 'lucide-react'
+import { CheckCircle2, Clock, ListTodo, Calendar, Plus, Trash2, User, AlertTriangle, ExternalLink, Link } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { supabase } from '../../lib/supabase'
@@ -171,7 +171,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                     order_index: task.order_index,
                     due_date: task.due_date,
                     owner_name: task.owner_name,
-                    notes: task.notes,
+                    completed_at: task.completed_at,
                     is_recurring: task.is_recurring,
                     recurrence_type: task.recurrence_type,
                     recurrence_interval: task.recurrence_interval,
@@ -421,7 +421,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 order_index: prev.length,
                 due_date: newDraftTaskDueDate || null,
                 owner_name: newDraftTaskOwnerName || null,
-                notes: null,
+                completed_at: null,
                 is_recurring: false,
                 recurrence_type: null,
                 recurrence_interval: 1,
@@ -609,14 +609,6 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                         </div>
 
                                         <div className="flex items-center gap-1 shrink-0">
-                                            <button
-                                                type="button"
-                                                className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-                                                onClick={(e) => { e.stopPropagation(); openEditor(planItem) }}
-                                                title={t('actionPlan.edit')}
-                                            >
-                                                <Pencil className="w-3.5 h-3.5" />
-                                            </button>
                                             <button
                                                 type="button"
                                                 className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
