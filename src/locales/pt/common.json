@@ -480,6 +480,23 @@
             "in_progress": "Em andamento",
             "completed": "Concluído"
         },
+        "clone": {
+            "button": "Clonar plano",
+            "title": "Clonar plano de ação",
+            "subtitle": "Escolha o KR de destino. As tarefas e os detalhes serão copiados; o progresso começa zerado.",
+            "businessUnit": "Empresa",
+            "searchPlaceholder": "Buscar KR por título ou código...",
+            "noResults": "Nenhum KR encontrado.",
+            "scopeAnnual": "Anual",
+            "scopeQuarterly": "T{{quarter}}",
+            "confirm": "Clonar para este KR",
+            "cloning": "Clonando...",
+            "success": "Plano clonado com sucesso para \"{{target}}\".",
+            "genericTarget": "o KR selecionado",
+            "errors": {
+                "failed": "Não foi possível clonar o plano de ação."
+            }
+        },
         "attachments": {
             "title": "Central de arquivos",
             "count": "{{count}} arquivo(s)",
@@ -498,12 +515,21 @@
             "uploadedBy": "Enviado por",
             "unknownUploader": "Usuário não identificado",
             "deleteConfirm": "Deseja excluir o arquivo \"{{name}}\"?",
+            "preview": "Pré-visualizar",
+            "closePreview": "Fechar pré-visualização",
+            "zoomIn": "Aumentar zoom",
+            "zoomOut": "Diminuir zoom",
+            "resetZoom": "Restaurar zoom",
+            "previewUnavailableTitle": "Pré-visualização indisponível",
+            "previewUnavailableDescription": "Não é possível pré-visualizar esse tipo de arquivo. Baixe o arquivo para visualizá-lo.",
+            "downloadToView": "Baixar para visualizar",
             "errors": {
                 "loadFailed": "Não foi possível carregar os arquivos deste plano.",
                 "fileRequired": "Selecione um arquivo para enviar.",
                 "fileTooLarge": "O arquivo excede o limite de {{maxMb}} MB.",
                 "uploadFailed": "Não foi possível enviar o arquivo.",
                 "downloadFailed": "Não foi possível gerar o download deste arquivo.",
+                "previewFailed": "Não foi possível carregar a pré-visualização deste arquivo.",
                 "deleteFailed": "Não foi possível excluir o arquivo.",
                 "storageCleanupFailed": "O registro foi removido, mas houve falha ao limpar o arquivo no storage."
             }
@@ -668,20 +694,11 @@
         "subtitle": "Conheça as últimas melhorias da plataforma",
         "gotIt": "Entendi",
         "features": {
-            "recurring": {
-                "tag": "Tarefas recorrentes",
-                "title": "Tarefas que se repetem",
-                "desc": "Marque tarefas de rotina como recorrentes (diárias, semanais, mensais ou personalizadas). Elas ganham prazo dinâmico, resetam a cada período e guardam o histórico de conclusões — sem precisar recriar toda vez.",
-                "mockTitle": "Atualizar sequenciamento",
-                "mockFreq": "Diária",
-                "mockNext": "Próximo: 16/07"
-            },
-            "taskPanel": {
-                "tag": "Detalhe da tarefa",
-                "title": "Edite tudo num painel lateral",
-                "desc": "Clique em qualquer tarefa para abrir um painel ao lado: edite responsável, prazo, notas e a recorrência, e acompanhe o histórico — tudo sem sair do plano de ação.",
-                "mockList": "Tarefas",
-                "mockDetail": "Detalhe"
+            "attachmentPreview": {
+                "tag": "Pré-visualização de anexos",
+                "title": "Visualize arquivos sem precisar baixar",
+                "desc": "Clique em qualquer anexo para abrir uma pré-visualização em destaque dentro do plano: imagens, PDFs, vídeos e textos abrem na hora, com zoom e arraste para imagens. Arquivos sem suporte (como Excel) mostram um aviso pedindo para baixar.",
+                "mockPreview": "Pré-visualização"
             }
         }
     },

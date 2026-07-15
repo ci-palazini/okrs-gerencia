@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-    AlertTriangle, BarChart2, Calendar, CheckCircle2, Clock,
+    AlertTriangle, BarChart2, Calendar, CheckCircle2, Clock, Copy,
     ExternalLink, FileText, MessageSquare, Pencil, Plus, Trash2, User,
     Send, Repeat, History, RotateCcw,
 } from 'lucide-react'
@@ -117,6 +117,7 @@ interface ActionPlanDetailModalProps {
     onTasksChanged: (planId: string, tasks: ActionPlanTask[]) => void
     onEditPlan: (plan: ActionPlan) => void
     onDeletePlan: (plan: ActionPlan) => void
+    onClonePlan: (plan: ActionPlan) => void
 }
 
 interface NewTaskDraft {
@@ -134,6 +135,7 @@ export function ActionPlanDetailModal({
     onTasksChanged,
     onEditPlan,
     onDeletePlan,
+    onClonePlan,
 }: ActionPlanDetailModalProps) {
     const { t, i18n } = useTranslation()
     const dateLocale = toDateLocale(i18n.language)
@@ -579,6 +581,13 @@ export function ActionPlanDetailModal({
                                             Editar
                                         </Button>
                                         <button
+                                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
+                                            onClick={() => plan && onClonePlan(plan)}
+                                            title={t('actionPlan.clone.button', 'Clonar plano')}
+                                        >
+                                            <Copy className="w-4 h-4" />
+                                        </button>
+                                        <button
                                             className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
                                             onClick={() => plan && setShowDeleteConfirm(true)}
                                             title="Deletar plano"
@@ -604,7 +613,7 @@ export function ActionPlanDetailModal({
                         </div>
 
                         {/* ── Body ── */}
-                        <div className="flex-1 overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto relative">
 
                             {/* Two-column layout */}
                             <div className="flex min-h-0 divide-x divide-[var(--color-border)]">

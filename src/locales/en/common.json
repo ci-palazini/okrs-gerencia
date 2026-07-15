@@ -479,6 +479,23 @@
             "in_progress": "In progress",
             "completed": "Completed"
         },
+        "clone": {
+            "button": "Clone plan",
+            "title": "Clone action plan",
+            "subtitle": "Choose the target KR. Tasks and details will be copied; progress starts fresh.",
+            "businessUnit": "Company",
+            "searchPlaceholder": "Search KR by title or code...",
+            "noResults": "No KR found.",
+            "scopeAnnual": "Annual",
+            "scopeQuarterly": "Q{{quarter}}",
+            "confirm": "Clone to this KR",
+            "cloning": "Cloning...",
+            "success": "Plan successfully cloned to \"{{target}}\".",
+            "genericTarget": "the selected KR",
+            "errors": {
+                "failed": "Could not clone the action plan."
+            }
+        },
         "attachments": {
             "title": "File center",
             "count": "{{count}} file(s)",
@@ -497,12 +514,21 @@
             "uploadedBy": "Uploaded by",
             "unknownUploader": "Unidentified user",
             "deleteConfirm": "Do you want to delete the file \"{{name}}\"?",
+            "preview": "Preview",
+            "closePreview": "Close preview",
+            "zoomIn": "Zoom in",
+            "zoomOut": "Zoom out",
+            "resetZoom": "Reset zoom",
+            "previewUnavailableTitle": "Preview unavailable",
+            "previewUnavailableDescription": "This file type can't be previewed. Download the file to view it.",
+            "downloadToView": "Download to view",
             "errors": {
                 "loadFailed": "Could not load the files for this plan.",
                 "fileRequired": "Select a file to upload.",
                 "fileTooLarge": "The file exceeds the {{maxMb}} MB limit.",
                 "uploadFailed": "Could not upload the file.",
                 "downloadFailed": "Could not generate the download for this file.",
+                "previewFailed": "Could not load the preview for this file.",
                 "deleteFailed": "Could not delete the file.",
                 "storageCleanupFailed": "The record was removed, but there was a failure cleaning up the file in storage."
             }
@@ -667,20 +693,11 @@
         "subtitle": "Discover the latest platform improvements",
         "gotIt": "Got it",
         "features": {
-            "recurring": {
-                "tag": "Recurring tasks",
-                "title": "Tasks that repeat",
-                "desc": "Mark routine tasks as recurring (daily, weekly, monthly or custom). They get a dynamic due date, reset every period and keep a completion history — no need to recreate them each time.",
-                "mockTitle": "Update sequencing",
-                "mockFreq": "Daily",
-                "mockNext": "Next: 07/16"
-            },
-            "taskPanel": {
-                "tag": "Task detail",
-                "title": "Edit everything in a side panel",
-                "desc": "Click any task to open a panel beside it: edit owner, due date, notes and recurrence, and follow its history — all without leaving the action plan.",
-                "mockList": "Tasks",
-                "mockDetail": "Detail"
+            "attachmentPreview": {
+                "tag": "Attachment preview",
+                "title": "Preview files without downloading",
+                "desc": "Click any attachment to open a full preview inside the plan: images, PDFs, videos and text files open instantly, with zoom and drag for images. Files that can't be previewed (like Excel) show a message asking you to download them.",
+                "mockPreview": "Preview"
             }
         }
     },

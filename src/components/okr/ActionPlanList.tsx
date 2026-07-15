@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, Clock, ListTodo, Calendar, Plus, Trash2, User, AlertTriangle, ExternalLink, Link } from 'lucide-react'
+import { CheckCircle2, Clock, ListTodo, Calendar, Plus, Trash2, User, AlertTriangle, ExternalLink, Link, Copy } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { supabase } from '../../lib/supabase'
@@ -21,6 +21,7 @@ import {
     TASK_COLUMNS,
     formatShortDate,
 } from './ActionPlanDetailModal'
+import { CloneActionPlanDialog } from './CloneActionPlanDialog'
 
 
 interface ActionPlanTaskRow extends ActionPlanTask {
@@ -60,6 +61,7 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
     const [tasksByPlanId, setTasksByPlanId] = useState<Record<string, ActionPlanTask[]>>({})
     const [completionsByTaskId, setCompletionsByTaskId] = useState<Record<string, { period_date: string }[]>>({})
     const [selectedPlan, setSelectedPlan] = useState<ActionPlan | null>(null)
+    const [cloningPlan, setCloningPlan] = useState<ActionPlan | null>(null)
     const [editingPlan, setEditingPlan] = useState<ActionPlan | null>(null)
     const [draftTasks, setDraftTasks] = useState<ActionPlanTask[]>([])
     const [modalOpen, setModalOpen] = useState(false)
@@ -611,6 +613,14 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                                         <div className="flex items-center gap-1 shrink-0">
                                             <button
                                                 type="button"
+                                                className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
+                                                onClick={(e) => { e.stopPropagation(); setCloningPlan(planItem) }}
+                                                title={t('actionPlan.clone.button', 'Clonar plano')}
+                                            >
+                                                <Copy className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                type="button"
                                                 className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors"
                                                 onClick={(e) => { e.stopPropagation(); setEditingPlan(planItem); setShowDeleteConfirm(true) }}
                                                 title={t('actionPlan.delete', 'Deletar')}
@@ -700,6 +710,15 @@ export function ActionPlanList({ krId }: ActionPlanListProps) {
                 }
                 onEditPlan={(plan) => { openEditor(plan) }}
                 onDeletePlan={(plan) => deleteActionPlan(plan)}
+                onClonePlan={(plan) => setCloningPlan(plan)}
+            />
+
+            {/* Clone plan dialog */}
+            <CloneActionPlanDialog
+                plan={cloningPlan}
+                tasks={cloningPlan ? (tasksByPlanId[cloningPlan.id] ?? []) : []}
+                sourceKrId={krId}
+                onClose={() => setCloningPlan(null)}
             />
 
             {/* Plan editor modal */}

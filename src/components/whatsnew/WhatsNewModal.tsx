@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Sparkles, X, Repeat, PanelRight, CheckCircle2 } from 'lucide-react'
+import { Sparkles, X, Image as ImageIcon, ZoomIn, CheckCircle2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
 interface WhatsNewModalProps {
@@ -46,24 +46,14 @@ export function WhatsNewModal({ open, onOpenChange }: WhatsNewModalProps) {
 
                     {/* Lista de features */}
                     <div className="p-6 space-y-5 overflow-y-auto">
-                        {/* Feature 1 — Tarefas recorrentes */}
+                        {/* Feature — Pré-visualização de anexos */}
                         <FeatureBlock
-                            icon={<Repeat className="w-5 h-5" />}
+                            icon={<ImageIcon className="w-5 h-5" />}
                             accent="blue"
-                            tag={t('whatsNew.features.recurring.tag')}
-                            title={t('whatsNew.features.recurring.title')}
-                            description={t('whatsNew.features.recurring.desc')}
-                            visual={<RecurringVisual t={t} />}
-                        />
-
-                        {/* Feature 2 — Painel de detalhe da tarefa */}
-                        <FeatureBlock
-                            icon={<PanelRight className="w-5 h-5" />}
-                            accent="emerald"
-                            tag={t('whatsNew.features.taskPanel.tag')}
-                            title={t('whatsNew.features.taskPanel.title')}
-                            description={t('whatsNew.features.taskPanel.desc')}
-                            visual={<TaskPanelVisual t={t} />}
+                            tag={t('whatsNew.features.attachmentPreview.tag')}
+                            title={t('whatsNew.features.attachmentPreview.title')}
+                            description={t('whatsNew.features.attachmentPreview.desc')}
+                            visual={<AttachmentPreviewVisual t={t} />}
                         />
                     </div>
 
@@ -119,56 +109,24 @@ function FeatureBlock({ icon, accent, tag, title, description, visual }: Feature
     )
 }
 
-/** Mini-mock de uma tarefa recorrente: badge de frequência, próximo prazo e histórico. */
-function RecurringVisual({ t }: { t: (k: string) => string }) {
-    return (
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm space-y-2">
-            <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full border-2 border-green-500 bg-green-500 text-white inline-flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="w-3 h-3" />
-                </span>
-                <span className="text-xs font-medium text-[var(--color-text-primary)] flex-1 truncate">
-                    {t('whatsNew.features.recurring.mockTitle')}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
-                    <Repeat className="w-2.5 h-2.5" />
-                    {t('whatsNew.features.recurring.mockFreq')}
-                </span>
-            </div>
-            <div className="flex items-center justify-between text-[10px] pl-7">
-                <span className="text-[var(--color-primary)] font-medium">
-                    {t('whatsNew.features.recurring.mockNext')}
-                </span>
-                <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
-                    <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
-                    15/07 · 14/07 · 12/07
-                </span>
-            </div>
-        </div>
-    )
-}
-
-/** Mini-mock do layout lista de tarefas + painel de detalhe ao lado. */
-function TaskPanelVisual({ t }: { t: (k: string) => string }) {
+/** Mini-mock da lista compacta de anexos + preview ampliado com controles de zoom. */
+function AttachmentPreviewVisual({ t }: { t: (k: string) => string }) {
     return (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-sm flex gap-2">
-            <div className="flex-1 space-y-1">
-                <div className="h-6 rounded-md bg-[var(--color-surface-hover)] flex items-center px-2 text-[10px] text-[var(--color-text-muted)]">
-                    {t('whatsNew.features.taskPanel.mockList')}
-                </div>
-                <div className="h-6 rounded-md bg-[var(--color-primary)]/10 ring-1 ring-[var(--color-primary)]/30 flex items-center px-2 gap-1">
-                    <Repeat className="w-2.5 h-2.5 text-[var(--color-primary)]" />
-                    <span className="h-1.5 flex-1 rounded bg-[var(--color-primary)]/30" />
-                </div>
+            <div className="w-16 shrink-0 space-y-1">
+                <div className="h-6 rounded-md bg-[var(--color-primary)]/10 ring-1 ring-[var(--color-primary)]/30" />
+                <div className="h-6 rounded-md bg-[var(--color-surface-hover)]" />
                 <div className="h-6 rounded-md bg-[var(--color-surface-hover)]" />
             </div>
-            <div className="w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-hover)]/40 p-1.5 space-y-1.5">
-                <div className="text-[9px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                    {t('whatsNew.features.taskPanel.mockDetail')}
+            <div className="flex-1 rounded-md bg-[var(--color-surface-hover)]/60 flex flex-col items-center justify-center gap-1.5 relative min-h-[5.5rem]">
+                <ImageIcon className="w-6 h-6 text-[var(--color-text-muted)]" />
+                <span className="text-[9px] text-[var(--color-text-muted)]">
+                    {t('whatsNew.features.attachmentPreview.mockPreview')}
+                </span>
+                <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 bg-[var(--color-surface)] rounded-md px-1.5 py-0.5 border border-[var(--color-border)]">
+                    <ZoomIn className="w-2.5 h-2.5 text-[var(--color-text-muted)]" />
+                    <span className="text-[9px] text-[var(--color-text-muted)]">150%</span>
                 </div>
-                <div className="h-2 rounded bg-[var(--color-border)]" />
-                <div className="h-2 rounded bg-[var(--color-border)] w-3/4" />
-                <div className="h-2 rounded bg-[var(--color-border)] w-1/2" />
             </div>
         </div>
     )

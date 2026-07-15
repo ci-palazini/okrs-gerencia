@@ -14,7 +14,8 @@ import { listAssigneesForBusinessUnit, type AssigneeOption } from '../../lib/ass
 import { cn } from '../../lib/utils'
 import { getDeadlineAlert, getEffectiveDeadline } from '../../lib/dateUtils'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ActionPlanDetailModal, type ActionPlanTask as ModalActionPlanTask, TASK_COLUMNS } from '../../components/okr/ActionPlanDetailModal'
+import { ActionPlanDetailModal, type ActionPlan, type ActionPlanTask as ModalActionPlanTask, TASK_COLUMNS } from '../../components/okr/ActionPlanDetailModal'
+import { CloneActionPlanDialog } from '../../components/okr/CloneActionPlanDialog'
 
 const AVATAR_COLORS = [
     'bg-blue-500', 'bg-purple-500', 'bg-green-600', 'bg-orange-500',
@@ -87,6 +88,7 @@ export function ActionsPage() {
     const [plans, setPlans] = useState<ActionPlanWithRelations[]>([])
     const [tasksByPlanId, setTasksByPlanId] = useState<Record<string, ActionPlanTask[]>>({})
     const [selectedPlan, setSelectedPlan] = useState<ActionPlanWithRelations | null>(null)
+    const [cloningPlan, setCloningPlan] = useState<ActionPlanWithRelations | null>(null)
     const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([])
     const [filter, setFilter] = useState<DueFilter>('all')
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -753,6 +755,18 @@ export function ActionsPage() {
                     const full = plans.find(p => p.id === plan.id)
                     if (full) deleteActionPlan(full)
                 }}
+                onClonePlan={(plan) => {
+                    const full = plans.find(p => p.id === plan.id)
+                    if (full) setCloningPlan(full)
+                }}
+            />
+
+            {/* Clone plan dialog */}
+            <CloneActionPlanDialog
+                plan={cloningPlan as ActionPlan | null}
+                tasks={cloningPlan ? (tasksByPlanId[cloningPlan.id] ?? []) : []}
+                sourceKrId={cloningPlan?.key_result_id ?? ''}
+                onClose={() => setCloningPlan(null)}
             />
         </div>
     )

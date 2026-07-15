@@ -1,15 +1,43 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, FileText, Paperclip, Plus, Trash2, Upload, X } from 'lucide-react'
+import {
+    Download, FileText, Maximize2, Paperclip, Plus, Trash2, Upload, X, ZoomIn, ZoomOut,
+} from 'lucide-react'
 import { Button } from '../ui/Button'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { cn, formatDate } from '../../lib/utils'
 
+type PreviewKind = 'image' | 'pdf' | 'text' | 'video' | 'audio' | 'none'
+
+function getFileExtension(fileName: string): string {
+    const idx = fileName.lastIndexOf('.')
+    return idx >= 0 ? fileName.slice(idx + 1).toLowerCase() : ''
+}
+
+function getPreviewKind(contentType: string | null, fileName: string): PreviewKind {
+    const type = contentType || ''
+    const ext = getFileExtension(fileName)
+
+    if (type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return 'image'
+    if (type === 'application/pdf' || ext === 'pdf') return 'pdf'
+    if (type.startsWith('video/') || ['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video'
+    if (type.startsWith('audio/') || ['mp3', 'wav', 'oga', 'ogg'].includes(ext)) return 'audio'
+    if (type.startsWith('text/') || type === 'application/json' || ['txt', 'csv', 'md', 'json', 'log'].includes(ext)) return 'text'
+    return 'none'
+}
+
 const ATTACHMENTS_BUCKET = 'anexos'
 const STORAGE_PREFIX = 'action-plans'
 const MAX_FILE_SIZE_MB = 25
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+const MIN_ZOOM = 1
+const MAX_ZOOM = 5
+const ZOOM_STEP = 0.25
+
+function clampZoom(value: number): number {
+    return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +value.toFixed(2)))
+}
 
 interface AttachmentRow {
     id: string
@@ -73,6 +101,18 @@ export function ActionPlanAttachments({ planId }: ActionPlanAttachmentsProps) {
     const [note, setNote] = useState('')
     const [fileInputKey, setFileInputKey] = useState(0)
 
+    const [previewItem, setPreviewItem] = useState<AttachmentItem | null>(null)
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const [previewText, setPreviewText] = useState<string | null>(null)
+    const [previewLoading, setPreviewLoading] = useState(false)
+    const [previewError, setPreviewError] = useState<string | null>(null)
+
+    // Zoom/pan state for image previews
+    const [imageZoom, setImageZoom] = useState(1)
+    const [imagePan, setImagePan] = useState({ x: 0, y: 0 })
+    const [isDraggingImage, setIsDraggingImage] = useState(false)
+    const dragStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
+
     const loadAttachments = useCallback(async () => {
         setLoading(true)
         setError(null)
@@ -125,7 +165,113 @@ export function ActionPlanAttachments({ planId }: ActionPlanAttachmentsProps) {
         setSelectedFile(null)
         setNote('')
         setError(null)
+        setPreviewItem(null)
+        setPreviewUrl(null)
+        setPreviewText(null)
+        setPreviewError(null)
     }, [planId, loadAttachments])
+
+    // Revoke the previous object URL whenever it changes or the component unmounts
+    useEffect(() => {
+        if (!previewUrl) return
+        return () => URL.revokeObjectURL(previewUrl)
+    }, [previewUrl])
+
+    // Drag-to-pan while zoomed into an image preview
+    useEffect(() => {
+        if (!isDraggingImage) return
+
+        function handleMouseMove(event: MouseEvent) {
+            const dx = event.clientX - dragStartRef.current.x
+            const dy = event.clientY - dragStartRef.current.y
+            setImagePan({ x: dragStartRef.current.panX + dx, y: dragStartRef.current.panY + dy })
+        }
+        function handleMouseUp() {
+            setIsDraggingImage(false)
+        }
+
+        window.addEventListener('mousemove', handleMouseMove)
+        window.addEventListener('mouseup', handleMouseUp)
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove)
+            window.removeEventListener('mouseup', handleMouseUp)
+        }
+    }, [isDraggingImage])
+
+    async function openPreview(item: AttachmentItem) {
+        setPreviewItem(item)
+        setPreviewUrl(null)
+        setPreviewText(null)
+        setPreviewError(null)
+        setImageZoom(1)
+        setImagePan({ x: 0, y: 0 })
+
+        const kind = getPreviewKind(item.content_type, item.file_name)
+        if (kind === 'none') return
+
+        setPreviewLoading(true)
+        try {
+            const { data: fileBlob, error: fileDownloadError } = await supabase
+                .storage
+                .from(ATTACHMENTS_BUCKET)
+                .download(item.file_path)
+
+            if (fileDownloadError) throw fileDownloadError
+            if (!fileBlob) throw new Error('Missing file blob')
+
+            if (kind === 'text') {
+                setPreviewText(await fileBlob.text())
+            } else {
+                setPreviewUrl(URL.createObjectURL(fileBlob))
+            }
+        } catch (previewLoadError) {
+            console.error('Error loading action plan attachment preview:', previewLoadError)
+            setPreviewError(t('actionPlan.attachments.errors.previewFailed'))
+        } finally {
+            setPreviewLoading(false)
+        }
+    }
+
+    function closePreview() {
+        setPreviewItem(null)
+        setPreviewUrl(null)
+        setPreviewText(null)
+        setPreviewError(null)
+    }
+
+    function zoomIn() {
+        setImageZoom((z) => clampZoom(z + ZOOM_STEP))
+    }
+
+    function zoomOut() {
+        setImageZoom((z) => {
+            const next = clampZoom(z - ZOOM_STEP)
+            if (next === MIN_ZOOM) setImagePan({ x: 0, y: 0 })
+            return next
+        })
+    }
+
+    function resetZoom() {
+        setImageZoom(1)
+        setImagePan({ x: 0, y: 0 })
+    }
+
+    function handleImageWheel(event: React.WheelEvent<HTMLDivElement>) {
+        event.preventDefault()
+        const delta = event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP
+        setImageZoom((z) => {
+            const next = clampZoom(z + delta)
+            if (next === MIN_ZOOM) setImagePan({ x: 0, y: 0 })
+            return next
+        })
+    }
+
+    function handleImageMouseDown(event: React.MouseEvent<HTMLDivElement>) {
+        if (imageZoom <= MIN_ZOOM) return
+        event.preventDefault()
+        setIsDraggingImage(true)
+        dragStartRef.current = { x: event.clientX, y: event.clientY, panX: imagePan.x, panY: imagePan.y }
+    }
 
     async function handleUpload() {
         if (!selectedFile) {
@@ -246,6 +392,88 @@ export function ActionPlanAttachments({ planId }: ActionPlanAttachmentsProps) {
         }
     }
 
+    const previewKind = previewItem ? getPreviewKind(previewItem.content_type, previewItem.file_name) : null
+
+    let previewBody: React.ReactNode = null
+    if (previewItem) {
+        if (previewLoading) {
+            previewBody = (
+                <div className="flex items-center justify-center h-full">
+                    <div className="w-6 h-6 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                </div>
+            )
+        } else if (previewError) {
+            previewBody = (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-sm text-[var(--color-danger)]">{previewError}</p>
+                </div>
+            )
+        } else if (previewKind === 'image' && previewUrl) {
+            previewBody = (
+                <div
+                    className="w-full h-full overflow-hidden flex items-center justify-center"
+                    onWheel={handleImageWheel}
+                    onMouseDown={handleImageMouseDown}
+                    style={{ cursor: imageZoom > MIN_ZOOM ? (isDraggingImage ? 'grabbing' : 'grab') : 'default' }}
+                >
+                    <img
+                        src={previewUrl}
+                        alt={previewItem.file_name}
+                        draggable={false}
+                        className="select-none"
+                        style={{
+                            transform: `translate(${imagePan.x}px, ${imagePan.y}px) scale(${imageZoom})`,
+                            transition: isDraggingImage ? 'none' : 'transform 0.12s ease-out',
+                            maxWidth: '100%',
+                            maxHeight: '100%',
+                            objectFit: 'contain',
+                        }}
+                    />
+                </div>
+            )
+        } else if (previewKind === 'pdf' && previewUrl) {
+            previewBody = <iframe src={previewUrl} title={previewItem.file_name} className="w-full h-full border-0" />
+        } else if (previewKind === 'video' && previewUrl) {
+            previewBody = (
+                <div className="w-full h-full flex items-center justify-center p-4">
+                    <video src={previewUrl} controls className="max-w-full max-h-full" />
+                </div>
+            )
+        } else if (previewKind === 'audio' && previewUrl) {
+            previewBody = (
+                <div className="w-full h-full flex items-center justify-center p-8">
+                    <audio src={previewUrl} controls className="w-full max-w-md" />
+                </div>
+            )
+        } else if (previewKind === 'text' && previewText !== null) {
+            previewBody = (
+                <pre className="w-full h-full overflow-auto p-4 text-xs text-[var(--color-text-primary)] whitespace-pre-wrap break-words font-mono">
+                    {previewText}
+                </pre>
+            )
+        } else {
+            previewBody = (
+                <div className="flex flex-col items-center justify-center h-full text-center px-6 gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center">
+                        <FileText className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                            {t('actionPlan.attachments.previewUnavailableTitle')}
+                        </p>
+                        <p className="text-xs text-[var(--color-text-muted)]">
+                            {t('actionPlan.attachments.previewUnavailableDescription')}
+                        </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => void handleDownload(previewItem)}>
+                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                        {t('actionPlan.attachments.downloadToView')}
+                    </Button>
+                </div>
+            )
+        }
+    }
+
     return (
         <div className="border-t border-[var(--color-border)]">
             <div className="px-6 py-5 space-y-4">
@@ -353,7 +581,8 @@ export function ActionPlanAttachments({ planId }: ActionPlanAttachmentsProps) {
                         {attachments.map((item) => (
                             <div
                                 key={item.id}
-                                className="group/file flex items-start gap-3 px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 hover:bg-[var(--color-surface-hover)]/50 transition-colors"
+                                onClick={() => void openPreview(item)}
+                                className="group/file flex items-start gap-3 px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 hover:bg-[var(--color-surface-hover)]/50 cursor-pointer transition-colors"
                             >
                                 <div className="mt-0.5 w-8 h-8 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center shrink-0">
                                     <FileText className="w-4 h-4" />
@@ -380,7 +609,7 @@ export function ActionPlanAttachments({ planId }: ActionPlanAttachmentsProps) {
                                         type="button"
                                         title={t('actionPlan.attachments.download')}
                                         className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)] transition-colors"
-                                        onClick={() => void handleDownload(item)}
+                                        onClick={(event) => { event.stopPropagation(); void handleDownload(item) }}
                                     >
                                         <Download className="w-4 h-4" />
                                     </button>
@@ -391,7 +620,7 @@ export function ActionPlanAttachments({ planId }: ActionPlanAttachmentsProps) {
                                             'p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-muted)] transition-colors',
                                             deletingId === item.id && 'opacity-50 pointer-events-none'
                                         )}
-                                        onClick={() => void handleDelete(item)}
+                                        onClick={(event) => { event.stopPropagation(); void handleDelete(item) }}
                                         disabled={deletingId === item.id}
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -402,6 +631,96 @@ export function ActionPlanAttachments({ planId }: ActionPlanAttachmentsProps) {
                     </div>
                 )}
             </div>
+
+            {/* Full-body preview overlay: takes over the modal's content area so the file
+                becomes the focus, with a compact file rail on the side to switch between attachments. */}
+            {previewItem && (
+                <div className="absolute inset-0 z-20 flex bg-[var(--color-surface)]">
+                    <div className="w-56 shrink-0 border-r border-[var(--color-border)] overflow-y-auto p-2 space-y-1">
+                        {attachments.map((item) => (
+                            <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => void openPreview(item)}
+                                className={cn(
+                                    'w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors',
+                                    previewItem.id === item.id
+                                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/30'
+                                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
+                                )}
+                            >
+                                <FileText className="w-3.5 h-3.5 shrink-0" />
+                                <span className="text-xs truncate">{item.file_name}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--color-border)] shrink-0">
+                            <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                                {previewItem.file_name}
+                            </p>
+                            <div className="flex items-center gap-1 shrink-0">
+                                {previewKind === 'image' && previewUrl && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            title={t('actionPlan.attachments.zoomOut')}
+                                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                                            onClick={zoomOut}
+                                            disabled={imageZoom <= MIN_ZOOM}
+                                        >
+                                            <ZoomOut className="w-4 h-4" />
+                                        </button>
+                                        <span className="text-xs tabular-nums text-[var(--color-text-muted)] w-11 text-center select-none">
+                                            {Math.round(imageZoom * 100)}%
+                                        </span>
+                                        <button
+                                            type="button"
+                                            title={t('actionPlan.attachments.zoomIn')}
+                                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                                            onClick={zoomIn}
+                                            disabled={imageZoom >= MAX_ZOOM}
+                                        >
+                                            <ZoomIn className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            title={t('actionPlan.attachments.resetZoom')}
+                                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                                            onClick={resetZoom}
+                                            disabled={imageZoom === MIN_ZOOM}
+                                        >
+                                            <Maximize2 className="w-4 h-4" />
+                                        </button>
+                                        <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
+                                    </>
+                                )}
+                                <button
+                                    type="button"
+                                    title={t('actionPlan.attachments.download')}
+                                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                    onClick={() => void handleDownload(previewItem)}
+                                >
+                                    <Download className="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    title={t('actionPlan.attachments.closePreview')}
+                                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                    onClick={closePreview}
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 min-h-0 overflow-hidden bg-[var(--color-surface-hover)]/30">
+                            {previewBody}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
