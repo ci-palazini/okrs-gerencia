@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Settings, Palette, Shield, Database, Download, X, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Settings, Palette, Shield, Database, Download, X, Lock, Eye, EyeOff, CheckCircle, FileSpreadsheet, FileCode, HardDriveDownload, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
@@ -11,6 +11,7 @@ import { cn } from '../../lib/utils'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
+import type { BackupProgress } from '../../lib/dataBackup'
 
 interface DatabaseStats {
     objectives: number
@@ -29,7 +30,13 @@ export function SettingsPage() {
     }
 
     const { sidebarCollapsed, toggleSidebar, theme } = useSettings()
-    const { updatePassword } = useAuth()
+    const { updatePassword, user } = useAuth()
+    const isAdmin = user?.role === 'admin'
+
+    // Full backup state (admin only)
+    const [backupFormat, setBackupFormat] = useState<'excel' | 'sql' | null>(null)
+    const [backupProgress, setBackupProgress] = useState<BackupProgress | null>(null)
+    const [backupError, setBackupError] = useState<string | null>(null)
 
     // Password modal state
     const [passwordModalOpen, setPasswordModalOpen] = useState(false)
@@ -145,6 +152,31 @@ export function SettingsPage() {
             console.error('Export failed:', error)
         } finally {
             setExporting(null)
+        }
+    }
+
+    async function handleFullBackup(format: 'excel' | 'sql') {
+        if (backupFormat) return
+        setBackupError(null)
+        setBackupFormat(format)
+        setBackupProgress(null)
+        try {
+            // Carrega o módulo de backup (com a lib xlsx pesada) sob demanda.
+            const { fetchBackupData, downloadExcelBackup, downloadSqlBackup } = await import('../../lib/dataBackup')
+            const data = await fetchBackupData(setBackupProgress)
+            // Sinaliza fase de geração do arquivo
+            setBackupProgress(null)
+            if (format === 'excel') {
+                downloadExcelBackup(data)
+            } else {
+                downloadSqlBackup(data)
+            }
+        } catch (error) {
+            console.error('Full backup failed:', error)
+            setBackupError(t('settings.page.data.backup.error'))
+        } finally {
+            setBackupFormat(null)
+            setBackupProgress(null)
         }
     }
 
@@ -322,6 +354,80 @@ export function SettingsPage() {
 
             {activeTab === 'data' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {isAdmin && (
+                        <Card variant="elevated" className="lg:col-span-2">
+                            <CardHeader>
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--color-primary)]/15">
+                                            <HardDriveDownload className="w-5 h-5 text-[var(--color-primary)]" />
+                                        </div>
+                                        <div>
+                                            <CardTitle>{t('settings.page.data.backup.title')}</CardTitle>
+                                            <CardDescription>{t('settings.page.data.backup.description')}</CardDescription>
+                                        </div>
+                                    </div>
+                                    <Badge variant="warning" className="shrink-0">
+                                        <Shield className="w-3.5 h-3.5 mr-1" />
+                                        {t('settings.page.data.backup.adminOnly')}
+                                    </Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Button
+                                        variant="primary"
+                                        className="w-full justify-start"
+                                        onClick={() => handleFullBackup('excel')}
+                                        disabled={backupFormat !== null}
+                                        loading={backupFormat === 'excel'}
+                                    >
+                                        {backupFormat !== 'excel' && <FileSpreadsheet className="w-4 h-4" />}
+                                        {t('settings.page.data.backup.excel')}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full justify-start"
+                                        onClick={() => handleFullBackup('sql')}
+                                        disabled={backupFormat !== null}
+                                        loading={backupFormat === 'sql'}
+                                    >
+                                        {backupFormat !== 'sql' && <FileCode className="w-4 h-4" />}
+                                        {t('settings.page.data.backup.sql')}
+                                    </Button>
+                                </div>
+
+                                {backupFormat && (
+                                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+                                        <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin shrink-0" />
+                                        <p className="text-sm text-[var(--color-text-secondary)]">
+                                            {backupProgress
+                                                ? t('settings.page.data.backup.collecting', {
+                                                    table: backupProgress.table,
+                                                    current: backupProgress.current,
+                                                    total: backupProgress.total,
+                                                })
+                                                : t('settings.page.data.backup.generating')}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {backupError && (
+                                    <div className="p-3 rounded-lg bg-[var(--color-danger)]/10 text-[var(--color-danger)] text-sm">
+                                        {backupError}
+                                    </div>
+                                )}
+
+                                <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20">
+                                    <AlertTriangle className="w-4 h-4 text-[var(--color-warning)] shrink-0 mt-0.5" />
+                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                        {t('settings.page.data.backup.note')}
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <Card variant="elevated">
                         <CardHeader>
                             <div className="flex items-center gap-3">

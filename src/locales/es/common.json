@@ -799,6 +799,17 @@
                     "actions": "Exportar Planes de acción (JSON)",
                     "exporting": "Exportando..."
                 },
+                "backup": {
+                    "title": "Copia de Seguridad Completa",
+                    "description": "Extraiga todos los datos de la plataforma para seguridad y respaldo",
+                    "adminOnly": "Solo administradores",
+                    "excel": "Descargar Excel (.xlsx)",
+                    "sql": "Descargar SQL (.sql)",
+                    "collecting": "Recopilando {{table}} ({{current}}/{{total}})",
+                    "generating": "Generando archivo...",
+                    "error": "Error al generar la copia. Inténtalo de nuevo.",
+                    "note": "Incluye todas las tablas de la base de datos. Guarde los archivos en un lugar seguro — contienen datos sensibles."
+                },
                 "stats": {
                     "title": "Estadísticas de la Base",
                     "description": "Visión general de los datos",

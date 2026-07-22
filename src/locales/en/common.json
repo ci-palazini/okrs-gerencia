@@ -799,6 +799,17 @@
                     "actions": "Export Action Plans (JSON)",
                     "exporting": "Exporting..."
                 },
+                "backup": {
+                    "title": "Full Backup",
+                    "description": "Extract all platform data for security and backup",
+                    "adminOnly": "Administrators only",
+                    "excel": "Download Excel (.xlsx)",
+                    "sql": "Download SQL (.sql)",
+                    "collecting": "Collecting {{table}} ({{current}}/{{total}})",
+                    "generating": "Generating file...",
+                    "error": "Failed to generate the backup. Please try again.",
+                    "note": "Includes all database tables. Store the files securely — they contain sensitive data."
+                },
                 "stats": {
                     "title": "Database Statistics",
                     "description": "Overview of the data",

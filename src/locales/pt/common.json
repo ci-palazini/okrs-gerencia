@@ -800,6 +800,17 @@
                     "actions": "Exportar Planos de ação (JSON)",
                     "exporting": "Exportando..."
                 },
+                "backup": {
+                    "title": "Backup Completo",
+                    "description": "Extraia todos os dados da plataforma para segurança e backup",
+                    "adminOnly": "Somente administradores",
+                    "excel": "Baixar Excel (.xlsx)",
+                    "sql": "Baixar SQL (.sql)",
+                    "collecting": "Coletando {{table}} ({{current}}/{{total}})",
+                    "generating": "Gerando arquivo...",
+                    "error": "Falha ao gerar o backup. Tente novamente.",
+                    "note": "Inclui todas as tabelas do banco. Guarde os arquivos em local seguro — contêm dados sensíveis."
+                },
                 "stats": {
                     "title": "Estatísticas do Banco",
                     "description": "Visão geral dos dados",
